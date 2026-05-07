@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{	
+				//setting if this level is a cutscene
+				Settings.isItACutScene=false;
+				
+				// currentLevel makes it easier for other objects to access the properties of this level
+				(this.parent as levelManager).currentLevel = this;
+
+				// this is a string suffix appended to "level" and refers to an MXML component
+				// e.g. "d1" will load leveld1.mxml when the player collides with the exit
+				super.nextLvl = "gameending";
+				
+				// setBG takes one arg: the asset of containing the background art
+				super.setBG(AssetManager.bgWorld1_1);				
+				
+				// setGround takes one arg: that art asset in which collision is determined by transparency.
+				super.setGround(AssetManager.cutScene_collision); 
+				
+				// setExit takes x,y coords to place the exit image
+				super.setExit(760,460);
+				
+				// setEntrance takes x, y coord to place the entrance
+				// this is also where the player will be spawned when the level loads
+				super.setEntrance(0,460);
+				
+				// addGraph places a graph and activation object on the level
+				// addGraph may be called multiple times to create more than 1 graph
+				// addGraph should be one of the first functions called so that the graph's background does not affect 
+				//		the colors of other objects in the level
+				// args:
+				//		graphtype: two digit number expected,
+				//				first digit: 0=displacement, 1=velocity, 2=acceleration
+				//				second digit: 0=square, 1=tall, 2=wide
+				//		x, y: position of graph space
+				//		scale: this is the "zoom" scale of the plot (NOTE: must be > 21 or the avatar can't jump from idle to walk to run in the graph.)
+				// 		width, height: the size of the graph space
+				// 		offset: shifts the "0" of the graph space
+				//		orbx, orby: location for the activation orb
+				//		how high the graph is above the platform it is on (always zero)
+				//		x,y offset of base for activation object from activation object (?)
+				//		number of obstacles to be placed in graph
+				//		number of trys that should be performed to place each obstacle in the graph (with pre-specified stipulations)
+				//		x,y scale of graph for minor adjustment (for tweaking levels)
+				super.addGraph(0,0,220,200,180,300,300,80,400,350,0,0,0,50,50,1,1);
+				
+				//this function sets up a switch that controls one or more moving obstacles
+				// the first two arguments are the x and y coordinates of the switch
+				// the rest of the arguments come in groups of 6 representing moving obstacles controlled by the switch:
+				//		x,y coordinates of the moving obstacle
+				//		true if the obstacle moves horizontally
+				//		true if the obstacle starts out in the up or left direction
+				// 			i.e.: pushing the switch causes it to go in the down or right direction
+				// 		width, height of the obstacle respectivly
+				super.addSwitch(10,410,
+								64,460,false,false,160,20,
+								255,460,false,false,160,20);
+				/*
+				// this series of statements sets up a switch that controls one or more moving obstacles
+				// set up the switch object
+				var newSwitch:switchObject = new switchObject();
+				// set the x and y coordinates of the switch (the second two arguments)
+				newSwitch.init((this.parent.parent as game),200,460);
+				// set up the obstacles (can have more than one obstacle per switch and visa versa)
+				// args:
+				//		x,y coordinate of the obstacle
+				//		true if the obstacle moves horizontally
+				//		true if the obstacle starts out in the up or left direction
+				// 			i.e.: pushing the switch causes it to go in the down or right direction
+				// 		width, height of the obstacle respectivly
+				newSwitch.addObstacle((this.parent.parent as game),100,0,false,true,20,80);
+				newSwitch.addObstacle((this.parent.parent as game),100,90,false,true,20,80);
+				newSwitch.addObstacle((this.parent.parent as game),160,200,true,false,20,80);
+				this.addChild(newSwitch);
+				*/
+				
+				// addSpike places a moving obstacle on the level that sends the player back to the start point when touched
+				// if the spike does not move, then only the first two aregument matter (the others can be anything/left as default)
+				// args:
+				//		initial x,y coordinate of the obstacle
+				//		true if obstacle will move
+				//		true if obstacle moves horizontally
+				//		true if obstacle starts at the top or at the left
+				//		farthest left/down the obstacle will go
+				//		farthest right/up the obstacle will go (always larger than previous argument)
+				//		speed of obstacle
+				this.spikeObstacleEditor.addSpike(500,480,true,true,true,0,780,20);
+				
+				// addHelpToLevel places a non-interactive image into the level
+				// this method is used to place floating buttons for tutorials
+				// the first level's tutorial buttons are embeded in the background
+				// args:
+				//		image that will be placed
+				//		x,y coordinates of image
+				super.addHelpToLevel(AssetManager.help_image_D,745,60);
+				
+				// The above parameters may be duplicated, tweaked, and dispersed through the 
+				// following framework to effect level variants based on difficulty.
+				// This can be easily tested by changing difficulty in the "Settings" in-game submenu
+				if (Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// Hard variants may include several spikes and graph obstacles.
+
+				} 
+				else if (Settings.LEVEL_DIFFICULTY == 2)
+				{
+					// Medium variants should include more carefully placed spikes than random graph obstacles
+				}
+				else 
+				{
+					// Easy variants should not include any spikes or graph obstacles.
+					// Try to limit the number of platforming challenges the player must face.
+					// Easy mode should privilege puzzle-solving over hand-eye coordination.
+				}
+				
+			}
+			
+		]]>
+	</mx:Script>
+</level>

@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" horizontalScrollPolicy="off" verticalScrollPolicy="off" creationComplete="init()">
+	<mx:Canvas id="fadeBlack" alpha="{fadeBlackAlpha}" backgroundColor="#000000" width="100%" height="100%" />
+	<mx:Canvas id="optionsPanel" width="100%" height="100%" visible="{optionsVisible}" backgroundColor="#000000" backgroundAlpha="0.4">
+
+	</mx:Canvas>
+	<mx:Canvas id="confirmDialogue" width="100%" height="100%" visible="false">
+		<mx:Image x="125" y="100" id="confirmationBG" />
+		<mx:Image x="321" y="317" id="btnYes"/>
+		<mx:Image x="419" y="317" id="btnNo"/>
+	</mx:Canvas>
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Image;
+			import AssetManager;
+			import gs.plugins.*;
+			import gs.easing.*;
+			import gs.TweenMax;
+			import com.sonoflash.core.*; 
+			import com.sonoflash.*;
+			
+			[Bindable] public var optionsVisible:Boolean = false;
+			[Bindable] public var fadeBlackAlpha:Number = 1;
+			
+			/**
+			 * 1== return
+			 * 2== instruction
+			 * 3== settings
+			 * 4== restart
+			 * 5== quit
+			 **/
+			public var state_of_gui:int = 1;
+			//1 = easy, 2 = medium, 3 = hard
+			private var difficultyselector:int = 2;
+			//yes or no
+			public var yes_or_no:Boolean = true;
+			//whether button up or down is pressed
+			public var stateUp:Boolean=false;
+			public var stateDown:Boolean=false;
+			//1=difficulty, 2=bgm, 3=sfx
+			public var state_in_sound_option:int=1;
+			public var hack_in_to_show_that_bgm_glow_already:Boolean=false;
+			public var hack_in_to_show_that_sfx_glow_already:Boolean=false;
+			
+			private var btnContinue:imgButton = new imgButton();
+			private var btnInstructions:imgButton = new imgButton();
+			private var btnSound:imgButton = new imgButton();
+			private var btnRestart:imgButton = new imgButton();
+			private var btnQuit:imgButton = new imgButton();
+			
+			private var btnOptions:imgButton = new imgButton();
+			
+			private var instructionScreen:Image = new Image();
+			
+			public var soundOpt:difficulty_selector = new difficulty_selector();
+			
+			public var hint:Image = new Image();
+			public var hintText:Image = new Image();
+			
+			public function init():void
+			{	
+				//set the positions and appearance of everything in the gui
+				this.addEventListener(KeyboardEvent.KEY_DOWN, guiKeyboard);
+				
+				//activate the tween glow plugin for use with the confirmation yes/no buttons
+				TweenPlugin.activate([GlowFilterPlugin]);
+				confirmationBG.source = AssetManager.guiConfirmationInGameScreen;
+				btnYes.source = AssetManager.guiConfirmationYesInGame;
+				btnNo.source = AssetManager.guiConfirmationNoInGame;
+				
+				btnYes.addEventListener(MouseEvent.MOUSE_OVER, mouseOverBtnYes);				
+				btnNo.addEventListener(MouseEvent.MOUSE_OVER, mouseOverBtnNo);
+				
+				var bgImg:Image = new Image();
+				bgImg.data = AssetManager.guiOption_bg;
+
+				var origin_x:int = (800 - 550) / 2; //231 is width of the bg panel
+				var origin_y:int = (600 - 400) / 2; //401 is the height of the bg panel
+				var buttonsBase_x:int = 207;
+				var buttonsBase_y:int = 84;
+				var buttonsSpacing:int = 55;
+				bgImg.x = origin_x;
+				bgImg.y = origin_y;
+				
+				this.optionsPanel.addChild(bgImg);
+				
+				btnOptions.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnContinue.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnInstructions.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnSound.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnRestart.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnQuit.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				
+				btnOptions.init(AssetManager.guiBtnOptions,AssetManager.guiBtnOptions,AssetManager.guiBtnOptionsPressed);
+				btnOptions.addEventListener(MouseEvent.CLICK, showOptions);				
+				btnOptions.x = 710;
+				btnOptions.y = 535;
+				this.addChild(btnOptions);
+						
+				btnContinue.addEventListener(MouseEvent.CLICK, showOptions);
+				btnContinue.init(AssetManager.guiBtnContinue, AssetManager.guiBtnContinueMO, AssetManager.guiBtnContinuePressed);
+				btnContinue.x = origin_x + buttonsBase_x;
+				btnContinue.y = origin_y + buttonsBase_y + 0 * buttonsSpacing;
+				this.optionsPanel.addChild(btnContinue);
+				
+				btnInstructions.addEventListener(MouseEvent.CLICK, showInstructions);
+				btnInstructions.init(AssetManager.guiBtnInstructions, AssetManager.guiBtnInstructionsMO, AssetManager.guiBtnInstructionsPressed);
+				btnInstructions.x = origin_x + buttonsBase_x;
+				btnInstructions.y = origin_y + buttonsBase_y + 1 * buttonsSpacing;
+				this.optionsPanel.addChild(btnInstructions);
+				
+				btnSound.addEventListener(MouseEvent.CLICK, showSoundOpt);
+				btnSound.init(AssetManager.guiBtnSound, AssetManager.guiBtnSoundMO, AssetManager.guiBtnSoundPressed);
+				btnSound.x = origin_x + buttonsBase_x;
+				btnSound.y = origin_y + buttonsBase_y + 2 * buttonsSpacing;
+				this.optionsPanel.addChild(btnSound);
+								
+				btnRestart.addEventListener(MouseEvent.CLICK, showConfirm);
+				btnRestart.init(AssetManager.guiBtnRestart, AssetManager.guiBtnRestartMO, AssetManager.guiBtnRestartPressed);
+				btnRestart.x = origin_x + buttonsBase_x;
+				btnRestart.y = origin_y + buttonsBase_y + 3 * buttonsSpacing;
+				this.optionsPanel.addChild(btnRestart);
+												
+				btnQuit.addEventListener(MouseEvent.CLICK, showConfirm);
+				btnQuit.init(AssetManager.guiBtnQuit, AssetManager.guiBtnQuitMO, AssetManager.guiBtnQuitPressed);
+				btnQuit.x = origin_x + buttonsBase_x;
+				btnQuit.y = origin_y + buttonsBase_y + 4 * buttonsSpacing;
+				this.optionsPanel.addChild(btnQuit);
+				
+				instructionScreen.data = AssetManager.guiInstructionOverlayInGame;
+				
+				instructionScreen.addEventListener(MouseEvent.CLICK, closeInstructions);
+				
+				btnYes.addEventListener(MouseEvent.CLICK, quitGame);
+				btnNo.addEventListener(MouseEvent.CLICK, hideConfirm);
+				
+				soundOpt.screen_bg.addEventListener(MouseEvent.CLICK, closeSoundOpt);
+				
+				
+				hint.addEventListener(MouseEvent.CLICK, clickingOnHint);
+				hintText.addEventListener(MouseEvent.CLICK, clickingOnHint);
+				this.addChild(hint);
+				this.addChild(hintText);
+			}
+			
+			public function guiUpdate():void
+			{
+				//if option is not showing.. don't bother about the gui
+				if(!optionsVisible)
+				return;
+				
+				//keyboard controls of the gui.
+				if(stateUp)
+				{
+					--state_of_gui;
+					soundManager.playOptionsMO();
+					stateUp=false;
+				}
+				if(stateDown)
+				{
+					++state_of_gui;
+					soundManager.playOptionsMO();
+					stateDown=false
+				}
+				if(state_of_gui==6)
+				{
+					state_of_gui=1;
+				}
+				if(state_of_gui==0)
+				{
+					state_of_gui=5;
+				}
+				
+				if(btnContinue.clickAble)
+				state_of_gui=1;
+				if(btnInstructions.clickAble)
+				state_of_gui=2;
+				if(btnSound.clickAble)
+				state_of_gui=3;
+				if(btnRestart.clickAble)
+				state_of_gui=4;
+				if(btnQuit.clickAble)
+				state_of_gui=5;
+
+				
+				switch(state_of_gui)
+				{
+					//return
+					case 1: btnContinue.currentState="stateMouseOver";
+							btnInstructions.currentState="";
+							btnSound.currentState="";
+							btnRestart.currentState="";
+							btnQuit.currentState="";
+							break;
+					//instruction
+					case 2: btnContinue.currentState="";
+							btnInstructions.currentState="stateMouseOver";
+							btnSound.currentState="";
+							btnRestart.currentState="";
+							btnQuit.currentState="";
+							break;
+					//settings
+					case 3: btnContinue.currentState="";
+							btnInstructions.currentState="";
+							btnSound.currentState="stateMouseOver";
+							btnRestart.currentState="";
+							btnQuit.currentState="";
+							break;
+					//restart
+					case 4: btnContinue.currentState="";
+							btnInstructions.currentState="";
+							btnSound.currentState="";
+							btnRestart.currentState="stateMouseOver";
+							btnQuit.currentState="";
+							break;
+					//quit
+					case 5: btnContinue.currentState="";
+							btnInstructions.currentState="";
+							btnSound.currentState="";
+							btnRestart.currentState="";
+							btnQuit.currentState="stateMouseOver";
+							break;
+				}
+				
+				if(confirmDialogue.visible==true)
+				{
+					if(yes_or_no==true)
+					{
+						TweenMax.to(btnYes, 1, {glowFilter:{color:0xffff00, alpha:1, blurX:10, blurY:10, strength:4}, ease:Elastic.easeOut});
+						TweenMax.to(btnNo, 1, {glowFilter:{color:0xffff00, alpha:0, blurX:10, blurY:10, strength:2}, ease:Elastic.easeOut});
+					}
+					else
+					{
+						TweenMax.to(btnNo, 1, {glowFilter:{color:0xffff00, alpha:1, blurX:10, blurY:10, strength:4}, ease:Elastic.easeOut});
+						TweenMax.to(btnYes, 1, {glowFilter:{color:0xffff00, alpha:0, blurX:10, blurY:10, strength:2}, ease:Elastic.easeOut});
+					}
+				}
+				
+				if(optionsShowing)
+				{//if already created
+					if(this.soundOpt.soundOpt && this.soundOpt.soundOpt.stage)
+					{
+						if(state_in_sound_option==1)
+						{	
+							if(hack_in_to_show_that_bgm_glow_already)
+							{
+								this.soundOpt.soundOpt.unGlowBGM();
+								this.soundOpt.soundOpt.unGlowSFX();
+							}
+						}
+						else if(state_in_sound_option==2)
+						{
+							hack_in_to_show_that_bgm_glow_already=true;
+							this.soundOpt.soundOpt.glowBGM();
+							if(hack_in_to_show_that_sfx_glow_already)
+							{
+								this.soundOpt.soundOpt.unGlowSFX();
+							}
+						}
+						else
+						{
+							hack_in_to_show_that_sfx_glow_already=true;
+							this.soundOpt.soundOpt.unGlowBGM();
+							this.soundOpt.soundOpt.glowSFX();
+						}
+					}
+				}
+			}
+			
+			private function guiKeyboard(e:KeyboardEvent):void
+			{
+				//if option is not showing.. don't bother about the gui
+				if(!optionsVisible)
+				return;
+				
+				switch(e.keyCode)
+				{
+					case Keyboard.RIGHT:
+						if(optionsShowing==true)
+							if(Settings.LEVEL_DIFFICULTY!=3)
+								++Settings.LEVEL_DIFFICULTY;
+						break;
+					case Keyboard.LEFT:
+						if(optionsShowing==true)
+							if(Settings.LEVEL_DIFFICULTY!=1)
+								--Settings.LEVEL_DIFFICULTY;
+						break;
+					case Keyboard.UP:
+						stateUp=true;
+						break;
+					case Keyboard.DOWN:
+						stateDown=true;
+						break;
+					
+					case Keyboard.ENTER: 
+						if(confirmDialogue.visible==true)
+						hideConfirm(null);
+						else if(optionsShowing==true)
+						closeSoundOpt(null);
+						else if(instructShowing==true)
+						closeInstructions(null);
+						else
+						switch(state_of_gui)
+						{
+							case 1:showOptions();
+							break;
+							case 2:showInstructions(null);
+							break;
+							case 3:showSoundOpt(null);
+							break;
+							case 4:showConfirm(null);
+							break;
+							case 5:showConfirm(null);
+							break;
+						}			
+						break;
+				}
+			}
+			
+			private function mouseOverBtnYes(e:MouseEvent):void
+			{
+				yes_or_no=true;
+			}
+			private function mouseOverBtnNo(e:MouseEvent):void
+			{
+				yes_or_no=false;
+			}
+			
+			public function playMOSnd(e:Event):void
+			{
+				soundManager.playOptionsMO();
+			}
+			
+			public var optionsShowing:Boolean = false;
+			public var instructShowing:Boolean = false;
+			
+			public function showSoundOpt(e:Event):void
+			{
+				state_in_sound_option=1;
+				optionsShowing = true;
+				soundManager.playOptionsSelect();
+				this.optionsPanel.addChild(soundOpt);
+			}
+			
+			public function closeSoundOpt(e:Event):void
+			{
+				soundManager.playSelect();
+				this.optionsPanel.removeChild(soundOpt);
+				optionsShowing = false;
+			}
+			
+			public function showInstructions(e:Event):void
+			{
+				instructShowing = true;
+				soundManager.playOptionsSelect();
+				soundManager.playShowInstruct();
+				this.optionsPanel.addChild(instructionScreen);
+			}
+			
+			public function closeInstructions(e:MouseEvent):void
+			{
+				instructShowing = false
+				soundManager.playHideInstruct();
+				this.optionsPanel.removeChild(instructionScreen);
+			}
+			
+			private var btnClicked:String = "";  
+			
+			//confirmation is shown when restart or quit is selected.
+			public function showConfirm(e:Event):void
+			{	
+				if(state_of_gui==4)
+					btnClicked = "restart";
+				
+				else if(state_of_gui==5)
+					btnClicked = "quit";
+					
+				soundManager.playOptionsSelect();
+				this.confirmDialogue.visible = true;
+			}
+			
+			public function hideConfirm(e:Event):void
+			{
+				soundManager.playSelect();
+				this.confirmDialogue.visible = false;
+			}
+			
+			public function showOptions(e:Event=null):void
+			{
+				state_of_gui=1;
+				soundManager.playOptionsSelect();
+				optionsVisible = !optionsVisible;
+				if (!optionsVisible)
+				{
+					hideConfirm(null);
+					if (instructShowing)
+						this.closeInstructions(null);
+					
+					if (optionsShowing)
+						this.closeSoundOpt(null);
+						
+						//if player changed the difficulty
+						// i restart the game
+					if(Settings.LEVEL_DIFFICULTY!=Settings.LEVEL_DIFFICULTY_PREVIOUS)
+						restartGame(null);
+				}
+			}
+			
+			public function restartGame(e:Event):void
+			{	
+				soundManager.playOptionsSelect();	
+				optionsVisible = false;
+				this.confirmDialogue.visible = false;
+				(this.parent as game).init( (this.parent as game).lvlManager.currLvl );
+			}
+						
+			public function quitGame(e:Event):void
+			{	
+				//reset important variables
+				soundManager.varSnd.release();
+				soundManager.stopGraphDraw();
+				game(this.parent).itemExist = false;
+				game(this.parent).currentGraph.isDrawing = false;
+				game(this.parent).hack = 0;
+				game(this.parent).player.visible = false;
+								
+				if (btnClicked == "restart")
+					restartGame(null);
+				
+				else if (btnClicked == "quit")
+				{	
+					soundManager.playOptionsSelect();
+					optionsVisible = false;
+					this.confirmDialogue.visible = false;
+					(this.parent as game).lvlManager.currLvl = "1";
+					soundManager.stopBGM();
+					
+					(this.parent.parent as menu).gotoMenu();
+				}						
+			}
+			
+			public var hintTimer:int=0;
+			public var hintActivated:Boolean=false;
+			public var activatingHint:Boolean=false;
+			//updating the hint
+			public function hintUpdate():void
+			{
+				if((this.parent as game).lvlManager.currentLevel.hint==true)
+				{
+					//updating the hint timer every loop
+					++hintTimer;
+					//once the hint timer have reached the time indicated in levels, its time to activate the hint
+					if(hintTimer/20 == (this.parent as game).lvlManager.currentLevel.time_before_hint_appear_in_seconds)
+					{
+					activatingHint=true;
+					}
+					//if i am activating the hint, i push up the question mark image for player to click on
+					if(activatingHint==true)
+					{
+						hint.y-= (hint.y-(550)) /4;
+					}
+					//once the hint image reaches the position, the player can now click the question mark image.
+					if(hint.y<= (600-44))
+					{
+						activatingHint=false;
+						hintActivated=true;
+					}
+					//the state changes on the player clicking on the images, i pushes the hint text image up.. or down.. whether the player want it or not
+					if(hintActivated==true)
+					{
+						if(hintStateDown)
+						{
+							if(hintText.y<= (600))
+							{
+								hintText.y+= (600 - hintText.y)/4;
+							}
+						}
+						else
+						{
+							if(hintText.y>= (600-50))
+							{
+								hintText.y-= (hintText.y - 550)/4;
+							}
+						}	
+					}
+				}
+			}
+			
+			public var hintStateDown:Boolean=true;
+			//this function is called when the player click the hint question mark image or the hint text image.
+			public function clickingOnHint(e:Event):void
+			{
+				hintStateDown=!hintStateDown;
+			}
+		]]>
+	</mx:Script>
+</mx:Canvas>

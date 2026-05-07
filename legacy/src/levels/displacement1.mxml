@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+	
+			import AssetManager;
+			import Settings;
+				
+			public function initLvl():void
+			{	
+				
+				
+				
+				Settings.isItACutScene=false;
+				
+				(this.parent as levelManager).currentLevel = this;
+				
+				super.nextLvl = 'd2';
+
+				super.setBG(AssetManager.bgWorld1_1);			
+				
+				// this png determines collision based on transparency:
+				super.setGround(AssetManager.leveld1_collision); 
+
+				// select img for the entrance and exit and place on the canvas
+				super.setExit(740,195);
+				super.setEntrance(0,390);
+				
+				
+
+
+				if(Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// hard
+					this.spikeObstacleEditor.addSpike(500,480,true,true,true,0,780,7);
+					
+					// addGraph also takes care of activation orb
+					super.addGraph(0,0,308,200,400,300,300,100,200,430,0,200,438,3,20);
+				}
+				else if (Settings.LEVEL_DIFFICULTY == 2)
+				{
+					// medium	
+					
+					// addGraph also takes care of activation orb
+					super.addGraph(0,0,308,200,400,300,300,100,200,430,0,200,438,2,20);
+				}
+				else 
+				{
+					// easy
+					
+					// addGraph also takes care of activation orb
+					super.addGraph(0,0,308,200,400,300,300,100,200,430,0,200,438,1,20);
+				}
+				/*
+				this.spikeObstacleEditor.addSpike(500,480,true,false,true,370,480,12);
+				this.spikeObstacleEditor.addSpike(600,480,true,false,true,370,480,12);
+				this.spikeObstacleEditor.addSpike(400,480,true,false,true,370,480,12);
+				this.spikeObstacleEditor.addSpike(300,480,true,false,true,370,480,12);
+				this.spikeObstacleEditor.addSpike(200,480,true,false,true,370,480,12);
+				*/
+				setHint(AssetManager.level_hintsign,AssetManager.level_displacement1_hint,true,1*60);
+				
+
+			}
+		]]>
+	</mx:Script>
+</level>

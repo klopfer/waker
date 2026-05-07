@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+
+			import AssetManager;
+			
+			public function initLvl():void
+			{
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'd3';
+				
+				super.setBG(AssetManager.bgWorld1_2);			
+				
+				// this png determines collision based on transparency:
+				super.setGround(AssetManager.leveld2_collision); 
+				
+				// select img for the entrance and exit and place on the canvas
+				super.setExit(0,60);
+				super.setEntrance(0,450);
+
+				// place graphs 
+				//number of obstacles really low, since almost impossible to have more than one
+				super.addGraph(0,0,240,340,600,160,160,40,
+								160,460,
+								0,
+								160,440,
+								1,1);
+				super.addGraph(0,0,220,60,500,220,220,80,740,290,0,740,270,1,1);		
+			
+				if(AssetManager.LEVEL_DIFFICULTY == 3)
+				{
+				this.spikeObstacleEditor.addSpike(500,480,true,true,true,0,780,8);
+				this.spikeObstacleEditor.addSpike(280,480,true,false,true,360,480,5);
+				this.spikeObstacleEditor.addSpike(230,260,true,false,true,110,260,7);
+				} else if(AssetManager.LEVEL_DIFFICULTY == 2)
+				{
+					this.spikeObstacleEditor.addSpike(500,480,true,true,true,0,780,3);
+					//this.spikeObstacleEditor.addSpike(500,260,true,true,true,220,580,5);
+				}
+			}
+		]]>
+	</mx:Script>
+</level>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+
+			import AssetManager;
+			
+			public function initLvl():void
+			{
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'v3';
+				
+				super.setBG(AssetManager.bgWorld2_2);				
+				
+				// this png determines collision based on transparency:
+				super.setGround(AssetManager.levelv2_collision); 
+				
+				// select img for the entrance and exit and place on the canvas
+				super.setExit(490,27);
+				super.setEntrance(0,487);
+
+				// place graphs 
+				super.addGraph(1,0,110,60,8,400,400,-30,200,470,0,200,460,5,20);
+							
+				// (this.parent.parent as game).setPlayerLoc(this.entrance.x,this.entrance.y);
+
+			}
+		]]>
+	</mx:Script>
+</level>

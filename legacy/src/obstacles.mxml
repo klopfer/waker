@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+	
+	
+	
+	<mx:Script>
+		<![CDATA[
+		
+		/****************************
+		 * This class randomly places obstacles into a graph area
+		 * **************************/
+		
+			import mx.core.UIComponent;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Image;
+			import AssetManager;
+			import Settings;
+			
+			public var obstaclesArray:ArrayCollection = new ArrayCollection;
+			
+			//creating all the obstacles
+			//args:
+			//		graph that will have the obstacles
+			//		number of obstacles that we will try to place in the graph
+			//		scales are streatches to the graph (in this case they're used to calculate the size of the graph area)
+			//		height above the ground that the graph is located
+			//			ground can be the ground of the level the platform that the graph sits on
+			//			in all cases (at least so far), this value is always 0
+			//		number of tries to get obstacles into the graph area (i.e. attempts to fit obstacles into the graph area
+			//			given several constraints)
+			//		deadzones are areas of the graph that there are no obstacles in
+			//			they are there to prevent impossible puzzles and to prevent obstacles from being to high on the graph;
+			//			(the latter case occurs when the max height of a graph that the player can make is significantlly lower than
+			//				the top of the graph area)
+			//			the x and y coordinates for the deadzones take (0,0) to be the upper left corner of the graph
+			public function proceduralGeneration(graph:genericGraph,
+												numberObstacles:int=50,
+												scaleX:Number=1,scaleY:Number=1,
+												heightAboveGround:Number=0, 
+												no_of_tries:int=50, 
+												deadzone_1_min_x:Number=0, deadzone_1_max_x:Number=0, 
+												deadzone_1_min_y:Number=0, deadzone_1_max_y:Number=0, 
+												deadzone_2_min_x:Number=0,deadzone_2_max_x:Number=0, 
+												deadzone_2_min_y:Number=0, deadzone_2_max_y:Number=0):void
+			{
+				//settings for medium difficulty
+				var HORIZONTALEDGE:Number=55; // i am going to have 55 pixel at the side before i can start putting the obstacles
+				var MIN_DIST_BETWEEN_2_OBJECT:Number=100;
+				//settings for easy difficulty
+				if(Settings.LEVEL_DIFFICULTY==1)
+				{
+					HORIZONTALEDGE = 60;
+					MIN_DIST_BETWEEN_2_OBJECT = 110;
+				}
+				//settings for hard difficulty
+				else if(Settings.LEVEL_DIFFICULTY==3)
+				{
+					HORIZONTALEDGE=50;
+					MIN_DIST_BETWEEN_2_OBJECT=90;
+				}
+				
+				//synchronize size and location of obstacles with size and location of graph
+				this.width = graph.width*scaleX;
+				this.height = graph.height*scaleY;
+				
+				this.x = graph.x;
+				this.y = graph.y;
+
+				//possible randomization area for obstacles, they are at least 50 pixel from the ground
+				var heightForObs:Number = 0;
+				
+				if(heightAboveGround<40)//then i cannot put obstacle at the bottom of the graph, so i need to calculate
+				//this is so that the avatar does not hit obstacles as it trys to run across
+				{
+					var fifty:Number=50;
+					fifty-=heightAboveGround; // the result is the amount i have to push up the obstacles in the graph
+					heightForObs = this.height - fifty;	
+				}
+				
+				var widthforObs:Number = this.width - HORIZONTALEDGE*2; //there will also be another 80 pixel at the end of the obstacles
+
+				//then i would be unable to place any obstacles, as the obstacles are size 20 by 29
+				if(widthforObs-20 < 0 || heightForObs-20<0)
+				{
+					return;
+				}
+				
+				var tries:Number = no_of_tries;
+				var SIZEOFOBS:Number = 20;
+				var failToPlace:Boolean = false;
+				
+				var obstaclesChecker:UIComponent = new UIComponent();
+				
+				while(numberObstacles>0)//i am trying to place the Obstacles now
+				{
+					tries=no_of_tries; // amount of tries to try and place the obstacles
+					while(tries > 0)
+					{
+						//minus the number of tries
+						--tries;
+						//set the boolean back to original state
+						failToPlace = false;	
+						
+						//randoming possible position to place obstacles
+						var newObstacles:Image = new Image();
+						newObstacles.x = Math.random()*(widthforObs-SIZEOFOBS) + HORIZONTALEDGE; //added because obstacles have to be a distance away from the start of the graph
+						newObstacles.y = Math.random()*(heightForObs-SIZEOFOBS); //60 is the smallest height of any obstacles
+						
+						
+						//if obstacles is in area defined not to have obstacles
+						if(newObstacles.x>deadzone_1_min_x
+							&& newObstacles.x<deadzone_1_max_x
+							&& newObstacles.y>deadzone_1_min_y
+							&& newObstacles.y<deadzone_1_max_y
+							)
+							failToPlace=true
+					
+						//if obstacles is in area defined not to have obstacles
+						if(newObstacles.x>deadzone_2_min_x
+							&& newObstacles.x<deadzone_2_max_x
+							&& newObstacles.y>deadzone_2_min_y
+							&& newObstacles.y<deadzone_2_max_y
+							)
+							failToPlace=true
+					
+					
+						//if obstacles is already placed in wrong position, i need not bother to check with other obstacles
+						if(!failToPlace)
+						{
+							for each (obstaclesChecker in obstaclesArray)
+							{		//did not square root to get pythagoras theorm as squareroot is slow, checking by its square
+								if((newObstacles.x - obstaclesChecker.x)* (newObstacles.x - obstaclesChecker.x) + 
+									(newObstacles.y - obstaclesChecker.y) * (newObstacles.y - obstaclesChecker.y)
+									< MIN_DIST_BETWEEN_2_OBJECT*MIN_DIST_BETWEEN_2_OBJECT //have to be 90 pixel away at least
+									)
+									{	//since the object is within 90pixel away from other obstacles, i reduce the number of tries, 
+										//	and try to place next object
+										failToPlace=true;
+										break;//break out of for each loop since there are already collision with other obstacles
+									}
+								}
+						}
+					
+						//if determined that object is placed in wrong position
+						if(failToPlace)
+						{
+							if(tries>0)
+							continue; //since i failed to place, i shall try placing my next obstacle and not add this obstacle into the graph	
+							else break;
+						}
+						
+						//otherwise i will add the obstacle into the game
+						newObstacles.source = AssetManager.graphObstacles;
+	
+						this.addChild(newObstacles);
+						obstaclesArray.addItem(newObstacles);
+						--numberObstacles;
+						break; //break out of trying to place more obstacles since i just placed a obstacles
+						}
+						
+						if(tries==0) //i ran out of tries, lets stop placing more obstacles
+						{
+							break;
+						}
+					}	
+				}
+
+			
+		]]>
+	</mx:Script>
+	
+	
+</mx:Canvas>

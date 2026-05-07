@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{
+				Settings.isItACutScene=false;
+				
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'm2';
+
+				// Don't have background yet
+				super.setBG(AssetManager.bgWorld3_2);
+				
+				// this png determines collision based on transparency.
+				super.setGround(AssetManager.levelm3_easy_collision); 
+
+				super.setExit(550,100);
+				super.setEntrance(0,410);
+
+				if (Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// hard
+					super.addGraph(0,0,440,160,140,360,360,180,480,476,0,479,460,3);	
+					// this spike blocks part of the gap that the player must jump through
+					this.spikeObstacleEditor.addSpike(460,220,false);
+					
+				} 
+				else if (Settings.LEVEL_DIFFICULTY == 2)
+				{
+					// medium
+					super.addGraph(0,0,440,160,140,360,360,180,480,476,0,479,460,1,1);	
+
+					// this spike blocks part of the gap that the player must jump through
+					this.spikeObstacleEditor.addSpike(460,220,false);
+					
+				} else {
+
+					// easy
+					super.addGraph(0,0,440,160,140,360,360,180,480,476,0,479,460,0,0);	
+					
+				}
+	
+				super.addSwitch(10,410,64,460,false,false,160,20,255,460,false,false,160,20);
+				
+				setHint(AssetManager.level_hintsign,AssetManager.level_mixed1_hint,true,2*60);
+				
+
+			}
+		]]>
+	</mx:Script>
+</level>

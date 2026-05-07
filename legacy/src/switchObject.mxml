@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%">
+	
+	
+	<mx:Script>
+		<![CDATA[
+		/****************************
+		 * this is the switch class..
+		 * where the switch is able to control some platform, moving them
+		 * the platform will keep moving until it collide onto some collidable object... or change direction when the switch is pressed
+		 ***************************/
+			import mx.core.UIComponent;
+			import GambitLib.HitTest;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Image;
+				
+			public var switch_:Image = new Image();
+			
+			public var switch_2:Image = new Image();
+			
+			
+			public var changeDirection:Boolean=false;
+			
+			private var obstaclesObject:ArrayCollection = new ArrayCollection();
+			private var OBSTACLEMOVEMENTSPEED:Number = 5;
+			
+			//initialize the switch, to be used from the designer side.. on each level
+			public function init(gameClass:game,posX:Number=0,posY:Number=0):void
+			{
+				switch_.source = AssetManager.switchMode1;
+				switch_2.source = AssetManager.switchMode2;
+				gameClass.lvlManager.currentLevel.switchObstacle.addItem(this);
+				switch_.x = posX;
+				switch_2.x= posX;
+				switch_.y = posY;
+				switch_2.y= posY;
+				switch_2.visible=false;
+				this.addChild(switch_);
+				this.addChild(switch_2);
+			}
+			
+			//adding the platform... which the switch controls, added from level from designer side
+			public function addObstacle(gameClass:game,posX:Number=0, posY:Number=0, horizontalMovement:Boolean=false, 
+										up_or_left:Boolean=false, width:Number = 20, height:Number = 80):void
+			{
+				var newObstacles:obstaclesClass = new obstaclesClass;
+				//add image for new obstacle
+				
+				//yep.. set the movement of the object
+				//true if the object moves left and right
+				newObstacles.horizontalMovement = horizontalMovement;
+				//if true, then activating the switch will move the ojbect down or to the right
+				newObstacles.up_or_left = up_or_left;
+				
+				gameClass.lvlManager.currentLevel.collisionObjects.addItem(newObstacles);
+				this.addChild(newObstacles);
+				newObstacles.obstacles.x = posX;
+				newObstacles.obstacles.y = posY;
+				obstaclesObject.addItem(newObstacles);
+				
+				//these are the few avaliable image.. for the width and height for the obstacles..
+				//(20,80)   (20,140)    (20,200)    (160,20)
+				if(width == 20)
+				{
+					switch(height)
+					{
+						case 80:
+						newObstacles.obstacles.source = AssetManager.vertObstacle80;
+						newObstacles.addObstacle();
+						break;
+						case 140:
+						newObstacles.obstacles.source = AssetManager.vertObstacle140;
+						newObstacles.addObstacle();
+						break;
+						case 200:
+						newObstacles.obstacles.source = AssetManager.vertObstacle200;
+						newObstacles.addObstacle();
+						break;
+					}
+				}
+				else if(width == 160)
+				{
+					switch(height)
+					{
+						case 20:
+						newObstacles.obstacles.source = AssetManager.horzObstacle160;
+						newObstacles.addObstacle();
+						break;
+					}
+				}
+			}
+			private var hack:int = 0;
+			
+			
+			//call this in movements to update the movement of obstacles
+			public function obstaclesMovement(gameClass:game):void
+			{
+				
+				if(changeDirection==true)
+				{
+				//change the switch mode
+				//change the switch state
+				switch_2.visible=switch_.visible;
+				switch_.visible=!switch_.visible;
+				gameClass.childMovements.tryPicking=false;
+				
+				soundManager.playSwitch(switch_.visible);
+				}
+				
+				var movementObstacle:obstaclesClass = new obstaclesClass();
+				for each(movementObstacle in obstaclesObject)
+				{
+					
+					if(changeDirection==true)
+					{
+						movementObstacle.up_or_left = !movementObstacle.up_or_left;
+						movementObstacle.isMoving=true;
+					}
+					
+					
+					if(movementObstacle.isMoving==true)
+					{ //////////start of the indentation
+						if(movementObstacle.horizontalMovement==true)
+						{
+							if(movementObstacle.up_or_left==true)
+							{
+								//obstacle moves left
+								movementObstacle.obstacles.x -= OBSTACLEMOVEMENTSPEED;
+							}
+							else
+							{
+								//obstacle moves right
+								movementObstacle.obstacles.x += OBSTACLEMOVEMENTSPEED;
+							}
+						}
+						else
+						{
+							if(movementObstacle.up_or_left==true)
+							{
+								//obstacle moves up
+								movementObstacle.obstacles.y -= OBSTACLEMOVEMENTSPEED;
+							}
+							else
+							{
+								//obstacle moves down
+								movementObstacle.obstacles.y += OBSTACLEMOVEMENTSPEED;
+							}
+						}
+					
+					
+					
+				//checking if the object collided with other collision object
+				var obstaclesObjectss:UIComponent = new UIComponent();
+				for each(obstaclesObjectss in gameClass.lvlManager.currentLevel.collisionObjects)
+				{
+					if(obstaclesObjectss.visible==true)
+					{
+						//do not want to check for collision with itself
+						if(obstaclesObjectss!=movementObstacle)
+						{
+							if(HitTest.pixelsOverlap(obstaclesObjectss, movementObstacle, true))
+							{
+								movementObstacle.isMoving=false;
+							}
+						}
+					}
+				}
+				
+
+				//checking for collision with obstacles
+				for each(obstaclesObjectss in gameClass.lvlManager.currentLevel.obstaclesObject)
+				{
+					if(obstaclesObjectss.visible==true)
+					{
+						//do not want to check for collision with itself
+						if(obstaclesObjectss!=movementObstacle)
+						{
+							if(HitTest.pixelsOverlap(obstaclesObjectss, movementObstacle, true))
+							{
+								movementObstacle.isMoving=false;
+							}
+						}
+					}
+				}
+				
+				//if obstacle is at edge of the game
+				if(movementObstacle.obstacles.x<0 || (movementObstacle.obstacles.x + movementObstacle.obstacles.width > 800)
+				|| movementObstacle.obstacles.y<0 || (movementObstacle.obstacles.y + movementObstacle.obstacles.height > 600))
+				{
+					//i push the obstacles back.. since its already at the edge
+						if(movementObstacle.horizontalMovement==true)
+								{
+									if(movementObstacle.up_or_left==true)
+									{
+										//obstacle moves right
+										movementObstacle.obstacles.x += OBSTACLEMOVEMENTSPEED;
+									}
+									else
+									{
+										//obstacle moves left
+										movementObstacle.obstacles.x -= OBSTACLEMOVEMENTSPEED;
+									}
+								}
+								else
+								{
+									if(movementObstacle.up_or_left==true)
+									{
+										//obstacle moves down
+										movementObstacle.obstacles.y += OBSTACLEMOVEMENTSPEED;
+									}
+									else
+									{
+										//obstacle moves right
+										movementObstacle.obstacles.y -= OBSTACLEMOVEMENTSPEED;
+									}
+								}
+								movementObstacle.isMoving=false;
+				}
+				
+				
+				
+				////////////////////////////THIS ENTIRE AREA IS TO CHECK COLLISION WITH THE PLAYER
+				////////////////////////////////
+				/////////////////////////////////
+				//////////////////////////////START HERE
+				
+				var playerCollider:UIComponent = new UIComponent();
+				
+				//checking if the object collided with player to the left
+				/****
+				 * this collision checking is done so that if player is colliding on both side.. player is stucked.. i have to stop the platform
+				 * all the other test below for other direction are of the same logic
+				 *****/
+				if(HitTest.pixelsOverlap(movementObstacle,gameClass.player.leftPt,true))
+				{
+					//named so weird.. because there is duplicate variable below...
+					var playerIssStucked:Boolean=false;
+					//checking right if player is stucked
+					for each(playerCollider in gameClass.lvlManager.currentLevel.collisionObjects)
+					{
+						if(HitTest.pixelsOverlap(playerCollider,gameClass.player.rightPt,true))
+						playerIssStucked=true;
+					}
+					//5 pixel from the extreme corner
+					if(gameClass.player.x>745)
+					{
+						playerIssStucked=true;
+					}
+					//if player is stucked, i need to stop the obstacle
+					//i need to push the obstacle back so that the player will not be stucked into the obstacle
+					if(playerIssStucked ==true)
+					{
+						if(movementObstacle.horizontalMovement==true)
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											//obstacle moves right
+											movementObstacle.obstacles.x += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											//obstacle moves left
+											movementObstacle.obstacles.x -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									else
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											//obstacle moves down
+											movementObstacle.obstacles.y += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											//obstacle moves up
+											movementObstacle.obstacles.y -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									movementObstacle.isMoving=false;
+					}
+				}
+				
+				
+				var playerIsStucked:Boolean=false;
+				//checking if the object collided with player to the right
+				if(HitTest.pixelsOverlap(movementObstacle,gameClass.player.rightPt,true))
+				{
+					playerIsStucked=false;
+					//checking left if player is stucked
+					for each(playerCollider in gameClass.lvlManager.currentLevel.collisionObjects)
+					{
+						if(HitTest.pixelsOverlap(playerCollider,gameClass.player.leftPt,true))
+						playerIsStucked=true;
+					}
+					//checking if player is 5 pixel away from the left edge
+					if(gameClass.player.x <-25)
+					{
+						playerIsStucked=true;
+					}
+					//if player is stucked, i need to stop the obstacle
+					//i need to push the obstacle back so that the player will not be stucked into the obstacle
+					if(playerIsStucked ==true)
+					{
+						if(movementObstacle.horizontalMovement==true)
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											movementObstacle.obstacles.x += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											movementObstacle.obstacles.x -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									else
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											movementObstacle.obstacles.y += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											movementObstacle.obstacles.y -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									movementObstacle.isMoving=false;
+					}
+				}
+				
+				
+				
+				
+				
+				//checking if the object collided with player to the top
+				if(HitTest.pixelsOverlap(movementObstacle,gameClass.player.headPt,true))
+				{
+					playerIsStucked=false;
+					//checking right if player is stucked
+					for each(playerCollider in gameClass.lvlManager.currentLevel.collisionObjects)
+					{
+						if(HitTest.pixelsOverlap(playerCollider,gameClass.player.bottomPt,true))
+						playerIsStucked=true;
+					}
+					//if player is stucked, i need to stop the obstacle
+					//i need to push the obstacle back so that the player will not be stucked into the obstacle
+					if(playerIsStucked ==true)
+					{
+						if(movementObstacle.horizontalMovement==true)
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											movementObstacle.obstacles.x += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											movementObstacle.obstacles.x -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									else
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											movementObstacle.obstacles.y += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											movementObstacle.obstacles.y -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									movementObstacle.isMoving=false;
+					}
+				}
+				
+				
+				//checking if the object collided with player to the bottom
+				if(HitTest.pixelsOverlap(movementObstacle,gameClass.player.bottomPt,true))
+				{
+					playerIsStucked=false;
+					//checking right if player is stucked
+					for each(playerCollider in gameClass.lvlManager.currentLevel.collisionObjects)
+					{
+						if(HitTest.pixelsOverlap(playerCollider,gameClass.player.headPt,true))
+						playerIsStucked=true;
+					}
+					//checking if player is hitting the top of the screen by 5 pixel away
+					if(gameClass.player.y < -30)
+					{
+						playerIsStucked=true;
+					}
+					//if player is stucked, i need to stop the obstacle
+					//i need to push the obstacle back so that the player will not be stucked into the obstacle
+					if(playerIsStucked ==true)
+					{
+						if(movementObstacle.horizontalMovement==true)
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											movementObstacle.obstacles.x += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											movementObstacle.obstacles.x -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									else
+									{
+										if(movementObstacle.up_or_left==true)
+										{
+											movementObstacle.obstacles.y += OBSTACLEMOVEMENTSPEED*2;
+										}
+										else
+										{
+											movementObstacle.obstacles.y -= OBSTACLEMOVEMENTSPEED*2;
+										}
+									}
+									movementObstacle.isMoving=false;
+					}
+				}	
+					//////////END COLLISION CHECK WITH PLAYER
+					//////////////////
+					///////////////////
+					/////////////
+				
+					
+				}//////////////end of that other indentation on top
+				
+				}
+				changeDirection = false;
+			}
+			
+			
+			
+			
+			
+		]]>
+	</mx:Script>
+	
+</mx:Canvas>

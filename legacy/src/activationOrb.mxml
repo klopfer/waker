@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" height="{sheight}" width="{swidth}">
+	<mx:Script>
+		<![CDATA[
+	
+			import mx.controls.Image;
+			import AssetManager;
+			
+			public var orb:Image = new Image();
+			public var effect:Image = new Image();
+			
+			[Bindable] public var sheight:int=0;
+			[Bindable] public var swidth:int=0;
+						
+			// there are currently two types of orbs: displacement and velocity	
+			public function init(core:Class, fx:Class):void
+			{	
+				orb.source = core;
+				effect.source = fx;
+				
+				swidth = 80;
+				sheight = 80;
+					
+				this.addChild(effect);
+				this.addChild(orb);
+			}
+				
+		]]>
+	</mx:Script>	
+</mx:Canvas>

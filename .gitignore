@@ -1,0 +1,23 @@
+# Node / Vite
+node_modules/
+dist/
+build/
+.vite/
+.cache/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / env
+*.log
+.env
+.env.*
+!.env.example

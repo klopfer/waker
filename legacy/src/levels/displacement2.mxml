@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{
+				
+				Settings.isItACutScene=false;
+				
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'd3';
+				
+				super.setBG(AssetManager.bgWorld1_2);			
+				
+				// this png determines collision based on transparency:
+				super.setGround(AssetManager.leveld2_collision); 
+				
+				// select img for the entrance and exit and place on the canvas
+				super.setExit(0,60);
+				super.setEntrance(0,390);	
+			
+				if(Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// hard
+					this.spikeObstacleEditor.addSpike(500,480,true,true,true,0,780,8);
+					//this.spikeObstacleEditor.addSpike(280,480,true,false,true,360,480,5);
+					this.spikeObstacleEditor.addSpike(230,260,true,false,true,110,260,7);
+					
+					// place graphs 
+					//number of obstacles really low, since almost impossible to have more than one
+					super.addGraph(0,0,240,340,600,160,160,40,
+								160,457,
+								0,
+								160,440,
+								2,20);
+					super.addGraph(0,0,223,60,500,220,220,80,740,286,0,740,269,1,1);	
+				} 
+				else if(Settings.LEVEL_DIFFICULTY == 2)
+				{
+					// medium
+					// this.spikeObstacleEditor.addSpike(500,480,true,true,true,0,780,3);
+					//this.spikeObstacleEditor.addSpike(500,260,true,true,true,220,580,5);
+					
+					// place graphs 
+					//number of obstacles really low, since almost impossible to have more than one
+					super.addGraph(0,0,240,340,600,160,160,40,
+								160,457,
+								0,
+								160,440,
+								1,1);
+					super.addGraph(0,0,223,60,500,220,220,80,740,286,0,740,269,1,1);	
+				} 
+				else
+				{
+					// easy
+					
+					// place graphs 
+					//number of obstacles really low, since almost impossible to have more than one
+					super.addGraph(0,0,240,340,600,160,160,40,
+								160,457,
+								0,
+								160,440,
+								0,0);
+					super.addGraph(0,0,223,60,500,220,220,80,740,286,0,740,269,0,0);	
+				}
+				
+				setHint(AssetManager.level_hintsign,AssetManager.level_displacement2_hint,true,1*60);
+				
+
+			}
+		]]>
+	</mx:Script>
+</level>

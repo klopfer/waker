@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml">
+	<mx:states>
+		<mx:State name="stateMouseOver">
+			<mx:SetProperty target="{displayedImage}" name="source" value="{mouseOver}"/>
+		</mx:State>
+		<mx:State name="stateMouseDown">
+			<mx:SetProperty target="{displayedImage}" name="source" value="{mouseDown}"/>
+		</mx:State>
+	</mx:states>
+	<mx:Image id="displayedImage" source="{normal}"/>
+	<mx:Script>
+		<![CDATA[
+		/*
+		Img button class. contains 3 states. idle, mouse over, mouse down.
+		creates a small box at the position on the mouse for pixel collision detection.
+		small box removed once mouse leaves the button. 
+		*/
+		
+			import GambitLib.HitTest;
+			import AssetManager;
+			
+			[Bindable] private var normal:Class;
+			[Bindable] private var mouseOver:Class;
+			[Bindable] private var mouseDown:Class;
+			
+			public var clickAble:Boolean = false;
+			
+			//not exactly 1px cos 1px can't be detected.
+			private var onePx:Image = new Image();
+			
+			private var onePxVisible:Boolean = false;			
+			
+			public function init(_idle:Class, _mouseOver:Class, _click:Class):void
+			{	
+				onePx.source = new AssetManager.OnePx();
+				normal = _idle;
+				mouseOver = _mouseOver;
+				mouseDown = _click;
+				
+				this.addEventListener(MouseEvent.MOUSE_OVER, onMouseOver);
+				this.addEventListener(MouseEvent.MOUSE_OUT, onMouseOut);
+				//may add this later...
+				//this.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
+			}
+			
+			public function onMouseOver(e:Event):void
+			{
+				//start checking for pixel collision on mouse over.
+				this.addEventListener(MouseEvent.MOUSE_MOVE, detectAlpha);
+				this.currentState = "stateMouseOver";				
+			}
+			
+			public function detectAlpha(e:Event):void
+			{
+				//adds a small barely visible box under the mouse cursor to detect pixel collision.
+				this.addChild(this.onePx);
+				onePxVisible = true;				
+				onePx.x = this.mouseX+3;
+				onePx.y = this.mouseY+3;
+				
+				if (HitTest.pixelsOverlap(onePx, this.displayedImage))
+				{
+					this.currentState = "stateMouseOver";
+					clickAble = true;
+				}
+					
+				else
+				{
+					this.currentState = "";
+					clickAble = false;
+				}
+			}
+			
+			public function onMouseOut(e:Event):void
+			{	
+				this.currentState = "";
+				if (onePxVisible)
+				{
+					this.removeChild(onePx);
+					onePxVisible = false;
+					clickAble = false;
+				}				
+			}
+			
+			public function onMouseDown(e:Event):void
+			{
+				//this.currentState = "stateMouseDown";
+			}
+		]]>
+	</mx:Script>
+</mx:Canvas>

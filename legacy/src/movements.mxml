@@ -1,0 +1,1012 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="init()">
+
+
+
+<mx:Script>
+	<![CDATA[
+		import mx.controls.Image;
+		import GambitLib.HitTest;
+		import mx.core.UIComponent;
+		import AssetManager;	
+		import Settings;
+	
+/*
+////////////////////CONTROL SCHEME////////////////////////
+////////////////////CONTROL SCHEME////////////////////////
+////////////////////CONTROL SCHEME////////////////////////
+////////////////////CONTROL SCHEME////////////////////////
+////////////////////CONTROL SCHEME////////////////////////
+Detects player keyboard input during gameplay, and alters the boolean value below control scheme
+*/
+		public function init():void
+		{
+		
+		}
+		
+		/****************************
+		 * checks for player keyinput during gameplay
+		 ***************************/
+		public function keyPressed(e:KeyboardEvent):void
+		{
+			//if the player is in the in-game menu
+			if((this.parent as game).gameUI.optionsVisible==true && Settings.inGame == true)
+				switch(e.keyCode)
+				{
+					case Keyboard.ESCAPE:   
+						if (this.parent.parent != null)
+						{
+							game(this.parent).gameUI.showOptions();
+						}
+						Settings.escPressed=true;
+						break;	
+					
+					case Keyboard.RIGHT:
+						//if player is in the options menu
+						if((this.parent as game).gameUI.optionsShowing==true)
+						{
+							//if player's focus is on difficulty settings
+							if((this.parent as game).gameUI.state_in_sound_option==1)
+							{
+								//if the difficulty was easy, it gets changed to medium
+								if(Settings.LEVEL_DIFFICULTY==1)
+								{
+									Settings.LEVEL_DIFFICULTY=2;
+									(this.parent as game).gameUI.soundOpt.currentState="mediumSelected";
+								}
+								//if the difficulty was medium, it gets changed to hard
+								else if(Settings.LEVEL_DIFFICULTY==2)
+								{
+									Settings.LEVEL_DIFFICULTY=3;
+									(this.parent as game).gameUI.soundOpt.currentState="hardSelected";
+								}
+							}
+							//if player's focus is on the background music menu
+							else if((this.parent as game).gameUI.state_in_sound_option==2)
+							{
+								//if the background music volume isn't max, increase it
+								if(soundManager.bgmVolume<1)
+								{
+									soundManager.bgmVolume+=0.1;
+									soundManager.changeVolume(soundManager.bgmVolume);
+								}
+							}
+							//if the player's focus is on the sound effects
+							else if((this.parent as game).gameUI.state_in_sound_option==3)
+							{
+								//if the volume of the sound effects is not min, decrease it
+								if(soundManager.sfxVolume<1)
+								{
+									soundManager.sfxVolume+=0.1;
+									soundManager.changeSFXVolume(soundManager.sfxVolume);
+									soundManager.playSelect();
+								}
+							}
+						}
+						//if the player is at a confirmation screen
+						else if((this.parent as game).gameUI.confirmDialogue.visible==true)
+						{
+							//set selection to no button
+							(this.parent as game).gameUI.yes_or_no=false;
+						}
+						break;
+						
+					case Keyboard.LEFT:
+						//if the player is in the options menu
+						if((this.parent as game).gameUI.optionsShowing==true)
+						{
+							//if the player is focusing on the difficulty settings
+							if((this.parent as game).gameUI.state_in_sound_option==1)
+							{
+								//if the difficulty is currently hard, change it to medium
+								if(Settings.LEVEL_DIFFICULTY==3)
+								{
+									Settings.LEVEL_DIFFICULTY=2;
+									(this.parent as game).gameUI.soundOpt.currentState="mediumSelected";
+								}
+								//if the difficutly is currently medium, change it to easy
+								else if(Settings.LEVEL_DIFFICULTY==2)
+								{
+									Settings.LEVEL_DIFFICULTY=1;
+									(this.parent as game).gameUI.soundOpt.currentState="easySelected";
+								}
+							}
+							//if the player is focused on the background music volume
+							else if((this.parent as game).gameUI.state_in_sound_option==2)
+							{
+								//if the background music volume is not min, decrease it
+								if(soundManager.bgmVolume>0)
+								{
+									soundManager.bgmVolume-=0.1;
+									soundManager.changeVolume(soundManager.bgmVolume);
+								}
+							}
+							//if the player is focused on the sound effects volume
+							else if((this.parent as game).gameUI.state_in_sound_option==3)
+							{
+								if(soundManager.sfxVolume>0)
+								{
+									soundManager.sfxVolume-=0.1;
+									soundManager.changeSFXVolume(soundManager.sfxVolume);
+									soundManager.playSelect();
+								}
+							}
+						}
+						//if the player at a confirmation screen, set the selection to yes
+						else if((this.parent as game).gameUI.confirmDialogue.visible==true)
+						{
+						 	(this.parent as game).gameUI.yes_or_no=true;
+						}
+						break;
+						
+					case Keyboard.UP:
+						//if the player is in the options menu
+						if((this.parent as game).gameUI.optionsShowing==true)
+						{
+							//if the player is focused on the background music volume, shift the focus to difficulty
+							if((this.parent as game).gameUI.state_in_sound_option==2)
+								(this.parent as game).gameUI.state_in_sound_option=1;
+							//if the player is focused on the sound effects volume, shift the focus to the background music volume
+							else if((this.parent as game).gameUI.state_in_sound_option==3)
+								(this.parent as game).gameUI.state_in_sound_option=2;
+						}
+						//otherwise, just take note that the player pushed up
+						else
+							(this.parent as game).gameUI.stateUp=true;
+						break;
+						
+					case Keyboard.DOWN:
+						//if the player is in the options menu
+						if((this.parent as game).gameUI.optionsShowing==true)
+						{
+							//if the player is focused on difficulty, shift the focus to background music volume
+							if((this.parent as game).gameUI.state_in_sound_option==1)
+								(this.parent as game).gameUI.state_in_sound_option=2;
+							//if the player is focused on background music volume, shift the focus to sound effects volume
+							else if((this.parent as game).gameUI.state_in_sound_option==2)
+								(this.parent as game).gameUI.state_in_sound_option=3;
+						}
+						//otherwise, just take note that down was pressed
+						else
+							(this.parent as game).gameUI.stateDown=true;
+						break;
+					
+					case Keyboard.ENTER: 
+						//if the player is at a confirmation box
+						if((this.parent as game).gameUI.confirmDialogue.visible==true)
+						{
+							//if the player chooses yes, do what the player requested before the confirmation
+							if((this.parent as game).gameUI.yes_or_no == true)
+								(this.parent as game).gameUI.quitGame(null);
+							//otherwise, get rid of the confirmation
+							else
+								(this.parent as game).gameUI.hideConfirm(null);
+						}
+						//if the player is in the options menu, close the menu
+						else if((this.parent as game).gameUI.optionsShowing==true)
+							(this.parent as game).gameUI.closeSoundOpt(null);
+						//if the player is in the instructions menu, close the menu
+						else if((this.parent as game).gameUI.instructShowing==true)
+							(this.parent as game).gameUI.closeInstructions(null);
+						//if player is in the in-game menu
+						else
+							switch((this.parent as game).gameUI.state_of_gui)
+							{
+								//if the player is focusing on return, get out of the in-game menu
+								case 1:
+									(this.parent as game).gameUI.showOptions();
+									break;
+								//if the player is focusing on instructions, bring up the instructions menu
+								case 2:
+									(this.parent as game).gameUI.showInstructions(null);
+									break;
+								//if the player is focusing on options, bring up the options menu
+								case 3:
+									(this.parent as game).gameUI.showSoundOpt(null);
+									break;
+								//if the player is focusing on restart, bring up a confirmation box
+								case 4:
+									(this.parent as game).gameUI.showConfirm(null);
+									break;
+								//if the player is focusing on quit, bring up a confirmation box
+								case 5:
+									(this.parent as game).gameUI.showConfirm(null);
+									break;
+							}			
+						break;
+				}
+			//if the player is actually playing the game
+			else
+				switch(e.keyCode)
+				{
+					//if the player pushes right, move the avatar to the right
+					case Keyboard.RIGHT:	moveRight=true;
+											break;
+					//if the player pushes left, move the avatar to the left
+					case Keyboard.LEFT:		moveLeft=true;
+											break;
+					//if the player pushes up or spacebar, make the avatar jump
+					case Keyboard.SPACE:	
+					case Keyboard.UP:
+											//the if statement is to make sure that the key is actually being pressed down
+											//	and not just held down from a previous loop
+											if(tryToJump==false)
+											{
+											triedJumping=true;
+											}
+											break;
+					//83 for s
+					//if the player pushes s, make the avatar sprint
+					case 83:				isWalking=false;
+											isRunning=true;
+											break;
+					//68 for d
+					//if the player pushes d, take note that they are trying to pick up an orb
+					//the if statement is to make sure that the d key is actually being pressed down and not just held down from
+					//	a previous loop
+					case 68:				if(triedPicking == false)
+											{
+											tryPicking=true;
+											triedPicking=true;
+											}
+											break;
+					//if the player pushes esc, make the in-game menu pop up
+					case Keyboard.ESCAPE:   if (this.parent.parent != null)
+											{
+											game(this.parent).gameUI.showOptions();
+											}
+											Settings.escPressed=true;
+											break;	
+					//cheat code
+					//////////////////
+					//to use cheat, type changyou on keyboard, then press page up
+					/////////////////
+					//c button
+					case 67:	cheatC=true;
+								break;
+					//h button
+					case 72:	if(cheatC==true)
+								cheatH=true;
+								else
+								clearCheat();
+								break;
+					//a button
+					case 65:	if(cheatH==true)
+								cheatA=true;
+								else
+								clearCheat();
+								break;
+					//n button
+					case 78:	if(cheatA==true)
+								cheatN=true;
+								else
+								clearCheat();
+								break;
+					//g button
+					case 71:	if(cheatN==true)
+								cheatG=true;
+								else
+								clearCheat();
+								break;
+					//y button
+					case 89:	if(cheatG==true)
+								cheatY=true;
+								else
+								clearCheat();
+								break;
+					//o button
+					case 79:	if(cheatY==true)
+								cheatO=true;
+								else
+								clearCheat();
+								break;
+					//u button
+					case 85:	if(cheatO==true)
+								{
+									cheatU=true;
+									if((this.parent as game).cheatImg == null)
+									{
+										(this.parent as game).cheatImg=new Image();
+										(this.parent as game).cheatImg.source = AssetManager.cheatSourceFile;
+										(this.parent as game).cheatImg.y = 520;
+										(this.parent as game).addChild((this.parent as game).cheatImg);
+									}
+								}
+								else
+								clearCheat();
+								break;
+							
+				case Keyboard.PAGE_UP: 	if(cheatC==true && cheatH==true && cheatA==true && cheatN==true && 
+											cheatG==true && cheatY==true && cheatO==true && cheatU==true)
+										{
+										game(this.parent).player.y = 0;
+										}
+										break;
+				//end of cheat
+			}
+		}
+		
+		//if the player stops pushing up, down, left, space, d, or s, take note
+		public function keyLifted(e:KeyboardEvent):void
+		{
+			switch(e.keyCode)
+			{
+				case Keyboard.RIGHT:	moveRight=false;
+										break;
+				case Keyboard.LEFT:		moveLeft=false;
+										break;
+				case Keyboard.UP:
+				case Keyboard.SPACE:	tryToJump=false;
+										break;
+				case 68:				tryPicking=false;
+										triedPicking=false;
+										break;
+				case 83:				isWalking=true;
+										isRunning=false;
+										break;
+			}
+		}
+
+
+/*
+////////////////////CONTROL SCHEME END////////////////////////
+////////////////////CONTROL SCHEME END////////////////////////
+////////////////////CONTROL SCHEME END////////////////////////
+////////////////////CONTROL SCHEME END////////////////////////
+////////////////////CONTROL SCHEME END////////////////////////
+*/		
+
+		//to activate cheat.. type changyou in order
+		//then press page up to fly up the sky
+		//cheat mode
+		private var cheatC:Boolean=false;
+		private var cheatH:Boolean=false;
+		private var cheatA:Boolean=false;
+		private var cheatN:Boolean=false;
+		private var cheatG:Boolean=false;
+		private var cheatY:Boolean=false;
+		private var cheatO:Boolean=false;
+		private var cheatU:Boolean=false;
+		private function clearCheat():void
+		{
+			cheatC=false;
+			cheatH=false;
+			cheatA=false;
+			cheatN=false;
+			cheatG=false;
+			cheatY=false;
+			cheatO=false;
+			cheatU=false;
+		}
+		
+		//boolean values altered by the control scheme above
+		//to better understand the difference between move... and acc..., see playerMovement()
+		//moveLeft and moveRight are basically short ways of saying keyboard.LEFT and keyboard.RIGHT
+		//true if the avatar should be moving left (i.e., true if the player indicates that they want to move left)
+		private var moveLeft:Boolean=false;
+		//true if the avatar should be moving right (i.e., true if the player indicates that they want to move right)
+		private var moveRight:Boolean=false;
+		//true if avatar is trying to move left
+		private var accLeft:Boolean=false;
+		//true if avatar is trying to move right
+		private var accRight:Boolean=false;
+		//player velocity and acceleration calculated here to move the player velocity
+		public var playerVel:Point = new Point(0,0);
+		public var playerAccel:Point = new Point(0,0);
+		
+		//some triedJumping and tryToJump are 2 different boolean as 1 is required to properly determine the other..
+		//for eg. when player press triedJumping for the 1st time.. tryToJump is activated... after that, triedJumping will not be activated until
+		//tryToJump is deactivated.. 
+		//the similar variables are there so that the game can differentiate between a button being pressed down and a button
+		//	being held down from a previous loop
+		//turns true when the player presses a key that triggers the avatar's jump
+		private var triedJumping:Boolean = false;
+		//true if the player tried to jump in a previous game loop (i.e., the player is still holding down the key)
+		private var tryToJump:Boolean = false;
+		//the avatar is always either walking or sprinting, but never both
+		//this value is not just one boolean because later there may be other modes of movement
+		//true if the avatar is walking
+		private var isWalking:Boolean = true;
+		//true if the avatar is sprinting
+		private var isRunning:Boolean = false;
+		//true if the player tried to pick up an item in a previous game loop (i.e., the player is still holding down the key)
+		public var tryPicking:Boolean = false;
+		//turns true when the player presses a key that triggers the avatar's pick-up action
+		private var triedPicking:Boolean = false;
+		//true if the player is currently on a solid surface
+		public var onGround:Boolean = false;
+		private var hack_for_jump_bug_when_platform_is_exactly_at_the_height_for_player_to_walk_through:Boolean = false;
+		private var hack_for_jump_bug_when_platform___y_position:Number = 0;
+		private var hack_for_the_moving_spikes:Number=0;
+		
+		//these are to check if the player have been hit by any spikes/damage item.. and keeptrack of the values needed to show the response
+		//the response now is a red circle that becomes bigger and fade out
+		//true if the player is it
+		public var playerHit:Boolean=false;
+		//true if the hit effect is playing
+		public var playerHitEffect:Boolean=false;
+		//keeps track of how many frames of the red circle have been played
+		public var playerHitEffectFramesPlayed:int=0;
+		//coordinates of where the edge of the avatar hit the obstacle
+		public var locationOfHitEffect_X:Number=0;
+		public var locationOfHitEffect_Y:Number=0;
+		
+		//I don't think that this is used anywhere...
+		public var pickTimer:int = 0;
+/*
+/////////////////////MOVEMENTS//////////////////////////
+/////////////////////MOVEMENTS//////////////////////////
+/////////////////////MOVEMENTS//////////////////////////
+/////////////////////MOVEMENTS//////////////////////////
+calculating player's movements
+*/
+		/**************************************
+		 * THE VALUE HERE ACTUALLY CONTROLS THE SPEED OF THE PLAYER
+		 * CHANGE THE VALUE HERE TO ALTER THE SPEEDS
+		 **************************************/
+		private var gameSpeed:Number = 1.5;
+		private var GRAVITY:Number = 2;
+		public var MAXFALLINGSPEED:Number = -12;
+		private var RUNSPEED:Number = 0.2*gameSpeed;
+		private var RUNBRAKE:Number = 1*gameSpeed;
+		private var WALKINGSPEED:Number = 4*gameSpeed;
+		private var JUMPSPEED:Number = 14.5;
+		private var MAXRUNSPEED:Number = 8*gameSpeed;
+		/**************************************
+		 * THE VALUE HERE ACTUALLY CONTROLS THE SPEED OF THE PLAYER
+		 * CHANGE THE VALUE HERE TO ALTER THE SPEEDS
+		 **************************************/
+
+		private function playerMovement():void
+		{
+			//determining player direction of movement
+			//don't move the avatar left or right if the player is pushing left and right at the same time or not pushing either
+			if((moveRight==true && moveLeft==true)||(moveRight==false && moveLeft==false))
+			{
+				accLeft=false;
+				accRight=false;
+			}
+			//if the player wants to move right
+			else if(moveRight==true)
+			{
+				accRight=true;
+				accLeft=false;
+				(this.parent as game).player.facingRight=true;
+			}
+			//if the player wants to move left
+			else //if(moveLeft==true)
+			{
+				accRight=false;
+				accLeft=true;
+				(this.parent as game).player.facingRight=false;
+			}
+			
+			// PLAYER TRY TO JUMP
+			if(triedJumping==true)
+			{
+				tryToJump = true;
+				triedJumping=false;
+			}
+			//avatar can't jump while in the air
+			if(tryToJump == true && !onGround)
+			{
+				tryToJump=false;
+			}
+			
+			//if player is jumping, play sound and update avatar position
+			//avatar must be on the ground in order to jump
+			if(tryToJump == true && onGround == true)
+			{				
+						//sfxJump.play();
+						soundManager.playJump();
+						playerVel.y = JUMPSPEED;
+						playerAccel.y = 0;
+			}
+			
+			
+			
+			//if the avatar is sprinting on the ground (since it can't do so in the air)
+			if(isRunning == true && isWalking == false && onGround == true) 
+			{
+				if(accLeft == true && playerVel.x<=0)
+				{
+					if(playerVel.x > -MAXRUNSPEED)
+					//to toggle on acceleration to control moving
+					//playerAccel.x-=RUNSPEED;
+					playerAccel.x=-RUNSPEED;
+					else
+					playerAccel.x = 0;
+				}
+				else if(accRight == true && playerVel.x>=0)
+				{
+					if(playerVel.x < MAXRUNSPEED)
+					//to toggle on acceleration to control moving
+					playerAccel.x=RUNSPEED;
+					else
+					playerAccel.x = 0;
+				}
+				else if(playerVel.x != 0)//brake the player if player is not running left or right
+				{
+					playerAccel.x = -Math.abs(playerVel.x)/playerVel.x * RUNBRAKE;
+					if(Math.abs(playerVel.x) < RUNBRAKE)
+					playerAccel.x = -playerVel.x;
+				}
+				else
+				{
+					playerAccel.x = 0;
+				}
+			}
+			else			//else player is walking or he is trying to run in the air
+			{
+				if(accLeft == true)
+				{
+					//making player walk, walk is always the same speed
+					if(playerVel.x < 0.0001 && playerVel.x > -WALKINGSPEED)
+					playerAccel.x=-WALKINGSPEED - playerVel.x;
+					else if (playerVel.x > 0)
+					playerAccel.x = -playerVel.x;
+					else
+					playerAccel.x = 0;
+					
+					//if player was sprinting previously, slow him down to walking speed
+					//added check that the player is on ground too
+					if(playerVel.x< -WALKINGSPEED && onGround == true)
+					{
+						playerAccel.x = -Math.abs(playerVel.x)/playerVel.x * RUNBRAKE/5;
+						if(playerVel.x > -WALKINGSPEED)
+						{
+							playerVel.x = -WALKINGSPEED;
+							playerAccel.x = 0;
+						}
+					}
+				}
+				else if(accRight == true)
+				{
+					//making player walk, walk is always the same speed
+					if(playerVel.x>-0.0001 && playerVel.x < WALKINGSPEED)
+					playerAccel.x=WALKINGSPEED - playerVel.x;
+					else if (playerVel.x < 0)
+					playerAccel.x = -playerVel.x;
+					else
+					playerAccel.x = 0;
+					
+					//if player was sprinting previously, slow him down to walking speed
+					//added check that the player is on ground too
+					if(playerVel.x > WALKINGSPEED && onGround==true)
+					{
+						playerAccel.x = -Math.abs(playerVel.x)/playerVel.x * RUNBRAKE/5;
+						if(playerVel.x < WALKINGSPEED)
+						{
+							playerVel.x = WALKINGSPEED;
+							playerAccel.x = 0;
+						}
+					}
+				}
+				else
+				{
+					playerAccel.x = -playerVel.x;
+				}
+			}
+		}
+		
+		public var hack:int = 0;
+		
+		private function movementResponse():void
+		{
+			//adding the timer for lag between collecting item
+			
+			//if not in game.. jump out of function
+			if((this.parent as game).gameUI.optionsVisible==true)
+			return;
+			
+			++hack;
+			
+			//setting all the values.. to be checked within the collision
+			var collideBottom:Boolean = false;							
+			var collider:UIComponent = new UIComponent();
+			var collidedLeft:Boolean= false;
+			var collidedRight:Boolean=false;
+			//resetting value of onGround = false
+			onGround=false;
+					
+			//the hack>=8 is required.. as the level can not load if physics turned on.. its a weird bug.. or at least we don't know why..
+			//so we just gave it a littletime to load before we start our physics
+			if(hack>=8)
+			{
+				//looping through all the collision object within the game
+				for each (collider in (this.parent as game).lvlManager.currentLevel.collisionObjects)
+				{
+					//only when the collision object is visible, do i start checkingfor collision with the object itself
+					if(collider.visible==true)
+					{
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					// COLLIDE RIGHT
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+						if (HitTest.pixelsOverlap(game(this.parent).player.rightPt, collider, true))
+						{	
+							var tempchecker:Boolean = false;
+							var tempcollider:UIComponent = new UIComponent();
+							//so if the player collided right.. i need to push the player left
+							while(HitTest.pixelsOverlap(game(this.parent).player.rightPt, collider, true))
+							{
+									for each(tempcollider in (this.parent as game).lvlManager.currentLevel.collisionObjects)
+									{
+										if(tempcollider.visible==true)//collider must be visible before i check for collision with it
+										//if player is also colliding left... then it would mean he is colliding onto both side..
+										//i cannot push the player to either side, i have to break out.. as player is stucked from both side
+											if(HitTest.pixelsOverlap(game(this.parent).player.leftPt, tempcollider, true))
+											{
+												tempchecker=true;
+												break;
+											}
+									}
+									if(tempchecker==true)//since tempchecker true means that the object is colliding on both side
+										break;	
+									//if nothing goes wrong.. i have to push player to the left since he is colliding to the right
+									game(this.parent).player.x-= 0.2;
+								}
+								//since i collided.. i have to set the velocity and acceleration to 0
+								if (playerVel.x!=0)
+								{
+									playerVel.x=0;	
+									playerAccel.x=0;
+								}
+							}
+
+						
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					// COLLIDE LEFT
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					//COLLIDING LEFT HAVE THE SAME LOGIC AS COLLIDING RIGHT..
+					//JUST IN REVERSED DIRECTION
+							if (HitTest.pixelsOverlap(game(this.parent).player.leftPt, collider, true))
+							{
+								var tempcollider2:UIComponent = new UIComponent();
+
+								while(HitTest.pixelsOverlap(game(this.parent).player.leftPt, collider, true))
+								{
+									for each(tempcollider2 in (this.parent as game).lvlManager.currentLevel.collisionObjects)
+									{	
+										if(tempcollider2.visible==true)//collider must be visible before i check for collision with it
+											if(HitTest.pixelsOverlap(game(this.parent).player.rightPt, tempcollider2, true))
+											{
+												tempchecker=true;
+												break;
+											}
+									}
+									if(tempchecker==true)
+									break;
+										
+									game(this.parent).player.x+= 0.2;
+								}
+						
+						
+								if (playerVel.x!=0)
+								{
+									playerVel.x=0;
+									playerAccel.x=0;
+								}
+							}
+							//end collide left
+				
+							if(tempchecker==true)//if being stucked, do not allow player to move left or right
+							{
+								playerVel.x =0;
+								playerAccel.x =0;
+							}
+
+						
+						
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					// COLLIDE UP
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+							//if something is on top of player, stop the avatar from going higher
+							if (HitTest.pixelsOverlap(game(this.parent).player.headPt, collider, true))
+							{
+								if(playerVel.y>0)
+								{
+									playerVel.y=0;
+								}
+							}
+						
+						
+
+						
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					// COLLIDE DOWN
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+					////////////////////////////////////////////////////////////////////////////////
+							//if player is standing on something
+							if( HitTest.pixelsOverlap(game(this.parent).player.bottomPt, collider, true))
+							{	
+								collideBottom=true;
+								onGround = true;
+								if(!tryToJump)
+								{
+									//this part here before the else statement is all to move the player back to previous position,
+									//so that the player does not bounce on the spot when colliding with the ground
+									game(this.parent).player.y-=2;
+									if(!HitTest.pixelsOverlap(game(this.parent).player.bottomPt, collider, true))
+									{
+										game(this.parent).player.y+=2;
+									}
+									else
+									while(HitTest.pixelsOverlap(game(this.parent).player.bottomPt, collider, true))
+									{
+											game(this.parent).player.y-=0.2;
+									}
+									playerVel.y = 0;
+									playerAccel.y = 0;
+								}
+							}
+						//end of visible == true
+							//COLLISION CHECKING WITH BOTTOM
+							//COLLISION CHECKING WITH BOTTOM
+							//COLLISION CHECKING WITH BOTTOM
+					}
+
+				}
+					//END OF THE ENTIRE CHECK WITH ALL THE DIFFERENT COLLIDERS
+					//END OF THE ENTIRE CHECK WITH ALL THE DIFFERENT COLLIDERS
+					//END OF THE ENTIRE CHECK WITH ALL THE DIFFERENT COLLIDERS
+					//END OF THE ENTIRE CHECK WITH ALL THE DIFFERENT COLLIDERS
+
+
+					if(collideBottom==true)
+					{
+						onGround=true;			
+					}
+					if (onGround)
+						{
+							if (!tryToJump)
+							{
+								playerVel.y=0;
+								playerAccel.y=0;
+							}
+						}	
+					else //(!onGround)
+					{
+						if (playerVel.y > MAXFALLINGSPEED)
+							//inc player fall velocity.
+							playerAccel.y = -GRAVITY;
+						else
+							playerAccel.y = 0;	
+					}
+					
+			//changing player velocity based on their acceleration
+			playerVel.x += playerAccel.x;
+			playerVel.y += playerAccel.y; //negative: since y is 0 at top of screen and max at bottom of screen, reversed
+			//changing position based on the velocity of the player
+			(this.parent as game).player.x += playerVel.x;
+			(this.parent as game).player.y -= playerVel.y;
+
+			//checking for collision with the corner of the screen
+			//push the player back if he goes out of screen
+			if((this.parent as game).player.x > 750)
+			{
+				(this.parent as game).player.x = 750;
+				playerVel.x =0;
+				playerAccel.x =0;
+			}
+			else if((this.parent as game).player.x < -30)
+			{
+				(this.parent as game).player.x = -30;
+				playerVel.x =0;
+				playerAccel.x =0;
+			}
+			
+			/*****************************************
+			 * this entire part below is to ensure that player is not colliding with object after the movement
+			 * if player is colliding.. i reject the movement and push player back to original position before moving
+			 * this is to remove the jerking of the player when he is crashing against obstacles
+			 ****************************************/ 
+				var final_check_did_i_collided_left_after_moving:Boolean=false;
+				var final_check_did_i_collided_top_after_moving:Boolean=false;
+				var final_check_did_i_collided_right_after_moving:Boolean=false;
+				var final_check_did_i_collided_bottom_after_moving:Boolean=false;
+			for each (collider in (this.parent as game).lvlManager.currentLevel.collisionObjects)
+					{
+						if(collider.visible==true)
+						{
+							if(HitTest.pixelsOverlap((this.parent as game).player.headPt, collider))
+								final_check_did_i_collided_top_after_moving=true;
+							if(HitTest.pixelsOverlap((this.parent as game).player.rightPt, collider))
+								final_check_did_i_collided_right_after_moving=true;
+							if(HitTest.pixelsOverlap((this.parent as game).player.bottomPt, collider))
+								final_check_did_i_collided_bottom_after_moving=true;
+							if(HitTest.pixelsOverlap((this.parent as game).player.leftPt, collider))
+								final_check_did_i_collided_left_after_moving=true;
+						}
+					}
+					//if(final_check_did_i_collided_top_after_moving)
+					//	(this.parent as game).player.y += playerVel.y;
+					if(final_check_did_i_collided_right_after_moving)
+					{
+						(this.parent as game).player.x -= playerVel.x;
+						playerVel.x=0;
+						playerAccel.x=0;
+					}
+					//if(final_check_did_i_collided_left_after_moving)
+					//	(this.parent as game).player.y += playerVel.y;
+					if(final_check_did_i_collided_left_after_moving)
+					{
+						(this.parent as game).player.x -= playerVel.x;
+						playerVel.x=0;
+						playerAccel.x=0;
+					}
+					/***************************************** 
+					 * END OF THE WHOLE LOAD OF CHECKS
+					 ****************************************/ 
+					}//end of the hack>8 at the top of the function
+			
+			var gravityobject:UIComponent = new UIComponent();
+			
+			if(hack>=8)
+			{
+						
+				//make item drop	
+				for each (gravityobject in (this.parent as game).lvlManager.currentLevel.gravityObjects)
+				{
+					//if the object is visible means its on the ground and not picked by the player
+					if(gravityobject.visible == true)
+					{
+						//push the object down == applying gravity
+						gravityobject.y-=MAXFALLINGSPEED;
+						for each (collider in (this.parent as game).lvlManager.currentLevel.collisionObjects)
+						{//checking for visibility within 2 objects
+							if(collider.visible==true && gravityobject.visible==true)
+							{
+								//if object is colliding onto something.. i have to push back so that the object did not fall
+								if(HitTest.pixelsOverlap(gravityobject, collider, true))
+								{
+									gravityobject.y+=MAXFALLINGSPEED;
+								}
+							}
+						}
+					}
+				}
+			//gravity item
+			//obstacles
+			}
+			var obstaclesObjectss:UIComponent = new UIComponent();
+			var graph:UIComponent = new UIComponent();
+			if(hack>=8 && Settings.inGame)
+			{
+				//this part here is checking for player collision with graph obstacle
+				for each (obstaclesObjectss in game(this.parent).lvlManager.currentLevel.obstaclesObject)
+				//(this.parent as game).lvlManager.currentLevel.obstaclesObjects)
+				{
+					if(HitTest.pixelsOverlap(obstaclesObjectss, (this.parent as game).player.imageOfAvatar, true))
+					{
+						//need to loop through graphs to find point at which the avatar touches the obstacle
+						locationOfHitEffect_X = (this.parent as game).player.x + (this.parent as game).player.width/2;
+						locationOfHitEffect_Y = (this.parent as game).player.y + (this.parent as game).player.height/2;
+					
+						for each (graph in game(this.parent).lvlManager.currentLevel.graphObjects)
+						//lvlManager.currentLevel.graphObject)
+						{
+							//if obstacles is within the graph
+							if(graph.y <= obstaclesObjectss.y && 
+								graph.y+graph.height >= obstaclesObjectss.y+obstaclesObjectss.height && 
+								graph.x + graph.width >= obstaclesObjectss.x + obstaclesObjectss.width &&
+								graph.x <= obstaclesObjectss.x)
+								//if collided place player at the bottom centre of the graph
+							{
+								//only reset the graph if the level difficulty is set to the hardest
+								if(Settings.LEVEL_DIFFICULTY==3)
+								(graph as genericGraph).resetGraph();
+						
+								//moving the player to where the pickup object is
+								var pairObjects:pairObject = new pairObject();
+								for each(pairObjects in game(this.parent).lvlManager.currentLevel.triggers)
+								{
+									if(pairObjects.target == graph)
+									{
+										(this.parent as game).player.x = pairObjects.trigger.x;
+										(this.parent as game).player.y = pairObjects.trigger.y-10;
+									}
+								}
+								playerHit=true;
+								soundManager.playHurt();
+							}
+						}
+					}
+				}
+			
+				/**************************
+			 	* this part here is a little out of place.. it is not movement
+			 	* this part here is to actually show the image/movie clip when the player got hit by an obstacle
+			 	* if you play the game it is actually the red circle that grows bigger and fade out when the player hit any obstacles
+			 	*************************/
+				if(playerHit==true)
+				{
+					//if player got hit again before the loop was over, i remove the hiteffect 1st
+					if((this.parent as game).lvlManager.currentLevel.playerHitEffect!=null)
+					{
+						(this.parent as game).lvlManager.currentLevel.rawChildren.removeChild((this.parent as game).lvlManager.currentLevel.playerHitEffect);
+						(this.parent as game).lvlManager.currentLevel.playerHitEffect=null;
+					}
+					//i am able to place hit effect in the middle of character because in asset manager I have a symbol for the hit effect == centralized
+					(this.parent as game).lvlManager.currentLevel.playerHitEffect = new AssetManager.hitEffectClass();
+					(this.parent as game).lvlManager.currentLevel.playerHitEffect.x = locationOfHitEffect_X;
+					(this.parent as game).lvlManager.currentLevel.playerHitEffect.y = locationOfHitEffect_Y;
+					(this.parent as game).lvlManager.currentLevel.rawChildren.addChild((this.parent as game).lvlManager.currentLevel.playerHitEffect);
+					playerHitEffectFramesPlayed=0;
+					playerHitEffect=true;
+					playerHit=false;
+				}
+				if(playerHitEffect==true)
+				{
+					++playerHitEffectFramesPlayed;
+					//once 12 frames is over.. stop the effect.. the file provided by the artist had 10 frames.. 
+					//	though 10 frames didnt seem to work properly i changed to 12
+					if(playerHitEffectFramesPlayed >= 12)
+					{
+						playerHitEffect=false;
+						(this.parent as game).lvlManager.currentLevel.rawChildren.removeChild((this.parent as game).lvlManager.currentLevel.playerHitEffect);
+						(this.parent as game).lvlManager.currentLevel.playerHitEffect=null;
+					}
+				}
+			/**************************
+			 * END OF PLAYER HIT EFFECT
+			 *************************/
+			
+				//this part here call the movement for the switchObstacles..
+				//the switchObstacles are moving platform.. do visit the switchObject.mxml to check out how they move
+				
+				if((this.parent as game).gameUI.optionsVisible==false && Settings.inGame)
+				{
+					var switchObstaclesObjectss:switchObject = new switchObject();
+					for each(switchObstaclesObjectss in game(this.parent).lvlManager.currentLevel.switchObstacle)
+					{
+						switchObstaclesObjectss.obstaclesMovement(game(this.parent));
+					}
+					
+					//this part here call the spikeGameLoop.. they are the moving spike throughout the game..
+					//do check out spikeClass.mxml spikeObstacle.mxml to find out whats going on
+					(this.parent as game).lvlManager.currentLevel.spikeObstacleEditor.spikeGameLoop(game(this.parent));
+				}
+			}
+		}
+
+
+/*
+/////////////////////MOVEMENTS END//////////////////////////		
+/////////////////////MOVEMENTS END//////////////////////////
+/////////////////////MOVEMENTS END//////////////////////////
+/////////////////////MOVEMENTS END//////////////////////////
+/////////////////////MOVEMENTS END//////////////////////////
+/////////////////////MOVEMENTS END//////////////////////////
+*/
+			
+		public function applyPhysics():void
+		{	
+			movementResponse();
+			
+			playerMovement();
+		}
+			
+		
+		//this function is called somewhere, but doesn't actually do anything
+		public function updatePlayerPosition():void
+		{
+		}
+	]]>
+</mx:Script>
+	
+</mx:Canvas>

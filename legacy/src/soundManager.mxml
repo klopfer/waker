@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()">
+	<mx:Script>
+		<![CDATA[
+			import mx.events.IndexChangedEvent;
+			import mx.core.UIComponent;
+			import mx.collections.ArrayCollection;
+			import AssetManager;
+			import com.sonoflash.core.*; 
+			import com.sonoflash.*;
+			import Settings;
+			
+			private var sfxChannel:ArrayCollection = new ArrayCollection();
+			
+			[Bindable] public static var bgmMute:Boolean = false;
+			[Bindable] public static var sfxMute:Boolean = false;
+			
+			[Bindable] public static var bgmVolume:Number = Settings.BGM_VOLUME_DEFAULT;
+			[Bindable] public static var sfxVolume:Number = Settings.SFX_VOLUME_DEFAULT;
+			
+			public static var bgmVol:SoundTransform = new SoundTransform();
+			public static var sfxVol:SoundTransform = new SoundTransform();
+			
+			public static var bgmPlaying:Boolean = false;
+			public static var voPlaying:Boolean = false;
+			
+			private static var bgm:Sound;
+			private static var vo:Sound;
+			private static var bgmSChannel:SoundChannel;
+			public static var somethingPlaying:Boolean = false;
+			
+			public static var currentMusic:String;
+			
+			public function init():void
+			{
+				trace ("sound init");
+				bgmMute=false;
+				sfxMute=false;				
+				sfxVolume = 0.5;
+				bgmVolume = 0.5;				
+			}
+			
+			public static var isMenu:Boolean = false;
+			
+			private static var fadeVol:SoundTransform;
+			private static var fadeVoVol:SoundTransform;
+			//plays the background music of the game
+			public static function playBGM():void
+			{	
+				//start fading out the music if it is flagged to do so.
+				if (startFade)
+				{	
+					//fades out music and voice overs
+					//both music and voice over would be stopped completely when one reaches zero, which ever occurs first.
+					fadeVol = bgmSChannel.soundTransform;
+					fadeVoVol = voChannel.soundTransform;					
+					fadeVol.volume -= 0.025;
+					fadeVoVol.volume -= 0.025;
+					bgmSChannel.soundTransform = fadeVol;
+					voChannel.soundTransform = fadeVoVol;
+					if (bgmSChannel.soundTransform.volume <= 0)
+					{
+						bgmSChannel.stop();
+						somethingPlaying = false;
+						voChannel.stop();
+						voPlaying = false;
+					}
+					if (voChannel.soundTransform.volume <=0 && voPlaying)
+					{
+						voChannel.stop();
+						voPlaying = false;
+						bgmSChannel.stop();
+						somethingPlaying = false;
+					}
+					if (!somethingPlaying && !voPlaying)
+						startFade = false;
+				}				
+				
+				//only start playing a piece of bgm if there
+				//isn't already some music playing
+				if (!somethingPlaying)
+				{	
+					trace (currentMusic);
+					if (currentMusic == "world01")
+					{	
+						bgmVol.volume = bgmVolume*1.0;
+						
+						trace ("level 1 music");
+						bgm = new AssetManager.bgmWorld1 as Sound;
+						
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999, bgmVol);
+						
+						somethingPlaying = true;
+					}
+					
+					else if (currentMusic == "world02")
+					{	
+						//multiplier at back represents the base volume
+						bgmVol.volume = bgmVolume*1.0;
+						
+						trace ("level 2 music");
+						bgm = new AssetManager.bgmWorld2 as Sound;
+						
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999, bgmVol);
+						
+						somethingPlaying = true;
+					}
+					
+					else if (currentMusic == "world03")
+					{	
+						//multiplier at back represents the base volume
+						bgmVol.volume = bgmVolume*1.0;
+						
+						trace ("level 3 music");
+						bgm = new AssetManager.bgmWorld3 as Sound;
+						
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999, bgmVol);
+						
+						somethingPlaying = true;
+					}
+					
+					else if (currentMusic == "cutScene01")
+					{	
+						//multiplier at back represents the base volume
+						bgmVol.volume = bgmVolume*1.0;
+						
+						voVolume.volume = sfxVol.volume*1.0;
+						
+						trace ("cut scene 1 music");
+						bgm = new AssetManager.bgmCutscene01 as Sound;
+						
+						vo = new AssetManager.voCS1 as Sound;
+												
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999, bgmVol);
+						
+						if (!sfxMute)
+							voChannel = vo.play(0,0, voVolume);
+						
+						somethingPlaying = true;
+						voPlaying = true;
+					}
+					
+					else if (currentMusic == "cutScene02")
+					{	
+						//multiplier at back represents the base volume
+						bgmVol.volume = bgmVolume*1.0;
+						
+						voVolume.volume = sfxVol.volume*1.0;
+						
+						trace ("cut scene 1 music");
+						bgm = new AssetManager.bgmCutscene01 as Sound;
+						
+						vo = new AssetManager.voCS2 as Sound;
+												
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999, bgmVol);
+						
+						if (!sfxMute)
+							voChannel = vo.play(0,0, voVolume);
+						
+						somethingPlaying = true;
+						voPlaying = true;
+					}
+					
+					else if (currentMusic == "cutScene03")
+					{	
+						//multiplier at back represents the base volume
+						bgmVol.volume = bgmVolume*1.0;
+						
+						voVolume.volume = sfxVol.volume*1.0;
+						
+						trace ("cut scene 1 music");
+						bgm = new AssetManager.bgmCutscene01 as Sound;
+						
+						vo = new AssetManager.voCS3 as Sound;
+												
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999, bgmVol);
+						
+						if (!sfxMute)
+							voChannel = vo.play(0,0, voVolume);
+						
+						somethingPlaying = true;
+						voPlaying = true;
+					}
+					
+					else if (currentMusic == "gameEnding")
+					{	
+						//multiplier at back represents the base volume
+						bgmVol.volume = bgmVolume*1.0;
+						
+						trace ("game ending music");
+						bgm = new AssetManager.bgmEndGame as Sound;
+						
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999, bgmVol);
+						
+						somethingPlaying = true;
+					}
+					
+					else if (currentMusic == "menu")
+					{
+						//multiplier at back represents the base volume
+						bgmVol.volume = bgmVolume*1.0;
+						
+						trace ("menu music");
+						bgm = new AssetManager.menu as Sound;
+						
+						if (!bgmMute)
+							bgmSChannel = bgm.play(0,99999,bgmVol);
+							
+						somethingPlaying = true;						
+					}
+					
+					else
+						stopBGM();
+				}				
+			}			
+			
+			//change the volume of the bgm to the specified value
+			public static function changeVolume(level:Number):void
+			{
+				if (somethingPlaying)
+				{
+					if (!bgmMute)
+					{
+						bgmVol.volume = level;
+						bgmSChannel.soundTransform = bgmVol;
+					}
+					
+					else
+					{
+						bgmVol.volume = 0;
+						bgmSChannel.soundTransform = bgmVol;
+					}
+				}
+			}
+			
+			public static var voVolume:SoundTransform = new SoundTransform(sfxVol.volume*1);
+			public static var voChannel:SoundChannel = new SoundChannel();
+			//playing the opening voice over.
+			public static function playIntroVO():void
+			{	
+				voVolume.volume = sfxVol.volume*1;
+				var vo:Sound = new AssetManager.voIntro();
+				voChannel = vo.play(0,0,voVolume);
+			}
+			
+			public static function stopVO():void
+			{
+				voChannel.stop();
+			}
+			
+			public static function updateVOvolume():void
+			{
+				voChannel.soundTransform = voVolume;
+			}
+			
+			private static var startFade:Boolean = false;
+			public static function stopBGM():void
+			{
+				//set bgm to fade away when required to stop.
+				if (somethingPlaying)
+					startFade = true;
+			}
+			
+			public static function changeSFXVolume(level:Number):void
+			{	
+					if (!sfxMute)
+					{
+						sfxVol.volume = level;
+						varSnd.setParamVal( BaseSound.PNAME_GAIN, sfxVol.volume*0.02 );  // Gain
+					}
+					
+					else
+					{
+						trace ("audio mute");
+						sfxVol.volume = 0;						
+					}
+			}
+			
+			public static function playPoof():void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*1);
+				var poofSnd:Sound = new AssetManager.sfxPoof();
+				poofSnd.play(0,0,tempVol);
+			}
+			
+			public static function playMenuMO():void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.2);
+				var tempIndex:int = Math.random()*AssetManager.sfxMenuMO.length;
+				(AssetManager.sfxMenuMO[tempIndex] as Sound).play(0,0,tempVol);
+			}
+			
+			public static function playOptionsMO():void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.2);
+				var tempIndex:int = Math.random()*AssetManager.sfxMenuMO.length;
+				(AssetManager.sfxMenuMO[tempIndex] as Sound).play(0,0,tempVol);
+			}
+			
+			public static function playSelect():void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.2);
+				var tempIndex:int = Math.random()*AssetManager.sfxMenuSelect.length;
+				(AssetManager.sfxMenuSelect[tempIndex] as Sound).play(0,0,tempVol);
+			}
+			
+			public static function playOptionsSelect():void
+			{
+				playSelect();
+			}
+			
+			public static function playShowInstruct():void
+			{
+				playSelect();
+			}
+			
+			private static var sprint:Sound = new AssetManager.sfxPlayerSprint();
+			private static var sprintVol:SoundTransform = new SoundTransform(sfxVol.volume*0.2);
+			public static var sprintChannel:SoundChannel;
+			public static function playPlayerSprint():void
+			{	
+				if (sprintChannel == null)
+				{	
+					sprintVol.volume = sfxVol.volume*0.2;
+					sprintChannel = sprint.play(0,99999,sprintVol);
+				} 
+			}
+			
+			public static function stopPlayerSprint():void
+			{
+				 if (sprintChannel!=null)
+				{
+					sprintChannel.stop();
+					sprintChannel = null;
+				}	
+			}
+
+			private static var walk:Sound = new AssetManager.sfxPlayerWalk();
+			private static var walkVol:SoundTransform = new SoundTransform(sfxVol.volume*0.2);
+			public static var walkChannel:SoundChannel;
+			public static function playPlayerWalk():void
+			{	
+				if (walkChannel == null)
+				{	
+					walkVol.volume = sfxVol.volume*0.2;
+					walkChannel = walk.play(0,99999,walkVol);
+				}
+			}
+			
+			public static function stopPlayerWalk():void
+			{
+				if (walkChannel!=null)
+				{
+					walkChannel.stop();
+					walkChannel = null;
+				}	
+			}
+			
+			public static function playHideInstruct():void
+			{
+				playSelect();
+			}
+			
+			public static var graphChannel:SoundChannel;
+			public static function playGraphDraw():void
+			{	
+				if (graphChannel == null && Settings.playerVisible)
+				{
+					//multiplier at back represents the base volume
+					var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.04);					
+					var graphDrawing:Sound = new AssetManager.sfxGraphDraw();
+					graphChannel = graphDrawing.play(0,99999,tempVol);
+				}
+			}
+			
+			public static function playDropSound():void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.6);
+				var dropSnd:Sound = new AssetManager.sfxDrop();
+				dropSnd.play(0,0,tempVol);
+			}
+			
+			public static function playPickupSound():void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.4);
+				var pickSnd:Sound = new AssetManager.sfxPickup();
+				pickSnd.play(0,0,tempVol);
+			}
+			
+			public static function playResetSound():void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.07);
+				var resetSnd:Sound = new AssetManager.sfxGraphReset();				
+				resetSnd.play(0,0,tempVol);
+			}
+			
+			public static function stopGraphDraw():void
+			{	
+				if (graphChannel!=null)
+				{					
+					graphChannel.stop();
+					graphChannel = null;
+				}
+			}
+			
+			public static function playWinSound():void
+			{	
+				var resetSnd:Sound;
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.2);
+				
+				if (Settings.isItACutScene)
+					resetSnd= new AssetManager.sfxWinCS();
+				else
+					resetSnd= new AssetManager.sfxWin();
+					
+				resetSnd.play(0,0,tempVol);
+			}
+			
+			private static var jumpCount:int = 0;
+			public static function playJump():void
+			{	
+				jumpCount++;
+				if (jumpCount%2==0)
+				{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.3);
+				var tempIndex:int = Math.random()*AssetManager.sfxJumps.length;
+				(AssetManager.sfxJumps[tempIndex] as Sound).play(0,0,tempVol);
+				}		
+			}
+			
+			public static var landCount:int = 0;
+			public static function playLand():void
+			{	
+				if (landCount!=0)
+				{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.1);
+				var tempIndex:int = Math.random()*AssetManager.sfxLandings.length;
+				(AssetManager.sfxLandings[tempIndex] as Sound).play(0,0,tempVol);
+				}
+				landCount++;				
+			}
+			
+			public static function playHurt():void
+			{	
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.6);
+				var hurtSnd:Sound = new AssetManager.sfxHurt();
+				hurtSnd.play(0,0,tempVol);
+			}
+			
+			public static function playSwitch(isActivated:Boolean):void
+			{
+				var tempVol:SoundTransform = new SoundTransform(sfxVol.volume*0.05);
+				
+				if (isActivated)
+				{
+					var switchSnd1:Sound = new AssetManager.sfxSwitchOne();
+					switchSnd1.play(0,0,tempVol);
+				}
+				else
+				{
+					var switchSnd2:Sound = new AssetManager.sfxSwitchTwo();
+					switchSnd2.play(0,0,tempVol);
+				}
+			}
+			
+			public static var varSnd:GaverRingTone1 = new GaverRingTone1();
+			public static function initVarGraphDraw():void
+			{	
+				varSnd.setParamVal( BaseSound.PNAME_GAIN, sfxVol.volume*0.03 );  // Gain
+				varSnd.setParamVal( BaseSound.PNAME_PAN, 0 );  // Pan
+				varSnd.setParamVal( GaverRingTone1.PNAME_PULSERATE, 20 );  // Pulse Rate
+				varSnd.setParamVal( GaverRingTone1.PNAME_TONE0, 18 );  // Bell Tone 0
+				varSnd.setParamVal( GaverRingTone1.PNAME_SHIFT0, -12 );  // Bell Shift 0
+				varSnd.setParamVal( GaverRingTone1.PNAME_TONE1, 19 );  // Bell Tone 1
+				varSnd.setParamVal( GaverRingTone1.PNAME_SHIFT1, -11 );  // Bell Shift 1
+				varSnd.setParamVal( GaverRingTone1.PNAME_DAMPING, 0.223 );  // Bell Damping
+			}
+			
+			public static function playVarGraphDraw(value:Number):void
+			{
+				varSnd.setParamVal( BaseSound.PNAME_GAIN, sfxVol.volume*0.02 );  // Gain
+				if (!varSnd.playingP() && Settings.playerVisible)
+					varSnd.play();
+			}
+		]]>
+	</mx:Script>
+</mx:Canvas>

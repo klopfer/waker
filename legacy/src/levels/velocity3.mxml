@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{
+				
+				Settings.isItACutScene=false;
+				
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = "cutsceneMixed";
+				
+				super.setBG(AssetManager.bgWorld2_3);				
+				
+				// this png determines collision based on transparency:
+				//super.setGround(AssetManager.levelv3_collision); 
+				
+				// select img for the entrance and exit and place on the canvas
+				super.setExit(490,19);
+				super.setEntrance(0,467);
+							
+				// (this.parent.parent as game).setPlayerLoc(this.entrance.x,this.entrance.y);
+				
+				if(Settings.LEVEL_DIFFICULTY==3)
+				{
+					// hard
+					
+					this.spikeObstacleEditor.addSpike(510,480,true,false,true,100,480,8);
+					super.setGround(AssetManager.levelv3_collision); 
+					
+					// place graphs 
+					super.addGraph(1,0,200,200,21,320,320,55,160,460,0,0,0,4,5);	
+					super.addGraph(0,0,540,30,600,230,230,80,700,193,0,700,200,0,0);
+					
+					this.spikeObstacleEditor.addSpike(640,170,false,true,true,0,0,0);
+					this.spikeObstacleEditor.addSpike(705,170,false,true,true,0,0,0);
+					
+				} else if (Settings.LEVEL_DIFFICULTY == 2) {
+					// medium
+					super.setGround(AssetManager.levelv3_collision_medium); 
+					
+					// place graphs 
+					super.addGraph(1,0,200,200,21,320,320,55,160,460,0,0,0,2,5);	
+					super.addGraph(0,0,540,30,600,230,230,80,700,193,0,700,200,0,0);
+					
+					this.spikeObstacleEditor.addSpike(640,170,false,true,true,0,0,0);
+					
+				} else {
+					// easy
+					super.setGround(AssetManager.levelv3_collision_easy); 
+					
+					// place graphs 
+					super.addGraph(1,0,200,200,21,320,320,55,160,460,0,0,0,0,0);	
+					super.addGraph(0,0,540,30,600,230,230,80,700,193,0,700,200,0,0);
+					
+				}
+				
+				setHint(AssetManager.level_hintsign,AssetManager.level_velocity3_hint,true,2*60);
+				
+
+			}
+		]]>
+	</mx:Script>
+</level>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%">
+	
+	<mx:Script>
+		<![CDATA[
+		/***************************************
+		 * this is the spikeObstacle.. where spikeObstacle resides..
+		 * this is created to every level
+		 * designer can addSpike when needed using addSpike function
+		 * also contains the spikeMovement where is called within movement... to determines how the spikes are moving
+		 * currently, the spike obstacle looks like a warp
+		 **************************************/
+			import mx.collections.ArrayCollection;
+			import mx.controls.Image;
+			import mx.core.UIComponent;
+			import GambitLib.HitTest;
+			
+			//to keep track of all the spike objects
+			public var spikeObjects:ArrayCollection = new ArrayCollection();
+			
+			//for designer to add spike..
+			//if isMoving is false, the values of turn, turn2, and movementSpeed are irrelevant
+			//turn 0 and turn 1 are actually the points where the spike reverses direction
+			//if movement is horizontal, it's going to be the x coordinates of where the spike turns
+			//if movement is vertical, it's going to be the y coordinates of where the spike turns
+			//turn must be less than turn2
+			public function addSpike(posX:Number=0,posY:Number=0,isMoving:Boolean=false,horizontalMovement:Boolean=false,
+									up_or_left:Boolean=false,turn:Number=0,turn2:Number=0,movementSpeed:Number=5):void
+			{
+				var spike:spikeClass = new spikeClass();
+				spike.addingSpikeToLevel(posX,posY,isMoving,horizontalMovement,up_or_left,turn,turn2,movementSpeed);
+				spikeObjects.addItem(spike);
+				this.addChild(spike);
+			}
+			
+			//the loop of the spike.. called within movement
+			public function spikeGameLoop(gameClass:game):void
+			{
+				
+				var spike:spikeClass = new spikeClass();
+				//loopthrough all the spikes
+				for each(spike in spikeObjects)
+				{
+					//if spike isMoving is true.. so lets go ahead and move the spikes
+					if(spike.isMoving)
+					{
+						//simple enough..... the movement
+						if(spike.horizontalMovement)
+						{
+							if(spike.up_or_left)
+							{
+								//move spike left
+								spike.spike.x-=spike.movementSpeed;
+								//if spike is at minimum x, set it up to go right next time it moves
+								if(spike.spike.x<spike.turn)
+								{
+									spike.up_or_left = false;
+								}
+							}
+							else //if(!spike.up_or_left)
+							{
+								//move spike right
+								spike.spike.x+=spike.movementSpeed;
+								//if spike is at max x, set it up to go left next time it moves
+								if(spike.spike.x>spike.turn2)
+								{
+									spike.up_or_left = true;
+								}	
+							}
+						}
+						else //if(!spike.horizontalMovement)  so spike is moving vertically
+						{
+							if(spike.up_or_left)
+							{
+								//move spike up
+								spike.spike.y-=spike.movementSpeed;
+								//if spike reaches max height, set it up to go down next time it moves
+								if(spike.spike.y<spike.turn)
+								{
+									spike.up_or_left = false;
+								}
+							}
+							else //if(!spike.up_or_left)
+							{
+								//move spike down
+								spike.spike.y+=spike.movementSpeed;
+								//if spike reaches min height, set it up to go up next time it moves
+								if(spike.spike.y>spike.turn2)
+								{
+									spike.up_or_left = true;
+								}	
+							}
+						}
+					}
+
+					//well if the spike is colliding onto the player.. time to do something to the player
+					if(HitTest.pixelsOverlap(gameClass.player.imageOfAvatar,spike,true))
+					{
+						//setting the playerHit and the location are actually for the HitEffect.. the red circle thing that appears where the player is hit
+						gameClass.childMovements.playerHit=true;
+						gameClass.childMovements.locationOfHitEffect_X = gameClass.player.x + gameClass.player.width/2;
+						gameClass.childMovements.locationOfHitEffect_Y = gameClass.player.y + gameClass.player.height/2;
+						//then i move the player back the the start of the level
+						gameClass.player.x = gameClass.lvlManager.currentLevel.entrance.x;
+						gameClass.player.y = gameClass.lvlManager.currentLevel.entrance.y;
+						//and yep player the hurt sound
+						soundManager.playHurt();
+					}
+				}	
+			}
+			
+		]]>
+	</mx:Script>
+	
+</mx:Canvas>

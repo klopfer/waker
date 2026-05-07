@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" xmlns:ns1="gui.*" xmlns:ns2="controls.*" horizontalScrollPolicy="off" verticalScrollPolicy="off" creationComplete="init()">
+	<mx:Text text="random new test"  x="351" y="305" textAlign="center"/>
+	<mx:Button x="367" y="421" label="Menu" id="menuBtn"/>
+	<mx:Script>
+		<![CDATA[
+			//player controls and gui should be here.
+			
+			public function init():void
+			{
+				//testing ability to modify states in parent container.
+				menuBtn.addEventListener(MouseEvent.CLICK, goMenu);
+				
+				//create game.
+				//a class that stores the variables like score, avatar position, current lvl, settings, etc for the game maybe?
+				
+				//create control scheme. keyboard capture. pause menu maybe. using onUnfocus & on Focus event to ensure
+				//keyboard capture.
+				
+				//generate level.
+				
+			}
+			
+			private function goMenu(e:Event):void
+			{	
+				(this.parent as menu).gotoMenu();
+			}
+		]]>
+	</mx:Script>
+	
+</mx:Canvas>

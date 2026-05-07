@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			import AssetManager;
+			
+			public function initLvl():void
+			{
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'm4';
+
+				// Don't have background yet
+				super.setBG(AssetManager.bgWorld3_2);
+				
+				// this png determines collision based on transparency.
+				super.setGround(AssetManager.levelm3_collision); 
+				
+				super.setExit(530,50);
+				//super.setExit(480,480);
+				super.setEntrance(0,410);
+				
+				//super.addGraph(1,1,800-240,40,15,240,480,90,500,460,0,500,440);
+				//super.addGraph(1,0,800-260,139,15,260,260,0,500,460,0,0,0,3,20);
+				super.addGraph(0,1,800-225,69,120,225,450,190,530,480,0,0,0,3,20);
+				
+				//this.spikeObstacleEditor.addSpike(440,500,true,true,true,440,777,3);
+				
+				var newSwitch:switchObject = new switchObject();
+				newSwitch.init((this.parent.parent as game),10,410);
+				newSwitch.addObstacle((this.parent.parent as game),60,500,false,false,160,20);
+				newSwitch.addObstacle((this.parent.parent as game),257,500,false,false,160,20);
+				this.addChild(newSwitch);
+			}
+		]]>
+	</mx:Script>
+</level>

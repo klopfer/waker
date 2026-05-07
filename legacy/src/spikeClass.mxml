@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%">
+	
+	<mx:Script>
+		<![CDATA[
+		/***************************************
+		 * this is the spikeClass that is added to spikeObstacles
+		 * the spikes are added as determined from spikeObstacles... so go on ahead and check there out
+		 **************************************/
+			import mx.controls.Image;
+			
+			public var isMoving:Boolean = false;
+			public var horizontalMovement:Boolean = false;
+			public var up_or_left:Boolean = false;
+			public var turn:Number;
+			public var turn2:Number;
+			public var spike:Image = new Image();
+			public var movementSpeed:Number;
+			
+			//if isMoving is false, the values of turn, turn2, and movementSpeed are irrelevant
+			//turn 0 and turn 1 are actually the points where the spike reverses direction
+			//if movement is horizontal, it's going to be the x coordinates of where the spike turns
+			//if movement is vertical, it's going to be the y coordinates of where the spike turns
+			//turn must be less than turn2
+			public function addingSpikeToLevel(posX:Number=0,posY:Number=0,isMoving:Boolean=false,horizontalMovement:Boolean=false,
+												up_or_left:Boolean=false,turn:Number=0,turn2:Number=0,movementSpeed:Number=5):void
+			{
+				spike.source=AssetManager.spikeyObjects;
+				spike.x = posX;
+				spike.y = posY;
+				this.addChild(spike);
+				this.isMoving = isMoving;
+				this.horizontalMovement = horizontalMovement;
+				this.up_or_left = up_or_left;
+				this.turn = turn;
+				this.turn2 = turn2;
+				this.movementSpeed = movementSpeed;
+			}
+			
+		]]>
+	</mx:Script>
+</mx:Canvas>

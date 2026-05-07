@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" backgroundAlpha="0.8" creationComplete="init();" width="240" height="80" xmlns:ns1="*" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+	<mx:HSlider y="0" width="160" height="40" id="bgmAdjust" change="updateVolume()" value="{soundManager.bgmVolume*10}" minimum="0" maximum="10" snapInterval="1" liveDragging="true" allowTrackClick="true" tickInterval="1" x="43"/>
+	<mx:CheckBox id="bgmCheck" x="205" y="0" color="#FFFFFF" fontSize="25" selected="{soundManager.bgmMute}" change="toggleBGMmute()" toolTip="Mute BGM" width="35" height="35"/>
+	<mx:HSlider y="40" width="160" height="40" id="sfxAdjust" change="updateSFX()" value="{soundManager.sfxVolume*10}" minimum="0" maximum="10" snapInterval="1" liveDragging="true" allowTrackClick="true" tickInterval="1" x="43"/>
+	<mx:CheckBox id="sfxCheck" x="205" y="40" color="#FFFFFF" fontSize="25" selected="{soundManager.sfxMute}" change="toggleSFXMmute()" toolTip="Mute SFX" width="35" height="35"/>
+		<mx:Script>
+		<![CDATA[
+			import mx.controls.Button;
+			import gs.plugins.*;
+			import gs.easing.*;
+			import gs.TweenMax;
+			
+			public function init():void
+			{
+				TweenPlugin.activate([GlowFilterPlugin]);
+			}
+			
+			public function glowBGM():void
+			{	
+				TweenMax.to(this.bgmAdjust, 0, {glowFilter:{color:0xffff00, alpha:1 , blurX:20, blurY:20, strength:5}, ease:Elastic.easeOut});
+			}
+			public function unGlowBGM():void
+			{
+				TweenMax.to(this.bgmAdjust, 0, {glowFilter:{color:0xffff00, alpha:0 , blurX:20, blurY:20, strength:5}, ease:Elastic.easeOut});
+			}
+			public function glowSFX():void
+			{	
+				TweenMax.to(this.sfxAdjust, 0, {glowFilter:{color:0xffff00, alpha:1 , blurX:20, blurY:20, strength:5}, ease:Elastic.easeOut});
+			}
+			public function unGlowSFX():void
+			{
+				TweenMax.to(this.sfxAdjust, 0, {glowFilter:{color:0xffff00, alpha:0 , blurX:20, blurY:20, strength:5}, ease:Elastic.easeOut});
+			}
+		
+			public function updateVolume():void
+			{
+				if (bgmAdjust!=null)
+				{
+					soundManager.bgmVolume = bgmAdjust.value/10;
+					soundManager.changeVolume(bgmAdjust.value/10);
+				}
+			}
+			
+			public function updateSFX():void
+			{
+				if (sfxAdjust!=null)
+				{
+					soundManager.sfxVolume = sfxAdjust.value/10;
+					soundManager.changeSFXVolume(sfxAdjust.value/10);
+					soundManager.playSelect();
+				}
+			}
+			
+			public function toggleBGMmute():void
+			{
+				soundManager.bgmMute = !soundManager.bgmMute;
+								
+				updateVolume();
+				if (soundManager.bgmMute)
+				{
+					bgmCheck.toolTip = "Unmute BGM";
+				}
+				else
+				{
+					bgmCheck.toolTip = "Mute BGM";
+				}
+			}
+			
+			public function toggleSFXMmute():void
+			{
+				soundManager.sfxMute = !soundManager.sfxMute;
+				soundManager.changeSFXVolume(sfxAdjust.value/10);
+				
+				if (soundManager.sfxMute)
+					sfxCheck.toolTip = "Unmute SFX";
+				else
+					sfxCheck.toolTip = "Mute SFX";
+			}
+		]]>
+	</mx:Script>
+</mx:Canvas>
+

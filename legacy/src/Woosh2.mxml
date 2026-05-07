@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" xmlns:local="*" xmlns:ns="game_manager.*" xmlns:levels="levels.*" creationComplete="init(),getScreenSize()" 
+	horizontalScrollPolicy="off" verticalScrollPolicy="off"  enterFrame="checkCursor()" clipContent="true"
+	width="100%" height="100%"
+	 backgroundGradientAlphas="[0.8, 0.4]" backgroundGradientColors="[#000000, #000000]">
+
+<mx:Canvas id="resizeCanvas" width="800" height="600"  backgroundColor="#848484" clipContent="true" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+	<local:menu  id="menu1"/>
+	<!-- splash screens here. -->
+	<mx:Canvas id="introLayer" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+	</mx:Canvas>
+	<!-- poof productions -->
+	<mx:Image id="poofLogo" />
+	<mx:Canvas id="black" width="800" height="600" backgroundColor="#000000" alpha="{blackAlpha}"/>
+	<!-- gambit logo -->
+	<mx:Image id="gambitLogo" />
+</mx:Canvas>
+
+	<mx:Style>
+        CheckBox {
+            /* Unselected icons */
+            upIcon: Embed(source="story/gui/menu/unmute.swf");
+            overIcon: Embed(source="story/gui/menu/unmute.swf");
+            downIcon: Embed(source="story/gui/menu/unmute.swf");
+            /* Selected icons */
+            selectedUpIcon: Embed(source="story/gui/menu/mute.swf");
+            selectedOverIcon: Embed(source="story/gui/menu/mute.swf");
+            selectedDownIcon: Embed(source="story/gui/menu/mute.swf");
+        }
+    </mx:Style>
+
+	<mx:Script>
+		<![CDATA[ 
+			[Bindable]private var blackAlpha:Number = 1;
+		
+			private function getScreenSize():void
+                  {
+                        var screenSize:Rectangle = systemManager.screen;
+                        //trace ("ScreenTop : " + screenRect.top );
+                        //trace ("ScreenBottom : " + screenRect.bottom);
+                        trace ("ScreenHeight : " + screenSize.height);
+                        trace ("ScreenWidth : " + screenSize.width);
+                  } 
+			public function reSizeWindow():void
+			{
+				if(this.stage!=null)
+				{
+				var scaleX:Number = this.width/800;
+				var scaleY:Number = this.height/600;
+				var actualScale:Number = Math.min(scaleX,scaleY);
+				
+				/***********************************
+				 * IMPORTANT
+				//if there is any problem with the scaling..
+				//do fix the scaling to 1...
+				 * main problem caused by the scaling is the pixel collision problem.. so any pixel collision problem from the screen not played
+				 * in 800x600... then you have to change the scaling back to 1
+				 **********************************/
+				if(actualScale<0.5)
+				{
+					actualScale=0.5;
+				}
+				
+				resizeCanvas.scaleX = actualScale;
+				resizeCanvas.scaleY = actualScale;
+				resizeCanvas.x = this.width/2 - (resizeCanvas.width)/2;
+				resizeCanvas.y = this.height/2 - (resizeCanvas.height)/2;
+				
+				}
+			}
+		
+
+		
+		
+			
+			private var animationTimer:int = 0;
+			private var gFade:Number = 0.0;
+			private var pFade:Number = 0.0;
+			
+			private var curPt:Point = new Point(0,0);
+			private var timer:int = 0;
+			
+			public function checkCursor():void
+			{
+				reSizeWindow();
+				
+				if (!gambitLogo.visible && !poofLogo.visible && menu1.currentState!="playState")
+				{	
+					soundManager.currentMusic = "menu";
+					soundManager.playBGM();
+				} 
+				
+				//if cursor didn't move.
+				if (curPt.x==mouseX && curPt.y==mouseY)
+					timer++;
+				else
+					timer=0;
+					
+				if (timer>=48)
+					this.cursorManager.hideCursor();
+				else
+					this.cursorManager.showCursor();
+					
+				curPt.x=this.mouseX;
+				curPt.y=this.mouseY;
+			}
+			private var intro:MovieClip = new AssetManager.introCutScene();
+			
+			public function init():void
+			{
+				(AssetManager.levelComplete as MovieClip).stop();
+				(AssetManager.endingCutScene as MovieClip).stop();
+				gambitLogo.source = AssetManager.gambitClass;
+				poofLogo.source = AssetManager.poofClass;				
+				intro.gotoAndStop(0);
+				introLayer.rawChildren.addChild(intro);
+				
+				this.cursorManager.setCursor(AssetManager.cursorImg);
+				this.addEventListener(Event.ENTER_FRAME, runAnimation);
+			}
+			private var poofPlayed:Boolean = false;
+			public function runAnimation(e:Event):void
+			{				
+				animationTimer++;
+				gambitLogo.alpha -= gFade;
+				poofLogo.alpha -= pFade;
+				
+				//show gambit for 48 frames after fade in. hence... 20+48
+				//then fade it out at the same rate. another 20 frames. (68)
+				if (animationTimer >= 68 && gambitLogo.visible)
+					gFade = 0.05;
+				
+				//hold black for 24 frames. (88+24=112)
+				//make it instantly disappear.
+				if (animationTimer == 112)
+					black.visible=false;
+					
+				//hold poof logo for 48 frames. (112+48=160)
+				if (animationTimer >= 160 && poofLogo.visible)
+					pFade = 0.05;
+					
+				if (!poofPlayed && !black.visible)
+				{
+					soundManager.playPoof();
+					poofPlayed = true;
+				}
+				
+				if (gambitLogo.alpha <= 0 && gambitLogo.visible)
+					gambitLogo.visible = false;
+					
+				if (poofLogo.alpha <= 0 && poofLogo.visible)
+					poofLogo.visible = false;
+					
+				if (introLayer.alpha <=0 && introLayer.visible)
+				{
+					introLayer.visible = false;
+					soundManager.stopVO();
+				}
+					
+				if (!poofLogo.visible && !gambitLogo.visible)
+					playIntro();
+					
+				if (!introLayer.visible)
+				{
+					intro.removeEventListener(MouseEvent.CLICK, skipIntro);	
+					this.removeEventListener(Event.ENTER_FRAME, runAnimation);
+				}
+			}
+			
+			private var introFrameCounter:int = 0;
+			public function playIntro():void
+			{	
+				if (introFrameCounter==0)
+					intro.addEventListener(MouseEvent.CLICK, skipIntro);
+				
+				//start the voice over at frame 39 of the intro scene.
+				//value of 25 obtained by checking the source fla file for the intro animation.
+				if (introFrameCounter==25)
+					soundManager.playIntroVO();
+				
+				if (introFrameCounter<intro.framesLoaded)
+					intro.nextFrame();
+					
+				if (introFrameCounter>=intro.framesLoaded)
+				{
+					introLayer.alpha -= 0.05;
+					soundManager.voVolume.volume -= 0.05;
+					soundManager.updateVOvolume();
+					//fade out sound here.
+				}
+				
+				introFrameCounter++;
+			}
+			
+			public function skipIntro(e:MouseEvent=null):void
+			{
+				introFrameCounter=intro.framesLoaded;				
+			}
+		]]>
+	</mx:Script>
+	
+</mx:Application>

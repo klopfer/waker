@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{	
+				Settings.isItACutScene=false;
+				
+				// currentLevel makes it easier for other objects to access the properties of this level
+				(this.parent as levelManager).currentLevel = this;
+
+				// this is a string suffix appended to "level" and refers to an MXML component
+				// e.g. "d1" will load leveld1.mxml when the player collides with the exit
+				super.nextLvl = "v3";
+				
+				// setBG takes one arg: the asset of containing the background art
+				super.setBG(AssetManager.bgWorld2_t);				
+				
+				// setGround takes one arg: that art asset in which collision is determined by transparency.
+				super.setGround(AssetManager.leveltv_collision); 
+				
+				// setExit takes x,y coords to place the exit image
+				super.setExit(760,53);
+				
+				// setEntrance takes x, y coord to place the entrance
+				// this is also where the player will be spawned when the level loads
+				super.setEntrance(0,40);
+				
+				// addGraph places a graph and activation object on the level
+				// addGraph may be called multiple times to create more than 1 graph
+				// args:
+				//		graphtype: 0=displacement, 1=velocity, 2=acceleration, 
+				//		graphratio: 0=square, 1=tall, 2=wide
+				//		x, y: position of graph space
+				//		scale: this is the "zoom" scale of the plot 
+				// 		width, height: the size of the graph space 
+				// 		offset: shifts the "0" of the graph space
+				//		orbx, orby: location for the activation orb
+				if(Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// hard
+					super.addGraph(1,0,160,11,22,480,480,60,0,420,0,0,0,5,20,1,1,0,480,0,60,520,640,140,260);
+					this.spikeObstacleEditor.addSpike(160,465,true,true,true,160,615,6);
+					this.spikeObstacleEditor.addSpike(160,465,true,false,true,7,465,10);
+					this.spikeObstacleEditor.addSpike(250,465,true,false,true,7,465,10);
+					this.spikeObstacleEditor.addSpike(340,465,true,false,true,7,465,10);
+					this.spikeObstacleEditor.addSpike(420,465,true,false,true,7,465,10);
+					this.spikeObstacleEditor.addSpike(510,465,true,false,true,7,465,10);
+					this.spikeObstacleEditor.addSpike(615,465,true,false,true,7,465,10);
+				}
+				else if (Settings.LEVEL_DIFFICULTY == 2)
+				{
+					// medium
+					super.addGraph(1,0,160,11,22,480,480,60,0,420,0,0,0,2,20,1,1,0,480,0,60,520,640,140,260);
+					this.spikeObstacleEditor.addSpike(250,465,true,false,true,7,465,10);
+					this.spikeObstacleEditor.addSpike(510,465,true,false,true,7,465,10);
+				}
+				else 
+				{
+					// easy
+					super.addGraph(1,0,160,11,22,480,480,60,0,420,0,0,0,0,0);
+				}
+				
+				setHint(AssetManager.level_hintsign,AssetManager.level_velocity2_hint,true,2*60);
+				
+
+			}	
+			
+		]]>
+	</mx:Script>
+</level>

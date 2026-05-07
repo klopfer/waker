@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="{swidth}" height="{sheight}" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+	<mx:states>
+		<mx:State name="faceRight">
+			<mx:SetProperty target="{avatarImg}" name="x" value="{swidth*-1}"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="0"/>
+		</mx:State>
+		<mx:State name="faceLeft">
+			<mx:SetProperty target="{avatarImg}" name="x" value="0"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="0"/>
+		</mx:State>
+		<mx:State name="walkRight">			
+			<mx:SetProperty target="{avatarImg}" name="x" value="{swidth*-1}"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-1}"/>
+		</mx:State>
+		<mx:State name="walkLeft">
+			<mx:SetProperty target="{avatarImg}" name="x" value="0"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-1}"/>			
+		</mx:State>
+		
+		<mx:State name="runRight">			
+			<mx:SetProperty target="{avatarImg}" name="x" value="{swidth*-1}"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-2}"/>
+		</mx:State>
+		<mx:State name="runLeft">
+			<mx:SetProperty target="{avatarImg}" name="x" value="0"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-2}"/>			
+		</mx:State>
+		
+		<mx:State name="jumpUpRight">			
+			<mx:SetProperty target="{avatarImg}" name="x" value="{swidth*-1}"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-3}"/>
+		</mx:State>
+		<mx:State name="jumpUpLeft">
+			<mx:SetProperty target="{avatarImg}" name="x" value="0"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-3}"/>			
+		</mx:State>
+		
+		<mx:State name="jumpDownRight">			
+			<mx:SetProperty target="{avatarImg}" name="x" value="{swidth*-1}"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-4}"/>
+		</mx:State>
+		<mx:State name="jumpDownLeft">
+			<mx:SetProperty target="{avatarImg}" name="x" value="0"/>
+			<mx:SetProperty target="{avatarImg}" name="y" value="{sheight*-4}"/>			
+		</mx:State>
+	</mx:states>
+	
+	<mx:Image id="avatarImg" source="{avatarSheet}" width="{swidth*2}" height="{sheight*5}" x="0" y="0"/>	
+	
+	<mx:Script>
+		<![CDATA[
+			/*
+			Avatar sprite sheet used by the avatar class.
+			all animations are tiles into a single swf file.
+			the size of the canvas is used as a mask to display a single state animation
+			and hide the rest of the animations. 
+			*/
+		
+			[Bindable] public var avatarSheet:Class;
+						
+			[Bindable] public var swidth:int;
+			[Bindable] public var sheight:int; 
+		]]>
+	</mx:Script>
+</mx:Canvas>

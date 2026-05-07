@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" height="{sheight}" width="{swidth}" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+<!--<mx:Image id="bgImg" height="{sheight}" width="{swidth}" alpha="0.2"/>-->
+	<mx:Script>
+		<![CDATA[
+			import mx.binding.utils.BindingUtils;
+			import mx.controls.Image;			
+			import mx.containers.Tile;
+			import mx.core.UIComponent;
+			import com.sonoflash.core.*; 
+			import com.sonoflash.*;
+			import Settings;
+			
+			public var maxY:Number;
+			private var minY:Number;
+			
+			private var yOffset:int;
+			
+			[Bindable] public var sheight:int=0;
+			[Bindable] public var swidth:int=0;
+			
+			public var isSolid:Boolean = false;			
+			public var isDrawing:Boolean = false;			
+						
+			private var origin:int;
+			
+			public var timer:Number = 0;
+			//96 frames = 4 seconds @ 24fps.
+			private var delay:int = 96;
+			
+			//color components
+			private var drawColor:uint = 0;
+			private var solidColor:uint = 0; //solidified
+			
+			public var terrainMain:UIComponent = new UIComponent();
+			
+			public var bgImg:Image = new Image();
+			
+			public var graphSpark:Image = new Image();
+			public var graphFlash:Image = new Image();
+			
+			private var value:Number=0;
+		
+			public function init(_maxY:Number, _height:int, _width:int, bgImgSrc:Class, _yOffset:int = 0, _drawColor:uint = 0x000000, _solidColor:uint = 0xFFFFFF, flashEffect:Class=null):void
+			{	
+				//sets the bg image, height, width, max and min Y values, draw and solid graph color and the origin offset of the graph
+				bgImg.source = bgImgSrc;
+				bgImg.width = _width;
+				bgImg.height = _height;
+				maxY =_maxY;
+				minY =_maxY*-1;
+				sheight = _height;
+				swidth = _width;
+				
+				drawColor = _drawColor;
+				solidColor = _solidColor;
+				yOffset = _yOffset;
+				
+				configOrigin();
+				
+				this.addChild(bgImg);
+				this.addChild(terrainMain);
+				
+				//add the graph spark and make it invisible
+				graphSpark.source = AssetManager.graphSpark;
+				graphSpark.visible = false;
+				this.addChild(graphSpark);
+				
+				if (flashEffect==null)				
+					graphFlash.source = AssetManager.graphFlash;
+					
+				else 
+					graphFlash.source = flashEffect;
+				
+				graphFlash.alpha = 0.0;
+				graphFlash.width = _width;
+				graphFlash.height = _height;
+								
+				this.addChild(graphFlash);
+				
+				soundManager.initVarGraphDraw();
+			}
+
+			public function setStart(a:Number=-99999):void
+			{	
+				//set the start position of the graph.
+				timer = 1;
+				
+				if (a!=-99999)
+					value = a;
+				
+				this.graphics.moveTo(timer, relativeValue(value)+yOffset);
+								
+				terrainMain.graphics.moveTo(timer, relativeValue(value)+yOffset);
+				
+				graphSpark.x = timer-(graphSpark.width/2);
+				graphSpark.y = relativeValue(value)+yOffset-(graphSpark.height/2);
+				graphSpark.visible = true;
+				
+				this.graphics.lineStyle(5, drawColor, 1);
+				terrainMain.graphics.lineStyle(14, solidColor, 1);
+				
+				soundManager.varSnd.play();
+				soundManager.playResetSound();
+			}
+			
+			//sets origin of the graph to the middle
+			private function configOrigin():void
+			{
+				origin = sheight/2;
+			}
+			
+			private var previousIsDraw:Boolean;
+			private var direction:int = 1;
+			
+			private var resetPlayed:Boolean = false;
+			
+			//draws the graph!
+			//plots any value passed into the graph onto the graph.
+			public function draw(value:Number):void
+			{	
+				if (isSolid)
+				{
+					this.terrainMain.name = "terrain main";
+					terrainMain.visible = true;
+					timer=0;
+				}
+				
+				//resets the graph after the delay
+				if (timer >= swidth + delay)
+				{	
+					resetGraph();
+					isDrawing = true;
+				}
+				
+				//start flashing the graph once graph is drawn to the edge.
+				if (timer >= swidth)
+				{
+					soundManager.varSnd.release();
+					//##### start - making the white flashes.
+					if (direction==1 && graphFlash.alpha>=0.6)
+						direction = -1;
+					else if (direction==-1 && graphFlash.alpha<=0)
+						direction = 1;
+										
+					graphFlash.alpha += 0.08*direction;
+					//##### end - making the white flashes.
+					
+					Settings.graphCountDown = true;
+					
+					if (!resetPlayed)
+					{
+						soundManager.playResetSound();
+						resetPlayed = true;
+					}
+					
+					isDrawing = false;					
+				}
+				
+				if (isDrawing && timer<swidth)
+				{
+					if (timer==0)
+						this.setStart(value);
+					
+					/* correct code */
+					this.graphics.lineTo(timer, relativeValue(value)+yOffset);					
+					terrainMain.graphics.lineTo(timer, relativeValue(value)+yOffset);
+					
+					graphSpark.x=timer-(graphSpark.width/2);
+					graphSpark.y=relativeValue(value)+yOffset-(graphSpark.height/2);
+				}
+				
+				timer+=1.5;
+				previousIsDraw = this.isDrawing;
+			}
+			
+			//calculates the relative value of the graph. based on the max and min y values
+			//ensures that the graph doesn't draw out of range
+			private function relativeValue(value:Number):Number
+			{
+				if (value>0)
+				{
+					return origin - value/maxY * sheight/2;
+				}
+				
+				else if (value<0)
+				{
+					return origin + value/minY * sheight/2;
+				}
+				
+				else return origin;
+			}
+			
+			//resets the graph
+			public function resetGraph():void
+			{
+				graphFlash.alpha=0.0;
+				resetPlayed = false;
+				Settings.graphCountDown = false;
+				this.graphics.clear();
+				terrainMain.graphics.clear();
+				graphSpark.visible = false;
+				
+				isDrawing = false;
+				
+				if (isSolid)
+				{	
+					terrainMain.visible=false;
+					isSolid = false;
+				}
+				timer = 0;
+			}
+		]]>
+	</mx:Script>
+</mx:Canvas>

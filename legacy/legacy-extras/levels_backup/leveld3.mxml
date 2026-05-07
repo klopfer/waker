@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			import AssetManager;
+			
+			public function initLvl():void
+			{
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'vCutScene';
+
+				// Don't have background yet
+				super.setBG(AssetManager.bgWorld1_3);
+				
+				// this png determines collision based on transparency.
+				super.setGround(AssetManager.leveld3_collision); 
+				
+				super.setExit(740,110);
+				super.setEntrance(0,450);
+				
+				super.addGraph(0,0,100,320,400,180,180,90,500,460,0,500,440);
+				super.addGraph(0,0,320,140,300,180,180,90,280,280,0,280,260);
+				
+				if(AssetManager.LEVEL_DIFFICULTY==3)
+				{
+				//this.spikeObstacleEditor.addSpike(500,480,true,true,true,0,780,20);
+				//this.spikeObstacleEditor.addSpike(500,300,true,true,true,300,780,10);
+				this.spikeObstacleEditor.addSpike(600,0,true,false,true,10,120,6);
+				this.spikeObstacleEditor.addSpike(600,120,true,true,true,500,777,6);
+					
+				} else if(AssetManager.LEVEL_DIFFICULTY == 2)
+				{
+					this.spikeObstacleEditor.addSpike(600,0,true,false,true,10,110,7);
+				}
+			}
+		]]>
+	</mx:Script>
+</level>

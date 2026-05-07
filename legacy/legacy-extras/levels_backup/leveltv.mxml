@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			
+			import AssetManager;
+			
+			public function initLvl():void
+			{	
+				soundManager.stopBGM();
+				soundManager.currentMusic = "world02";
+				// currentLevel makes it easier for other objects to access the properties of this level
+				(this.parent as levelManager).currentLevel = this;
+
+				// this is a string suffix appended to "level" and refers to an MXML component
+				// e.g. "d1" will load leveld1.mxml when the player collides with the exit
+				super.nextLvl = "v3";
+				
+				// setBG takes one arg: the asset of containing the background art
+				super.setBG(AssetManager.bgWorld2_t);				
+				
+				// setGround takes one arg: that art asset in which collision is determined by transparency.
+				super.setGround(AssetManager.leveltv_collision); 
+				
+				// setEntrance takes x, y coord to place the entrance
+				// this is also where the player will be spawned when the level loads
+				super.setEntrance(0,40);
+				
+				// setExit takes x,y coords to place the exit image
+				super.setExit(760,50);
+				
+				// addGraph places a graph and activation object on the level
+				// addGraph may be called multiple times to create more than 1 graph
+				// args:
+				//		graphtype: 0=displacement, 1=velocity, 2=acceleration, 
+				//		graphratio: 0=square, 1=tall, 2=wide
+				//		x, y: position of graph space
+				//		scale: this is the "zoom" scale of the plot 
+				// 		width, height: the size of the graph space 
+				// 		offset: shifts the "0" of the graph space
+				//		orbx, orby: location for the activation orb
+				if(AssetManager.LEVEL_DIFFICULTY == 3)
+				{
+					super.addGraph(1,0,160,10,22,480,480,60,0,420,0,0,0,5,20);
+					this.spikeObstacleEditor.addSpike(160,480,true,true,true,160,615,6);
+					this.spikeObstacleEditor.addSpike(160,480,true,false,true,0,480,10);
+					this.spikeObstacleEditor.addSpike(250,480,true,false,true,0,480,10);
+					this.spikeObstacleEditor.addSpike(340,480,true,false,true,0,480,10);
+					this.spikeObstacleEditor.addSpike(420,480,true,false,true,0,480,10);
+					this.spikeObstacleEditor.addSpike(510,480,true,false,true,0,480,10);
+					this.spikeObstacleEditor.addSpike(615,480,true,false,true,0,480,10);
+					
+				} else {
+					super.addGraph(1,0,160,10,22,480,480,60,0,420,0,0,0,0,0);
+				}
+			}	
+			
+		]]>
+	</mx:Script>
+</level>

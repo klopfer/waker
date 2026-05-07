@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Image;
+			
+			// this file is a class used by switchObject
+			// the item contained are the component of a single switch obstacle
+				public var obstacles:Image = new Image();
+				public var horizontalMovement:Boolean = false;
+				public var up_or_left:Boolean = false;
+				public var isMoving:Boolean = false;
+				
+				public function addObstacle():void
+				{
+					this.addChild(obstacles);
+				}
+			
+		]]>
+	</mx:Script>
+</mx:Canvas>

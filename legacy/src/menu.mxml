@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="init()" xmlns:ns="game_manager.*" xmlns:local="*" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+	<mx:states>
+		<mx:State name="gameStart">
+			<mx:RemoveChild target="{menuBG}"/>
+		</mx:State>
+		<mx:State name="testState" basedOn="gameStart">
+			<mx:AddChild position="lastChild">
+				<local:genericGraph id="testGraph" />
+			</mx:AddChild>
+			<mx:AddChild position="lastChild">
+				<local:avatar id="player" x="100" y="100" width="100" height="100"/>
+			</mx:AddChild>			
+		</mx:State>
+		<mx:State name="playState">
+			<mx:RemoveChild target="{menuBG}"/>
+			<mx:RemoveChild target="{bgHolder}"/>			
+			<mx:AddChild position="lastChild">
+				<local:game x="0" y="0" id="ano" />
+			</mx:AddChild>
+		</mx:State>
+		<mx:State name="menuState">
+		</mx:State>
+		<mx:State name="instructions">
+			<mx:AddChild position="lastChild">
+				<mx:Image x="0" y="0" id="instruction_screen" click="closeInstructionScreen()" source="{instruction_screen_src}"/>
+			</mx:AddChild>			
+		</mx:State>
+		<mx:State name="credits">
+			<mx:AddChild position="lastChild">
+				<mx:Image x="0" y="0" id="credits_screen" click="closeCreditsScreen()" source="{credits_screen_src}" />
+			</mx:AddChild>
+		</mx:State>			
+	</mx:states>
+	<mx:Canvas id="bgHolder" />
+	<mx:Image x="0" y="0" id="menuBG"/>
+	<mx:Canvas id="debugWindow" height="300" width="800" backgroundColor="#000000" backgroundAlpha="0.8" visible="{debugShown}">		
+		<mx:Text x="32" y="10" text="Level:" color="#FFFFFF" width="47" fontSize="12" fontWeight="bold"/>
+		<mx:TextInput x="78" y="10" id="debugInput" />		
+	</mx:Canvas>
+	<mx:Script>
+		<![CDATA[
+		
+			import mx.controls.Button;
+			import mx.containers.Panel;
+			import mx.core.Application;			
+			import GambitLib.HitTest;
+			import AssetManager;
+			
+			[Bindable]private var debugShown:Boolean = false;
+			
+			private var previousPt:Point = new Point(0,0);
+			
+			private var btnStart:imgButton = new imgButton();
+			private var btnInstruct:imgButton = new imgButton();
+			private var btnCredits:imgButton = new imgButton();
+			private var btnSettings:imgButton = new imgButton();
+			
+			private var groundImg:Image = new Image();
+			private var teleImg:Image = new Image();
+			private var lvl1bgImg:Image = new Image();
+			
+			[Bindable] public var player_X:Number = 100.0;
+			[Bindable] public var player_Y:Number = 100.0;
+			
+			private var velocity:Point = new Point(0,0);
+			private var gravity:Number = 2.0;
+			private var acceleration:Point = new Point(0,0);
+			
+			[Bindable] private var credits_screen_src:Class;
+			[Bindable] private var instruction_screen_src:Class;
+			
+			private var settingsScreen:difficulty_selector = new difficulty_selector();
+			
+			public function init():void
+			{	
+				//set position and appearance of all the components on screen
+				credits_screen_src = AssetManager.guiCreditsScreen;
+				instruction_screen_src = AssetManager.guiInstructionScreen;
+				
+				this.menuBG.source = AssetManager.guiMenuBG;
+				
+				btnStart.init(AssetManager.guiBtnStart,AssetManager.guiBtnStartMo,AssetManager.guiBtnStart);
+				btnInstruct.init(AssetManager.guiBtnInstruct,AssetManager.guiBtnInstructMo,AssetManager.guiBtnInstruct);
+				btnCredits.init(AssetManager.guiBtnCredits,AssetManager.guiBtnCreditsMo,AssetManager.guiBtnCredits);
+				btnSettings.init(AssetManager.guiBtnSettings, AssetManager.guiBtnSettingsMo, AssetManager.guiBtnSettings);
+				
+				this.addChild(btnStart);
+				this.addChild(btnInstruct);
+				this.addChild(btnCredits);
+				this.addChild(btnSettings);
+				
+				btnStart.addEventListener(MouseEvent.CLICK, start);
+				btnInstruct.addEventListener(MouseEvent.CLICK, instructions);
+				btnCredits.addEventListener(MouseEvent.CLICK, credits);
+				btnSettings.addEventListener(MouseEvent.CLICK, settings);
+				
+				//add mouse over sounds.
+				btnStart.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnInstruct.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnCredits.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				btnSettings.addEventListener(MouseEvent.ROLL_OVER, playMOSnd);
+				
+				btnStart.x = 224;
+				btnStart.y = 153;
+				
+				btnInstruct.x = 306;
+				btnInstruct.y = 96;
+				
+				btnCredits.x = 484;
+				btnCredits.y = 153;
+				
+				btnSettings.x = 418;
+				btnSettings.y = 96;
+				
+				this.settingsScreen.screen_bg.addEventListener(MouseEvent.CLICK, closeSettings);
+				this.addEventListener(KeyboardEvent.KEY_DOWN, debugConsole);
+				
+				this.addEventListener(Event.ENTER_FRAME, checkEsc);
+				this.setFocus();
+			}
+			
+			public function closeInstructionScreen(e:MouseEvent=null):void
+			{
+				this.removeChild(this.instruction_screen);
+				this.currentState = "menuState";
+				soundManager.playHideInstruct();
+			}
+
+			public function closeCreditsScreen(e:MouseEvent=null):void
+			{
+				soundManager.playSelect();
+				this.removeChild(this.credits_screen);
+				this.currentState = "menuState";
+			}
+			
+			//use the esc key to close and open the instructions, options, credits screen
+			public function checkEsc(e:Event):void
+			{
+				if (this.currentState=="instructions" && Settings.escPressed)
+				{
+					this.closeInstructionScreen();
+					Settings.escPressed = false;	
+				}
+				
+				else if (this.currentState=="credits" && Settings.escPressed)
+				{
+					this.closeCreditsScreen();
+					Settings.escPressed = false;					
+				}
+				
+				else if (this.settingsShowing && Settings.escPressed)
+				{
+					this.closeSettings(null);
+					Settings.escPressed = false;					
+				}
+			}
+			
+			public function playMOSnd(e:Event):void
+			{
+				soundManager.playMenuMO();
+			}
+			
+			public function debugConsole(e:KeyboardEvent):void
+			{
+				//to jump into level press ctrl + shift + f12
+				if (e.keyCode == Keyboard.F12 && e.shiftKey && e.ctrlKey)
+				{
+					debugShown = !debugShown;
+				}
+				
+				if (e.keyCode == Keyboard.ESCAPE)
+				{
+					if (this.currentState=="instructions")
+					{
+						this.closeInstructionScreen();
+					}
+				
+					else if (this.currentState=="credits")
+					{
+						this.closeCreditsScreen();					
+					}
+				
+					else if (this.settingsShowing)
+					{
+						this.closeSettings(null);					
+					}
+				}
+			}
+			
+			public var settingsShowing:Boolean = false;
+			private function settings(e:Event):void
+			{
+				if(btnSettings.clickAble)
+				{
+					soundManager.playSelect();
+					this.addChild(this.settingsScreen);
+					this.settingsScreen.showScreen();
+					this.settingsScreen.currentState = "mediumSelected";
+					settingsShowing = true;
+				}
+			}
+			
+			public function closeSettings(e:Event):void
+			{
+				soundManager.playSelect();
+				this.removeChild(this.settingsScreen);
+				settingsShowing = false;
+			}
+			
+			private function credits(e:Event):void
+			{
+				if (btnCredits.clickAble)
+				{
+					soundManager.playSelect();
+					this.currentState = "credits";
+				}
+			}
+			
+			private function instructions(e:Event):void
+			{
+				if (btnInstruct.clickAble)
+				{
+					this.currentState = "instructions";
+					soundManager.playShowInstruct();
+				}
+			}
+			
+			private function start(e:Event):void
+			{	
+				soundManager.playSelect();
+				if (btnStart.clickAble)
+				{
+					this.currentState = "playState";
+					this.toggleMenuButtons();
+					if (this.debugShown)
+					{					
+						ano.init(this.debugInput.text);
+						debugShown=false;						
+					}
+					else
+					{	
+						ano.init("cutsceneDisplacement");
+					}
+					soundManager.stopBGM();
+				}				
+			}
+			
+			//call when entering & leaving menu state.
+			private function toggleMenuButtons():void
+			{
+				btnStart.visible = !btnStart.visible;
+				btnInstruct.visible = !btnInstruct.visible;
+				btnCredits.visible = !btnCredits.visible;
+			}
+			
+			public function gotoMenu():void
+			{
+				this.currentState = "menuState";				
+				btnStart.visible = true;
+				btnInstruct.visible = true;
+				btnCredits.visible = true;
+				this.setFocus();
+			}
+		]]>
+	</mx:Script>
+</mx:Canvas>

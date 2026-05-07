@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{
+				Settings.isItACutScene=false;
+				
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'v2';
+
+				super.setBG(AssetManager.bgWorld2_2);				
+				
+				// this png determines collision based on transparency:
+				// super.setGround(AssetManager.levelv1_collision); 
+				//super.setGround(AssetManager.levelv1_easy_collision); 
+				
+				// select img for the entrance and exit and place on the canvas
+				super.setExit(755,160);
+				super.setEntrance(0,90);
+				
+				
+				if(Settings.LEVEL_DIFFICULTY==3)
+				{
+					// hard
+					this.spikeObstacleEditor.addSpike(100,480,true,true,true,0,780,10);
+					this.spikeObstacleEditor.addSpike(100,180,true,true,false,0,780,10);
+					
+					// requires player to pick up object whilst running. 				
+					super.setGround(AssetManager.levelv1_collision); 
+				
+					//almost impossible to get more than two obstacles
+					super.addGraph(1,0,340,227,15,180,180,4,380,440,20,2,50,2);
+					
+				} 
+				else if (Settings.LEVEL_DIFFICULTY == 2)
+				{
+					// medium
+
+					// this has extra platforms to make jumping up to the graph easier
+					super.setGround(AssetManager.levelv1_easy_collision); 
+
+					super.addGraph(1,0,340,227,15,180,180,4,380,440,20,2,50,1);
+
+					//having just this spike gives the player an advantage because they can draw the graph from the higher platform and jump from there
+					//this spike makes it hard to understand how to use acceleration becuase it disrupts the avatars normal run
+					//this.spikeObstacleEditor.addSpike(100,480,true,true,true,0,780,10);
+					
+				} 
+				else 
+				{
+				
+					// easy
+					// this has extra platforms to make jumping up to the graph easier
+					super.setGround(AssetManager.levelv1_easy_collision); 
+
+					super.addGraph(1,0,340,227,15,180,180,4,380,440,20,2,50,0,0);
+
+				}
+				
+				setHint(AssetManager.level_hintsign,AssetManager.level_velocity1_hint,true,2*60);
+
+				super.addHelpToLevel(AssetManager.help_image_R,16,435);
+				super.addHelpToLevel(AssetManager.help_image_Plus_S,47,425);
+								
+			}
+		]]>
+	</mx:Script>
+</level>

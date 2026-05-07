@@ -1,0 +1,499 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" xmlns:ns1="gui.*" xmlns:ns2="controls.*" horizontalScrollPolicy="off" verticalScrollPolicy="off" creationComplete="init()" xmlns:local="*">
+
+<local:movements horizontalScrollPolicy="off" verticalScrollPolicy="off" id="childMovements"/>
+	
+	<mx:Text text="random new test"  x="351" y="305" textAlign="center" id="tracer"/>
+	<!-- order of things... -->
+	
+	<!-- level BG layer -->
+	<local:levelManager id="lvlManager" />		
+	<!-- avatar -->
+	
+	<mx:Canvas id="playerLayer" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+		<mx:Image id="velocityArrow" source="{AssetManager.velocityArrowStand}" visible="false" />
+		<local:avatar id="player" />
+	</mx:Canvas>	
+	<!-- level foreground -->
+	<mx:Canvas id="levelFG" />
+	
+	<!-- gui -->
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Image;
+			import gs.plugins.*;
+			import gs.easing.*;
+			import gs.TweenMax;
+			import mx.core.UIComponent;
+			import mx.messaging.AbstractConsumer;
+			import GambitLib.HitTest;			
+			import CustomEvent;
+			import AssetManager;
+			import Settings;
+			import com.sonoflash.core.*; 
+			import com.sonoflash.*;
+						
+			public var itemExist:Boolean = false;
+					
+			private var control:controlScheme = new controlScheme();
+			
+			public var soundManage:soundManager = new soundManager();
+			
+			public var winImg:MovieClip = new MovieClip();
+			
+			private var musicAdded:Boolean = false;
+			
+			public var debugLvl:String = "0";
+			
+			public var cheatImg:Image = null;
+			
+			public function removeSound():void
+			{
+				this.removeChild(bgm);
+			}
+			
+			private var bgm:Image = new Image();
+			
+			//used to check if the firstLevelhasbeencreated
+			private var firstLevelCreated:Boolean = false;
+
+			public function init(debug:String=null):void
+			{	
+				if (debug!=null)
+					debugLvl=debug;
+				
+				this.addEventListener(CustomEvent.ON_ENTRANCE_SET, this.movePlayerToEntrance);
+
+				// Level manager has a switch statement that determines which level to load
+				this.lvlManager.loadLvl(debugLvl);
+				firstLevelCreated=true;
+					
+				// initialize avatar object and adding to screen
+				player.init(80, 80, AssetManager.avatarSprite);
+				this.playerLayer.addChild(player);
+
+
+				this.addEventListener(Event.ENTER_FRAME, updateDisplay);
+				
+				this.addEventListener(KeyboardEvent.KEY_DOWN, this.childMovements.keyPressed);
+				this.addEventListener(KeyboardEvent.KEY_UP, this.childMovements.keyLifted);
+				
+				// Level dispatches event when the entrance has been placed on the canvas.
+				// The event object contains x,y of the entrance and we move the avatar to that location.
+				this.addEventListener(CustomEvent.ON_ENTRANCE_SET, this.movePlayerToEntrance);
+				
+				TweenPlugin.activate([GlowFilterPlugin]);
+				
+				this.playerLayer.addChild(invOrb);
+				
+				//setting focus to the game
+				this.setFocus();
+				
+				//resetting all values when the level start
+				this.childMovements.hack=0;
+				this.childMovements.playerAccel.x=0;
+				this.childMovements.playerAccel.y=0;
+				this.childMovements.playerVel.x=0;
+				this.childMovements.playerVel.y=0;
+				
+				this.gameUI.fadeBlackAlpha = 1;
+			}
+			
+			private function movePlayerToEntrance($event:CustomEvent,pushY:Number=22):void
+			{
+				/* DEBUG 
+				trace("TYPE: " + $event.type + "\nTARGET: " + $event.target + "\nFIRST CUSTOM PARAM: " + $event.params.x + "\nSECOND CUSTOM PARAM: " + $event.params.y);
+			   	trace($event.toString());
+			   	*/
+			   	movePlayerTo($event.params.x, ($event.params.y-pushY));
+			}
+			
+			public function movePlayerTo(_x:int, _y:int):void 
+			{
+				this.player.move(_x,_y);
+				soundManager.landCount = 0;
+			}
+			private var endingCounter:int = 0;
+			
+			
+			
+			
+			/*****************************************
+			 * MAIN LOOP OF THE GAME
+			 * MAIN LOOP OF THE GAME
+			 * MAIN LOOP OF THE GAME
+			 * MAIN LOOP OF THE GAME
+			 * MAIN LOOP OF THE GAME
+			 ****************************************/
+			public function updateDisplay(e:Event):void
+			{
+				Settings.playerVisible = this.player.visible;
+				if (this.gameUI.fadeBlackAlpha>0)
+					this.gameUI.fadeBlackAlpha -= 0.05;
+					
+				//if level is ending...
+				//gameending.mxml was origianlly used to display the ending cutscene,
+				//this was later revised such that the ending cutscene was merged with the
+				//wisp obtained animation for the last level so that cutscenes of variable
+				//length can be used without any modifications made to the code.
+				//the level gameending.mxml creates an empty level that is bypassed here
+				//and the player is moved to the main menu.
+				if (this.lvlManager.currentLevel.nextLvl == "noMore")
+				{	
+					endingCounter=700;
+					if (endingCounter == 700)
+					{
+						endingCounter = 0;
+						this.lvlManager.currentLevel.nextLvl = "dCutScene";
+						this.goMenu(null);
+					}
+				}
+				
+				//game loop.
+				//processed only if the player is visible.
+				if(this.player.visible==true)
+				{	
+					soundManager.playBGM();
+					this.childMovements.applyPhysics();
+					this.setFocus();
+					//adjust player position. based on velocity & acceleration.
+					this.childMovements.updatePlayerPosition();				
+					player.updateDisplay();				
+					tryPick();
+					drawInventryOrb();
+					drawGraphs();
+					checkWin();
+					this.gameUI.hintUpdate();
+					if (winImg.framesLoaded != 0)
+					{					
+						TIME_TO_NEXT_LEVEL = winImg.framesLoaded;
+					}
+					this.gameUI.guiUpdate();
+				}
+
+			}
+			/*****************************************
+			 * MAIN LOOP OF THE GAME END
+			 * MAIN LOOP OF THE GAME END
+			 * MAIN LOOP OF THE GAME END
+			 * MAIN LOOP OF THE GAME END
+			 * MAIN LOOP OF THE GAME END
+			 ****************************************/
+			
+			private var orbType:String = "displacement";
+			private var invOrb:Image = new Image();
+			//displays the orb on top of the avatar's head when an orb is picked.			
+			public function drawInventryOrb():void
+			{
+				//ensures that only 1 orb can be picked up at a time			
+				if (this.itemExist)
+				{
+					//sets the height and width of the orb to that of the avatar.
+					//the orb is properly positioned in the asset					
+					invOrb.width = player.width;
+					invOrb.height = player.height;					
+					invOrb.visible = true;
+					//displays different orb images according to the direction the avatar is facing
+					//and the type of orb picked
+					if (orbType == "displacement")
+					{
+						if (player.facingRight)
+							invOrb.source = AssetManager.inventryOrbDR;
+						else
+							invOrb.source = AssetManager.inventryOrbDL;
+					}
+					else if (orbType == "velocity")
+					{
+						if (player.facingRight)
+							invOrb.source = AssetManager.inventryOrbVR;
+						else
+							invOrb.source = AssetManager.inventryOrbVL;					
+					}
+					
+					invOrb.x = player.x;
+					invOrb.y = player.y;					
+				}
+				
+				//hides the orb if no orb is picked.
+				else
+					invOrb.visible = false;
+			}
+																										
+			public function tryPick():void
+			{	
+				//plays the graph drawing sound.
+				if (this.itemExist && !Settings.graphCountDown)
+					soundManager.playGraphDraw();
+				else
+					soundManager.stopGraphDraw();
+				
+				var switchObjectss:switchObject = new switchObject();
+				var temp:pairObject = new pairObject();	
+				if (this.childMovements.tryPicking)
+				{	
+					//checking for which graph is the playing picking, or dropping
+					for each (temp in lvlManager.currentLevel.triggers)
+					{
+						if(temp.triggered)
+						{
+							// moved instantiation of this sound object out of the method and made private vars of the class --kevin
+							soundManager.playDropSound();
+							
+							temp.triggered = false;
+							(temp.trigger as UIComponent).x = player.x;
+							(temp.trigger as UIComponent).y = player.y;
+							(temp.trigger as UIComponent).visible = true;
+							//this.solidifySound.play();
+							this.childMovements.tryPicking=false;
+							
+							this.itemExist = false;
+							//making the velocity arrow invisible
+							this.velocityArrow.visible=false;
+							
+							//stops playing the variable graph sound
+							soundManager.varSnd.release();
+										
+							var graphObjects:genericGraph = new genericGraph();
+							
+							//i push player down if side or top are colliding
+							//this is because the player have the ability to drop the orb and get stucked within the graph that just solidified
+							for each (graphObjects in this.lvlManager.currentLevel.graphObjects)
+							{
+								{
+									while(	HitTest.pixelsOverlap(graphObjects.terrainMain, this.player.headPt, true)
+									|| 		HitTest.pixelsOverlap(graphObjects.terrainMain, this.player.leftPt, true)
+									|| 		HitTest.pixelsOverlap(graphObjects.terrainMain, this.player.rightPt, true) )
+									{
+										player.y-=2;
+									}
+									
+									var gravityobject:UIComponent = new UIComponent();
+									for each (gravityobject in this.lvlManager.currentLevel.gravityObjects)
+									{
+										//if the object is visible means its on the ground and not picked by the player
+										if(gravityobject.visible == true)
+										{
+											if(graphObjects.terrainMain.visible==true)
+											{
+												while(HitTest.pixelsOverlap(gravityobject, graphObjects.terrainMain, true))
+												{
+													gravityobject.y+=5;
+												}
+											}
+										}
+									}
+								}
+							}		
+						}
+						
+						//player able to pick up trigger objects if overlapping with it and is not holding
+						//another object.
+						else if (HitTest.pixelsOverlap((temp.trigger as UIComponent), this.player) && !this.itemExist)
+						{
+							// Moved instantiation of sound object out of method and made them private vars of the class --kevin				
+							soundManager.playPickupSound();
+							
+							temp.triggered = true;
+							(temp.trigger as UIComponent).visible = false;
+							(temp.target as genericGraph).resetGraph();
+							this.childMovements.tryPicking=false;
+							this.itemExist = true;
+							
+							//putting the velocity arrow at where the player is since he just picked up an object..
+							//the arrow is still invisible though
+							this.velocityArrow.width=150;
+							this.velocityArrow.x = this.player.x + 26;
+							this.velocityArrow.y = this.player.y + 10;
+						}
+					}
+					
+					//player triggers a switch when overlapping with one.
+					for each(switchObjectss in lvlManager.currentLevel.switchObstacle)
+					{
+						if (HitTest.pixelsOverlap((switchObjectss.switch_), this.player)
+							|| HitTest.pixelsOverlap((switchObjectss.switch_2), this.player))
+						{
+							switchObjectss.changeDirection=true;
+						}
+					}
+				}	
+			}
+			
+			public var hack:int = 0;
+			public var currentGraph:genericGraph = new genericGraph();
+			public function drawGraphs():void
+			{		
+				hack++;				
+				var temp:genericGraph = new genericGraph();
+				if (hack>10 && gameUI.optionsVisible==false)
+				//loops through all graphs in the level
+				for each (temp in lvlManager.currentLevel.graphObjects)
+				{
+					var displacementPair:pairObject = new pairObject();
+					var type:pairObject = new pairObject();
+					//loops through the triggers
+					for each (type in lvlManager.currentLevel.triggers)
+					{
+						//if the trigger is triggered and the target of the
+						//trigger is the current graph being checked
+						//start drawing
+						if (type.target == temp && type.triggered)
+						{						
+							temp.isDrawing=true;
+							temp.terrainMain.visible=false;
+							temp.graphSpark.visible=true;
+							
+							//detects the type of graph to be drawn
+							if (type.type == "velocity")
+							{
+								//for the velocity arrow to be visible by player
+								this.velocityArrow.visible=true;
+								
+								soundManager.varSnd.setParamVal( BaseSound.PNAME_GAIN, 0.03 );
+								//sets the type of orb picked up to be reflected in the 
+								//inventry orb
+								this.orbType = type.type; 							
+								temp.draw(this.childMovements.playerVel.x);
+								
+								this.currentGraph = temp;
+								
+								//parameters for the variable velocity graph sound
+								soundManager.varSnd.setParamVal( BaseSound.PNAME_GAIN, soundManager.sfxVol.volume*0.07 );
+								soundManager.varSnd.setParamVal( GaverRingTone1.PNAME_DAMPING, 0.4 );	
+								soundManager.varSnd.setParamVal( GaverRingTone1.PNAME_SHIFT0, 2 );	
+								soundManager.varSnd.setParamVal( GaverRingTone1.PNAME_SHIFT1, 0 );	
+								soundManager.varSnd.setParamVal( GaverRingTone1.PNAME_TONE0, 19 );	
+								soundManager.varSnd.setParamVal( GaverRingTone1.PNAME_TONE1, 19 );
+								//soundManager.varSnd.setParamNorm( GaverRingTone1.PNAME_PULSERATE, (0.04+(1-(this.childMovements.playerVel.x/12))*0.35);
+								soundManager.varSnd.setParamNorm( GaverRingTone1.PNAME_PULSERATE, 0.15 + ((this.childMovements.playerVel.x/6))*0.1);
+								soundManager.varSnd.setParamNorm( GaverRingTone1.PNAME_SHIFT0, 0.1 + ((this.childMovements.playerVel.x/12))*0.6);
+								soundManager.varSnd.setParamNorm( GaverRingTone1.PNAME_SHIFT1, 0.1 + ((this.childMovements.playerVel.x/12))*0.6);
+																
+							}
+							else if (type.type == "displacement")
+							{
+								soundManager.varSnd.setParamVal( BaseSound.PNAME_GAIN, 0.03 );
+								this.orbType = type.type;
+								for each (displacementPair in lvlManager.currentLevel.displacementPairs)
+								{									
+									if (displacementPair.trigger == temp)
+									{										
+										TweenMax.to(displacementPair.target, 2, {glowFilter:{color:0xffff00, alpha:(1-(Math.abs(displacementPair.target.x-this.player.x)/temp.maxY)), blurX:20, blurY:20, strength:5}, ease:Elastic.easeOut});
+										
+										temp.draw(Math.abs(displacementPair.target.x-this.player.x));
+										this.currentGraph = temp;
+										
+										soundManager.varSnd.setParamVal( BaseSound.PNAME_GAIN, soundManager.sfxVol.volume*0.07 );
+										soundManager.varSnd.setParamVal( GaverRingTone1.PNAME_DAMPING, 0.3 );	
+										soundManager.varSnd.setParamNorm( GaverRingTone1.PNAME_PULSERATE, (0.7+(1-(Math.abs(displacementPair.target.x-this.player.x))/temp.maxY))*0.20);
+										soundManager.varSnd.setParamNorm( GaverRingTone1.PNAME_SHIFT0, (Math.abs(displacementPair.target.x-this.player.x))/temp.maxY );
+										soundManager.varSnd.setParamNorm( GaverRingTone1.PNAME_SHIFT1, (Math.abs(displacementPair.target.x-this.player.x))/temp.maxY );
+									}
+								}
+							}
+						}
+						else if(type.target == temp && !type.triggered)
+						{
+							//unglow...
+							for each (displacementPair in lvlManager.currentLevel.displacementPairs)
+							{									
+								if (displacementPair.trigger == temp)
+								{										
+									TweenMax.to(displacementPair.target, 2, {glowFilter:{color:0xffff00, alpha:0, blurX:20, blurY:20, strength:2}, ease:Elastic.easeOut});
+								}
+							}
+							//unglow end...
+
+							temp.isDrawing=false;
+							this.levelFG.graphics.clear();
+							temp.terrainMain.visible=true;
+							temp.graphFlash.alpha = 0;
+							temp.graphSpark.visible=false;
+							temp.graphics.clear();
+						}
+					}								
+				}
+			}
+			
+			private function goMenu(e:Event):void
+			{	
+				(this.parent as menu).gotoMenu();
+			}
+			
+			private var timer_to_next_level:int = 0;
+			
+			//number of frames in the wisp obtained animation.
+			public var TIME_TO_NEXT_LEVEL:int = 60;//24fps
+			//function to check if player have won.			
+			private function checkWin():void
+			{	
+				if (hack>10)
+				{	
+					if(HitTest.pixelsOverlap(this.player, this.lvlManager.currentLevel.exit, true))
+					{	this.winImg.visible=true;
+						Settings.inGame=false;
+						if (timer_to_next_level==0)
+						{
+							// Moved sound obj instantiation to private var outside of method -- kevin
+							soundManager.playWinSound();
+						}
+					}
+				}
+				
+				//once winImage becomes visible.. means the player have won.. and its time to countdown before going to next level
+				if(this.winImg.visible==true)
+				{
+					soundManager.varSnd.release();
+					
+					winImg.play();
+					++timer_to_next_level;
+					
+					//plays the ending cut scene music after the wisp obtained animation is played.
+					if (timer_to_next_level==158 && Settings.gameEnds)
+					{
+						soundManager.stopBGM();
+						soundManager.currentMusic = "gameEnding";
+					}
+				}
+				
+				//if time is up after winning.. go to next level.
+				if(timer_to_next_level>=TIME_TO_NEXT_LEVEL)
+				{			
+					this.winImg.visible=false;
+					this.winImg.gotoAndStop(0);
+					this.init(lvlManager.currentLevel.nextLvl);
+					timer_to_next_level=0;
+					Settings.isItACutScene = false;
+					Settings.gameEnds = false;
+				}
+			}
+		]]>
+	</mx:Script>
+	<local:gui id="gameUI" />
+</mx:Canvas>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

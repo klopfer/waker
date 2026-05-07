@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{	
+				Settings.isItACutScene=false;
+				Settings.gameEnds = true;
+				
+				// currentLevel makes it easier for other objects to access the properties of this level
+				(this.parent as levelManager).currentLevel = this;
+
+				// this is a string suffix appended to "level" and refers to an MXML component
+				// e.g. "d1" will load leveld1.mxml when the player collides with the exit
+				super.nextLvl = "gameending";
+				
+				// setBG takes one arg: the asset of containing the background art
+				super.setBG(AssetManager.bgWorld3_4);				
+				
+				// setGround takes one arg: that art asset in which collision is determined by transparency.
+				super.setGround(AssetManager.levelm6_collision); 
+				
+				// setEntrance takes x, y coord to place the entrance
+				// this is also where the player will be spawned when the level loads
+				super.setEntrance(0,400);
+				
+				// setExit takes x,y coords to place the exit image
+				super.setExit(700,195);
+				
+				// addGraph places a graph and activation object on the level
+				// addGraph may be called multiple times to create more than 1 graph
+				// args:
+				//		graphtype: two digit number expected,
+				//				first digit: 0=displacement, 1=velocity, 2=acceleration
+				//				second digit: 0=square, 1=tall, 2=wide
+				//		x, y: position of graph space
+				//		scale: this is the "zoom" scale of the plot (NOTE: must be > 21 or the avatar can't jump from idle to walk to run in the graph.)
+				// 		width, height: the size of the graph space
+				// 		offset: shifts the "0" of the graph space
+				//		orbx, orby: location for the activation orb
+				//		how high the graph is above the platform it is on (always zero)
+				//		x,y offset of base for activation object from activation object (?)
+				//		number of obstacles to be placed in graph
+				//		number of trys that should be performed to place each obstacle in the graph (with pre-specified stipulations)
+				//		x,y scale of graph for minor adjustment (for tweaking levels)
+				
+				/* graph defs have been moved and differentiated according to difficulty
+				super.addGraph(0,0,150,0,700,500,500,140,60,460,0,60,440,6,20,1,1,0,500,0,200);
+				super.addGraph(1,0,150,0,40,500,500,160,700,460,0,0,0,0,0);
+				*/
+				
+				/*
+				// this series of statements sets up a switch that controls one or more moving obstacles
+				// set up the switch object
+				var switchA:switchObject = new switchObject();
+				// set the x and y coordinates of the switch (the second two arguments)
+				switchA.init((this.parent.parent as game),60,168);
+				// set up the obstacles
+				// args:
+				//		
+				//		x,y coordinate of the obstacle
+				//		true if the obstacle moves horizontally
+				//		true if the obstacle starts out in the up or left direction
+				// 			i.e.: pushing the switch causes it to go in the down or right direction
+				// 		width, height of the obstacle respectivly (80,140,200)
+				*/
+				
+				/* switch obstacle differentiated and moved into difficulty statements
+				switchA.addObstacle((this.parent.parent as game),640,15,false,false,20,200);
+				*/
+				
+				super.addGraph(1,0,150,1,40,500,500,160,700,460,0,0,0,0,0);
+				
+				if(Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// hard
+
+					super.addGraph(0,0,150,1,700,500,500,140,60,457,0,60,441,6,20,1,1,0,500,0,200);
+					// moving wall is larger so there is a smaller space to get through even when you open the switch!
+					//switchA.addObstacle((this.parent.parent as game),640,15,false,false,20,200);
+					
+					this.spikeObstacleEditor.addSpike(150,480,true,true,true,170,620,9);
+
+				}
+				else if (Settings.LEVEL_DIFFICULTY == 2)
+				{
+					// medium
+					// some graph obstacle
+					super.addGraph(0,0,150,1,700,500,500,140,60,457,0,60,441,4,20,1,1,0,500,0,200);
+					// smaller moving wall
+					//switchA.addObstacle((this.parent.parent as game),640,135,false,false,20,80);
+				}
+				else 
+				{
+					// easy
+					// some graph obstacles (most in all of game)
+					super.addGraph(0,0,150,1,700,500,500,140,60,457,0,60,441,3,20,1,1,0,500,0,200);
+					// smaller moving wall
+					//switchA.addObstacle((this.parent.parent as game),640,135,false,false,20,80);
+				}
+			
+				//this.addChild(switchA);
+				
+				//obstacle must always be long so that player can't just jump over it
+				super.addSwitch(60,185,640,30,false,false,20,200);
+
+				setHint(AssetManager.level_hintsign,AssetManager.level_mixed3_hint,true,2*60);
+				
+
+			}
+			
+		]]>
+	</mx:Script>
+</level>

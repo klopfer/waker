@@ -1,0 +1,20 @@
+# Default: let git decide on text vs binary.
+* text=auto
+
+# Legacy AS3 source: preserve original byte content (no line-ending normalization).
+legacy/** -text
+
+# Always treat these as binary.
+*.swf binary
+*.swc binary
+*.fla binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.mp3 binary
+*.mp4 binary
+*.webp binary
+*.ogg binary
+*.psd binary
+*.zip binary

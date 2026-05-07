@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+
+<project name="projectname" default="all">
+<!-- the name of your games' main Flex project file -->
+<property name="main.mxml.source" value="Woosh2" />
+<!-- the name that should be given to your projects' SWF file -->
+<property name="main.swf.name" value="Woosh2" />
+
+<!-- check to be sure whether you're using 2.5, 3.0, or a newer SDK -->
+<property name="mxmlc.dir" value="C:\Program Files\Adobe\Flex Builder 3\sdks\3.0.0\bin" />
+
+	<!-- the directory you're putting your SWF and assets into -->
+	<property name="output.dir" value="builds" />
+	
+	<!-- the base directory for code and assets is usually the name of your p4 workspace -->
+	<property name="project.dir" value="ccnet-build-team-5" />
+	<property name="src.dir" value="src" />
+
+	<target name="all" depends="compileMain"/>
+	<!-- target name="all" depends="compileMain, compileMaps" / -->
+	
+	<!-- compile and copy the main SWF file to the output directory, along with required assets -->
+	<target name="compileMain">
+		
+		<copy todir="${CCNetWorkingDirectory}\${output.dir}\${CCNetLabel}\assets">
+			<fileset basedir="${CCNetWorkingDirectory}\${project.dir}\${src.dir}\assets">
+				<include name="**/**" />
+			</fileset>			
+		</copy>
+		
+		<!-- compile the mxml file into a SWF -->
+		<exec program="${mxmlc.dir}\mxmlc.exe">
+
+	     <!--arg line="-aspath '${basedir}/${src.path}'"/-->
+
+	     <!--arg line="-configuration '${basedir}/flex-config.xml'"/-->
+	
+		 <arg line='-library-path "C:\Program Files\Adobe\Flex Builder 3\sdks\3.0.0\frameworks\libs" "C:\Program Files\Adobe\Flex Builder 3\sdks\3.0.0\frameworks\locale\en_US" ${CCNetWorkingDirectory}\${project.dir}\libs -use-network=false' />
+
+	     <arg line="-o ${CCNetWorkingDirectory}\${output.dir}\${CCNetLabel}\${main.swf.name}.swf"/>
+
+	     <arg line="${CCNetWorkingDirectory}\${project.dir}\${src.dir}\${main.mxml.source}.mxml"/>
+
+		</exec>
+
+	 </target>
+
+</project>

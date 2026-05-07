@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" horizontalScrollPolicy="off" verticalScrollPolicy="off" creationComplete="init()" xmlns:local="*">
+	<mx:Canvas id="resizeCanvas" width="100%" height="100%"  backgroundColor="#FFFFFF" horizontalScrollPolicy="off" verticalScrollPolicy="off" clipContent="true">
+	<mx:Image id="bgImg" />
+	
+	</mx:Canvas>
+	<mx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Image;
+			import CustomEvent;
+			import AssetManager;
+
+			//setting whether hint is on for this level
+			public var hint:Boolean = false;
+			public var time_before_hint_appear_in_seconds:int = 0;
+
+			// Deprecated by AssetManager
+			// [Embed (source="/assets/background/Glow_Effect_reddishorange.swf")] public var graphBG:Class;
+			public var ground:Image = new Image();
+			public var entrance:Image = new Image();
+			public var exit:Image = new Image();
+			public var spikeObstacleEditor:spikeObstacle = new spikeObstacle();
+			
+			public var playerHitEffect:MovieClip;
+			
+			public var gravityObjects:ArrayCollection = new ArrayCollection();
+			public var collisionObjects:ArrayCollection = new ArrayCollection();
+			public var graphObjects:ArrayCollection = new ArrayCollection();
+			public var triggers:ArrayCollection = new ArrayCollection();
+			public var displacementPairs:ArrayCollection = new ArrayCollection();
+			public var obstaclesObject:ArrayCollection = new ArrayCollection();
+			public var switchObstacle:ArrayCollection = new ArrayCollection();
+			
+			public var nextLvl:String = new String();
+		
+			private function init():void
+			{
+				//setting the previous difficulty to be the same as current level difficulty.
+				Settings.LEVEL_DIFFICULTY_PREVIOUS=Settings.LEVEL_DIFFICULTY;
+				
+				//making the player face right at the start of the game
+				(this.parent.parent as game).player.facingRight=true;
+				
+				(this.parent.parent as game).player.visible = true;
+				(this.parent.parent as game).itemExist = false;
+				this.addChild(spikeObstacleEditor);
+				
+				//this is a problem with flex/flash i guess??
+				//this hack is needed to set clipcontent == true,
+				//an image is needed out of screen in order to enable that
+				var hackImage:Image = new Image();
+				hackImage.source = AssetManager.upAura;
+				hackImage.x=200;
+				hackImage.y=700;
+				this.addChild(hackImage);
+				
+				Settings.inGame = true;
+				
+				//setting visibility of velocityArrow to be false when the game starts..
+				//velocity arrow is an object that appears when you pick up orb object.. it all happens in game.mxml
+				(this.parent.parent as game).velocityArrow.visible=false;
+				//end of the hack
+				
+			}
+			
+			//setting the background
+			public function setBG(value:Class):void
+			{
+				bgImg.source = value;
+			}
+			
+			//setting the ground, this ground is the entire collision used to check against
+			public function setGround(value:Class):void
+			{				
+				ground.source = value;
+				this.addChild(ground);
+				collisionObjects.addItem(ground);
+			}
+			
+			//this sets the hint for the level
+			public function setHint(hintBubbleSource:Class=null,hintTextSource:Class=null,showHint:Boolean=false,time_before_hint_appear:int=0):void
+			{
+				//if hint is false, hint will not be shown, the ret of the parameters can be ignored
+				//otherwise, the source of the files need to be given.. all the source are made in AssetManager.as and included into the level.mxml from each individual level.mxml file
+				hint=showHint;
+				(this.parent.parent as game).gameUI.hint.source = hintBubbleSource;
+				(this.parent.parent as game).gameUI.hintText.source = hintTextSource;
+				(this.parent.parent as game).gameUI.hint.y=600;
+				(this.parent.parent as game).gameUI.hint.x=30;
+				(this.parent.parent as game).gameUI.hintText.y=600;
+				(this.parent.parent as game).gameUI.hintText.x=50;
+				//hintImage.y=100;
+				time_before_hint_appear_in_seconds = time_before_hint_appear;
+				(this.parent.parent as game).gameUI.hintTimer=0;
+				(this.parent.parent as game).gameUI.activatingHint=false;
+				(this.parent.parent as game).gameUI.hintActivated=false;
+				(this.parent.parent as game).gameUI.hintStateDown=true;
+			}
+			
+			//setting the exit of the game
+			public function setExit(_x:int=0, _y:int=0):void
+			{	
+				if (Settings.gameEnds)
+				{
+					exit.source = AssetManager.exit;
+					
+					//changing the cutscene here too
+					// add level complete message to the canvas...
+					//(this.parent.parent as game).rawChildren.removeChild((this.parent.parent as game).winImg);
+					(this.parent.parent as game).winImg = AssetManager.endingCutScene;
+					// do not set the winImg.width = 800 here. it will seriously mess up with the movieclip.
+					// rawChildren is used for MovieClip
+					(this.parent.parent as game).rawChildren.addChild((this.parent.parent as game).winImg);
+					(this.parent.parent as game).winImg.x=this.width/2;
+					(this.parent.parent as game).winImg.y=this.height/2;
+					(this.parent.parent as game).winImg.gotoAndStop(0);				
+					// ... but make it invisible until the player reaches the exit.
+					(this.parent.parent as game).winImg.visible=false;
+				}
+				else if(Settings.isItACutScene)
+				{
+					exit.source = AssetManager.exitCutScene;
+					
+					//changing the cutscene here too
+					// add level complete message to the canvas...
+					//(this.parent.parent as game).rawChildren.removeChild((this.parent.parent as game).winImg);
+					(this.parent.parent as game).winImg = AssetManager.levelComplete_CutScene;
+					(this.parent.parent as game).winImg.width = 800;
+					// rawChildren is used for MovieClip
+					(this.parent.parent as game).rawChildren.addChild((this.parent.parent as game).winImg);
+					(this.parent.parent as game).winImg.x=this.width/2;
+					(this.parent.parent as game).winImg.y=this.height/2;
+					(this.parent.parent as game).winImg.gotoAndStop(0);				
+					// ... but make it invisible until the player reaches the exit.
+					(this.parent.parent as game).winImg.visible=false;
+				}
+				else
+				{
+					exit.source = AssetManager.exit;
+				
+					//changing the cutscene here too
+					// add level complete message to the canvas...
+					//(this.parent.parent as game).rawChildren.removeChild((this.parent.parent as game).winImg);
+					(this.parent.parent as game).winImg = AssetManager.levelComplete;
+					(this.parent.parent as game).winImg.width = 800;
+					// rawChildren is used for MovieClip
+					(this.parent.parent as game).rawChildren.addChild((this.parent.parent as game).winImg);
+					(this.parent.parent as game).winImg.x=this.width/2;
+					(this.parent.parent as game).winImg.y=this.height/2;
+					(this.parent.parent as game).winImg.gotoAndStop(0);				
+					// ... but make it invisible until the player reaches the exit.
+					(this.parent.parent as game).winImg.visible=false;
+				}
+				exit.x = _x;
+				exit.y = _y;				
+				this.addChild(exit);
+			}
+			
+			//setting the entry point of the game
+			public function setEntrance(_x:int=0, _y:int=0):void
+			{				
+				entrance.x = _x;
+				entrance.y = _y;				
+				this.addChild(entrance);
+				
+			    // fire off entranceSet event
+				var eventEntranceSet:CustomEvent = new CustomEvent(CustomEvent.ON_ENTRANCE_SET,{x:_x, y:_y});
+				this.parent.parent.dispatchEvent(eventEntranceSet);
+			}
+			
+			
+		
+			
+			/*********************************
+			 * the graph is crazy long with alot of different argument...
+			 * mainly cause the graph is the main functionality of the game
+			 * the argument includes the position and size of the graph
+			 * heightAboveGround is the value above platform closest to it
+			 * scaleX or scaleY are implemented to make the graph change dimension from its square shape.. 
+			 * 		however do not change it too much as it makes the graph very fat.. due to the scaling
+			 * the super duper long area_1_where_obstacles_cannot_be_place... blah blah are the 2 area 
+			 * 		defined by designer the zone where obstacle cannot lie within the graph.. other then 
+			 * 		the edge of the graph where i already have determine that no obstacles can be placed
+			 *********************************/
+			public function addGraph(graphtype:int, graphratio:int, 
+									x:int, y:int, 
+									scale:int, 
+									width:int, height:int, 
+									offset:int, 
+									orbx:int, orby:int, 
+									heightAboveGround:Number=0, 
+									originX:Number=0, originY:Number=0, 
+									numberObs:int=50, attempts_to_place_orb:int=50, 
+									scaleX:Number=1, scaleY:Number=1,
+									deadzone_1_min_x:Number=0, deadzone_1_max_x:Number=0, 
+									deadzone_1_min_y:Number=0, deadzone_1_max_y:Number=0, 
+									deadzone_2_min_x:Number=0, deadzone_2_max_x:Number=0, 
+									deadzone_2_min_y:Number=0, deadzone_2_max_y:Number=0):void 
+			{
+			// graphtype:int 0, displacement; 1, velocity; 2, acceleration
+			// graphratio:int 0 = square, 1 = tall, 2 = wide
+			
+				var graph:genericGraph = new genericGraph();
+						
+				//square displacement graph
+				if (graphtype == 0 && graphratio == 0) {
+					graph.init(scale, height, width, AssetManager.graphBGD, offset, Color.Dark_Green, Color.BLACK);
+				//tall displacement graph
+				} else if (graphtype == 0 && graphratio == 1) {
+					graph.init(scale, height, width, AssetManager.graphBGTD, offset, Color.Dark_Green, Color.BLACK, AssetManager.graphFlashTall);
+				//wide displacement graph
+				} else if (graphtype == 0 && graphratio == 2) {
+					graph.init(scale, height, width, AssetManager.graphBGWD, offset, Color.Dark_Green, Color.BLACK, AssetManager.graphFlashWide);
+				//square velocity graph
+				} else if (graphtype == 1 && graphratio == 0) {
+					graph.init(scale, height, width, AssetManager.graphBGV, offset, Color.Dark_Green, Color.BLACK);
+				//tall velocity graph
+				} else if (graphtype == 1 && graphratio == 1) {
+					graph.init(scale, height, width, AssetManager.graphBGTV, offset, Color.Dark_Green, Color.BLACK, AssetManager.graphFlashTall);
+				//wide velocity graph
+				} else if (graphtype == 1 && graphratio == 2) {
+					graph.init(scale, height, width, AssetManager.graphBGWV, offset, Color.Dark_Green, Color.BLACK, AssetManager.graphFlashWide);
+				}		
+				// first value determines the scale (e.g. 800 means the graph goes from -800 to 800)
+				// second, third values are for width and height == it uses the smaller value because it must be square (FOR NOW)
+				// fifth value will offset the plotting of the graph
+				//graph.init(scale, width, height, AssetManager.graphBG, offset);				
+				graph.bgImg.alpha = 0.2;
+				// top left corner: x 320, y 260
+				graph.x = x;
+				graph.y = y;
+				graph.scaleX = scaleX;
+				graph.scaleY = scaleY;
+				
+				addChild(graph);
+				collisionObjects.addItem(graph.terrainMain);
+				graphObjects.addItem(graph);
+				
+				if (graphtype == 0)
+				{
+					var origin:Image = new Image();
+					origin.source = AssetManager.displaceOrigin;
+					this.addChild(origin);
+					displacementPairs.addItem(new pairObject(graph, origin));
+					if (originX==0 && originY==0)
+					{
+						origin.x = orbx;
+						origin.y = orby;
+					}
+					else
+					{
+						origin.x = originX;
+						origin.y = originY;
+					}
+				}
+				
+				addOrb(graphtype, orbx, orby-20, graph);
+
+				//graph obstacles
+				var graphObstacles:obstacles = new obstacles();
+				//adding obstacles in
+				graphObstacles.proceduralGeneration(graph,numberObs,scaleX,scaleY,heightAboveGround,attempts_to_place_orb,deadzone_1_min_x,deadzone_1_max_x,deadzone_1_min_y,deadzone_1_max_y,deadzone_2_min_x,deadzone_2_max_x,deadzone_2_min_y,deadzone_2_max_y);
+				//adding item into the obstacles array
+				obstaclesObject.addItem(graphObstacles);
+				this.addChild(graphObstacles);
+			}
+			
+			public function addOrb(_type:int, _x:int, _y:int, pairedGraph:genericGraph):void
+			{
+				var orb:activationOrb = new activationOrb();
+				
+				if (_type==0)
+					orb.init(AssetManager.disOrb, AssetManager.disEffect);
+				else
+					orb.init(AssetManager.velOrb, AssetManager.velEffect);
+				
+				orb.x = _x;
+				orb.y = _y;
+				
+				addChild(orb);
+				// does the orb need to be in the collision collection?
+				// collisionObjects.addItem(orb);
+				gravityObjects.addItem(orb);
+	
+				//adding relation ship to graph.
+				switch (_type)
+				{
+					case 0:
+						// displacement
+						triggers.addItem(new pairObject(orb, pairedGraph, "displacement"));
+						//
+						break;
+					case 1:
+						// velocity
+					case 0:
+						// acceleration
+					default:	
+						triggers.addItem(new pairObject(orb, pairedGraph, "velocity"));
+						break;
+				}
+			}
+			
+			public function addHelpToLevel(source:Class, xPos:Number, yPos:Number):void
+			{
+				var help:Image = new Image();
+				help.source = source;
+				help.x = xPos;
+				help.y = yPos;
+				this.addChild(help);
+			}
+			
+			//for args, arguments come in groups of 6 representing six arguements of newSwitch.addObstacle
+			//		They are in the following order: x position of obstacle (int), y position of obstacle (int),
+			//		does the obstacle move horizontally? (boolean), is it at the top or at the left? (boolean),
+			//		width of the obstacle (int), height of the obstacle (int)
+			public function addSwitch(switchX:int, switchY:int, ... args):void
+			{
+				var newSwitch:switchObject = new switchObject();
+				newSwitch.init((this.parent.parent as game),switchX,switchY);
+				
+				for(var i:int = 0; i < args.length; i++) {
+					newSwitch.addObstacle((this.parent.parent as game),args[i],args[i+1],args[i+2],args[i+3],args[i+4],args[i+5]);
+					i+=5;
+				}
+				this.addChild(newSwitch);
+			}
+			
+			
+		]]>
+	</mx:Script>	
+</mx:Canvas>

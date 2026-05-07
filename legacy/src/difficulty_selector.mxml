@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+
+	Difficulty Selector Screen
+	
+	- to be used in the main menu & in-game
+	- updates the global var Settings.LEVEL_DIFFICULTY
+
+-->
+
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="800" height="600" creationComplete="init()" added="showScreen()" xmlns:ns1="*">
+	<mx:Canvas id="bgLayer" />
+	
+	<mx:Image id="easy_button" click="easy_clicked()" horizontalCenter="-100" width="86" verticalCenter="-50" source="{easy}"/>
+	<mx:Image id="medium_button" click="medium_clicked()" horizontalCenter="0" width="86" verticalCenter="-50" source="{mediumSelected}"/>
+	<mx:Image id="hard_button" click="hard_clicked()" horizontalCenter="100" width="86" verticalCenter="-50" source="{hard}"/>
+	<mx:states>
+		<mx:State name="easySelected">
+			<mx:SetProperty target="{easy_button}" name="source" value="{easySelected}"/>
+			<mx:SetProperty target="{medium_button}" name="source" value="{medium}"/>
+			<mx:SetProperty target="{hard_button}" name="source" value="{hard}"/>
+		</mx:State>
+		<mx:State name="mediumSelected">
+			<mx:SetProperty target="{easy_button}" name="source" value="{easy}"/>
+			<mx:SetProperty target="{medium_button}" name="source" value="{mediumSelected}"/>
+			<mx:SetProperty target="{hard_button}" name="source" value="{hard}"/>
+		</mx:State>
+		<mx:State name="hardSelected">
+			<mx:SetProperty target="{easy_button}" name="source" value="{easy}"/>
+			<mx:SetProperty target="{medium_button}" name="source" value="{medium}"/>
+			<mx:SetProperty target="{hard_button}" name="source" value="{hardSelected}"/>
+		</mx:State>		
+	</mx:states>
+	<mx:Script>
+		<![CDATA[
+			
+			import AssetManager;
+			import Settings;
+			
+			[Bindable] private var easy:Class;
+			[Bindable] private var easyMO:Class;
+			[Bindable] private var easySelected:Class;
+			
+			[Bindable] private var medium:Class;
+			[Bindable] private var mediumMO:Class;
+			[Bindable] private var mediumSelected:Class;
+			
+			[Bindable] private var hard:Class;
+			[Bindable] private var hardMO:Class;
+			[Bindable] private var hardSelected:Class;
+			
+			public var screen_bg:Image = new Image(); 
+			public var soundOpt:soundOptions = new soundOptions();
+			
+			public function init():void
+			{	
+				/*
+				sets the height, width and position of the options panel and adds it to screen.
+				*/
+				screen_bg.source = AssetManager.guiOptionsScreenBG;
+				screen_bg.width = 550;
+				screen_bg.height = 400;
+				screen_bg.x=125;
+				screen_bg.y=100;
+				this.bgLayer.addChild(screen_bg);
+				
+				//assign images to the difficulty buttons.
+				easy = AssetManager.guiBtnEasy;
+				easyMO = AssetManager.guiBtnEasy;
+				easySelected = AssetManager.guiBtnEasySelected;
+				medium = AssetManager.guiBtnMedium;
+				mediumMO = AssetManager.guiBtnMedium;
+				mediumSelected = AssetManager.guiBtnMediumSelected;
+				hard = AssetManager.guiBtnHard;
+				hardMO = AssetManager.guiBtnHard;
+				hardSelected = AssetManager.guiBtnHardSelected;	
+				
+				if(Settings.LEVEL_DIFFICULTY == 1) //easy
+					this.currentState = "easySelected";
+				else if(Settings.LEVEL_DIFFICULTY == 2) //medium
+					this.currentState = "mediumSelected";
+				else //hard
+					this.currentState = "hardSelected";
+				
+				//sets position of sound options and add to screen.
+				soundOpt.x=290;
+				soundOpt.y=321;
+				this.addChild(soundOpt);
+				
+			}
+			
+			public function showScreen():void
+			{
+				if(Settings.LEVEL_DIFFICULTY == 1) //easy
+					this.currentState = "easySelected";
+				else if(Settings.LEVEL_DIFFICULTY == 2) //medium
+					this.currentState = "mediumSelected";
+				else //hard
+					this.currentState = "hardSelected";
+			}
+			
+			public function easy_clicked():void
+			{
+				Settings.LEVEL_DIFFICULTY = 1;
+				this.currentState = "easySelected";
+			}
+			
+			public function medium_clicked():void
+			{
+				Settings.LEVEL_DIFFICULTY = 2;
+				this.currentState = "mediumSelected";
+			}
+			
+			public function hard_clicked():void
+			{
+				Settings.LEVEL_DIFFICULTY = 3;
+				this.currentState = "hardSelected";
+			}
+		]]>
+	</mx:Script>	
+</mx:Canvas>

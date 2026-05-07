@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="{swidth}" height="{sheight}" horizontalScrollPolicy="off" verticalScrollPolicy="off" xmlns:local="*">
+<local:avatarImage id="imageOfAvatar"/>
+	
+	<mx:Script>
+		<![CDATA[
+		/*******************************************************************************************
+		 * This mxml contain the collision of the avatar
+		 * This mxml also contains the function to determine which direction avatar is facing
+		 * This mxml contains avatarImage.mxml 
+		 ******************************************************************************************/
+			import mx.controls.Image;
+			import mx.preloaders.DownloadProgressBar;			
+			import AssetManager;
+						
+			//these values are used for the avatarImage.mxml
+			[Bindable] public var swidth:int;
+			[Bindable] public var sheight:int; 
+			
+			//previousPos is used to determine direction avatar is facing, or if the avatar is jumping.. etc
+			public var previousPos:Point = new Point(0,0);
+			//creating new images
+			public var headPt:Image = new Image();
+			public var leftPt:Image = new Image();
+			public var rightPt:Image = new Image();
+			public var bottomPt:Image = new Image();
+			
+			//avatar shall be facing right at the start
+			public var facingRight:Boolean = true;
+			
+			private var timer:int=0;
+			
+			//initializing the avatar
+			public function init(_width:Number, _height:Number, _spriteSheet:Class):void
+			{
+				//setting the width and height of the avatar	
+				swidth=_width;
+				sheight=_height;
+				this.imageOfAvatar.swidth=_width;
+				this.imageOfAvatar.sheight=_height;	
+				
+				//setting the sprite sheet
+				this.imageOfAvatar.avatarSheet = _spriteSheet;
+				//make the default avatar state to face right.
+				this.imageOfAvatar.currentState = "faceRight";
+								
+				headPt.source = AssetManager.upAura;
+				leftPt.source = AssetManager.leftAura;
+				rightPt.source = AssetManager.rightAura;
+				bottomPt.source = AssetManager.downAura;
+				
+				//changing all the width and height of the collision corner to fix this canvas
+				//a collision image by itself, for eg. headPt is an image that is 4x3 resolution, with a small grey/white collision box inside the transparent image that has low alpha.. 2%? done in flash
+				//thus there is a total of 4 images.
+				headPt.width = leftPt.width = rightPt.width = bottomPt.width = this.width;
+				headPt.height = leftPt.height = rightPt.height = bottomPt.height = this.height;
+				
+				this.addChild(headPt);
+				this.addChild(leftPt);
+				this.addChild(rightPt);
+				this.addChild(bottomPt);			
+			}
+			
+			public var isIdle:Boolean = false;
+			public var landPossible:Boolean = false;
+			
+			
+			//this function determines the animation that is playing for the avatar
+			//some of the value check against are not 0, because the collision used is pixel collision, thus some margin of error are given			
+			public function updateDisplay():void
+			{	
+				if(previousPos.x==this.x)
+					isIdle=true;
+				else
+					isIdle=false;					
+				
+				//checks if there's a change in direction the avatar is facing
+				//direction player faces is taken off..
+				//this is an extremely last minute fix for the problem that avatar changes direction when falling
+				/*
+				if (previousPos.x < this.x - 0.1)
+					this.facingRight = true;
+				if (previousPos.x > this.x + 0.1)
+					this.facingRight = false;
+					*/
+					
+				//Determines the state of the avatar by comparing its current position with its previous position
+				//idle is when the avatar did not move horizontally.
+				if (isIdle)
+				{
+					//stop playing movement sounds when idle.
+					soundManager.stopPlayerSprint();
+					soundManager.stopPlayerWalk();
+					
+					if(facingRight)
+					{	
+						//checks if the avatar is moving straight up or down, then display the correct state
+						if (previousPos.y-this.y>=0 && (this.parent.parent as game).childMovements.onGround==false)
+							this.imageOfAvatar.currentState = "jumpUpRight";
+						else if (this.y-previousPos.y>6 && (this.parent.parent as game).childMovements.onGround==false)
+						{
+							this.imageOfAvatar.currentState = "jumpDownRight";
+							//activates flag for avatar landing sound.
+							//activated when player enters the jumpDown________ states.
+							landPossible = true;
+						}
+						else
+						{
+							this.imageOfAvatar.currentState = "faceRight";
+							//play the landing sound							
+							if (landPossible)
+							{
+								soundManager.playLand();
+								landPossible=false;					
+							}
+						}						
+					}
+					else
+					{
+						if (previousPos.y-this.y>=0 && (this.parent.parent as game).childMovements.onGround==false)
+							this.imageOfAvatar.currentState = "jumpUpLeft";
+						else if (this.y-previousPos.y>6 && (this.parent.parent as game).childMovements.onGround==false)
+						{
+							this.imageOfAvatar.currentState = "jumpDownLeft";
+							landPossible = true;
+						}
+						else
+						{
+							this.imageOfAvatar.currentState = "faceLeft";
+							if (landPossible)
+							{
+								soundManager.playLand();
+								landPossible=false;					
+							}
+						}
+					}
+				}
+				else
+				{
+					if(facingRight)
+					{
+						if (previousPos.y-this.y>=0 && (this.parent.parent as game).childMovements.onGround==false)
+						{
+							this.imageOfAvatar.currentState = "jumpUpRight";
+							soundManager.stopPlayerSprint();
+							soundManager.stopPlayerWalk();
+						}
+						else if (this.y-previousPos.y>6 && (this.parent.parent as game).childMovements.onGround==false)
+						{
+							this.imageOfAvatar.currentState = "jumpDownRight";
+							soundManager.stopPlayerSprint();
+							soundManager.stopPlayerWalk();
+							landPossible = true;
+						}
+						//displays the correct avatar state based on difference between the previous and current position.
+						//a value smaller than 6, avatar is walking, else avatar is running.
+						else if (Math.abs(previousPos.x-this.x)>4*1.5)
+						{
+							if (landPossible)
+							{
+								soundManager.playLand();
+								landPossible=false;					
+							}
+							this.imageOfAvatar.currentState = "runRight";
+							soundManager.stopPlayerWalk();
+							
+							if (!landPossible)
+							soundManager.playPlayerSprint();
+						}
+						else
+						{
+							if (landPossible)
+							{
+								soundManager.playLand();
+								landPossible=false;					
+							}
+							this.imageOfAvatar.currentState = "walkRight";
+							soundManager.stopPlayerSprint();
+							
+							if (!landPossible)
+								soundManager.playPlayerWalk();
+						}
+					}
+					else
+					{
+						if (previousPos.y-this.y>=0 && (this.parent.parent as game).childMovements.onGround==false)
+						{
+							this.imageOfAvatar.currentState = "jumpUpLeft";
+							soundManager.stopPlayerSprint();
+							soundManager.stopPlayerWalk();
+						}
+						else if (this.y-previousPos.y>6 && (this.parent.parent as game).childMovements.onGround==false)
+						{
+							this.imageOfAvatar.currentState = "jumpDownLeft";
+							soundManager.stopPlayerSprint();
+							soundManager.stopPlayerWalk();
+							landPossible = true;
+						}
+							
+						else if (Math.abs(previousPos.x-this.x)>4*1.5)
+						{
+							if (landPossible)
+							{
+								soundManager.playLand();
+								landPossible=false;					
+							}
+							this.imageOfAvatar.currentState = "runLeft";
+							soundManager.stopPlayerWalk();
+							
+							if (!landPossible)
+								soundManager.playPlayerSprint();
+						}
+						else
+						{
+							if (landPossible)
+							{
+								soundManager.playLand();
+								landPossible=false;					
+							}
+							this.imageOfAvatar.currentState = "walkLeft";							
+							soundManager.stopPlayerSprint();
+							
+							if (!landPossible)
+								soundManager.playPlayerWalk();
+						}
+					}
+				}
+				
+				previousPos.x = this.x;
+				previousPos.y = this.y;				
+			}
+			
+			public function changeState(targetState:String):void
+			{
+				this.imageOfAvatar.currentState = targetState;
+			}
+			
+			public function moveX(value:Number):void
+			{
+				this.x+=value;
+			}
+						
+		]]>
+	</mx:Script>
+</mx:Canvas>

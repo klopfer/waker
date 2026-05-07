@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{
+				Settings.isItACutScene=false;
+				
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = 'm3';
+
+				// Don't have background yet
+				super.setBG(AssetManager.bgWorld3_3);
+				
+				// this png determines collision based on transparency.
+				super.setGround(AssetManager.levelm4_collision); 
+				
+				super.setExit(0,40);
+				super.setEntrance(10,470);
+				
+				this.spikeObstacleEditor.addSpike(759,438,false,true,true,757,757,0);
+				
+				if(Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// hard
+					this.spikeObstacleEditor.addSpike(160,480-80+40,true,true,true,160,800-145,7);
+					
+					super.addGraph(0,1,800-225-160,10,630,225,450,200,20,476,0,20,460,4,40,1,1,0,225,0,100);
+					super.addGraph(0,1,800-225-160-225-22,10,600,225,450,160,800-60,476,0,800-60,460,3,50,1,1,0,225,0,75,0,225,315,450);
+				}
+				else if (Settings.LEVEL_DIFFICULTY == 2) 
+				{
+					// medium
+					super.addGraph(0,1,800-225-160,10,630,225,450,200,20,476,0,20,460,3,40,1,1,0,225,0,100);
+					super.addGraph(0,1,800-225-160-225-22,10,600,225,450,160,800-60,476,0,800-60,460,2,50,1,1,0,225,0,75,0,225,315,450);
+				}
+				else 
+				{
+					// easy
+					super.addGraph(0,1,800-225-160,10,630,225,450,200,20,476,0,20,460,2,40,1,1,0,225,0,100);
+					super.addGraph(0,1,800-225-160-225-22,10,600,225,450,160,800-60,476,0,800-60,460,1,50,1,1,0,225,0,75,0,225,315,450);
+				}
+				setHint(AssetManager.level_hintsign,AssetManager.level_mixed2_hint,true,2*60);
+				
+
+			}
+		]]>
+	</mx:Script>
+</level>

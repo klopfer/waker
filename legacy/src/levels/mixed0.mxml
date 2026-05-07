@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+			
+			import AssetManager;
+			import Settings;
+			
+			public function initLvl():void
+			{	
+				Settings.isItACutScene=false;
+				
+				soundManager.stopBGM();
+				soundManager.currentMusic = "world03";				
+				
+				// currentLevel makes it easier for other objects to access the properties of this level
+				(this.parent as levelManager).currentLevel = this;
+
+				// this is a string suffix appended to "level" and refers to an MXML component
+				// e.g. "d1" will load leveld1.mxml when the player collides with the exit
+				super.nextLvl = "m1";
+				
+				// setBG takes one arg: the asset of containing the background art
+				super.setBG(AssetManager.bgWorld3_1);				
+				
+				// setGround takes one arg: that art asset in which collision is determined by transparency.
+				super.setGround(AssetManager.levelm5_collision); 
+				
+				// setEntrance takes x, y coord to place the entrance
+				// this is also where the player will be spawned when the level loads
+				super.setEntrance(200,400);
+								
+				// setExit takes x,y coords to place the exit image
+				super.setExit(380,239);
+				
+				super.addHelpToLevel(AssetManager.help_image_D,25,60);
+				super.addHelpToLevel(AssetManager.help_image_D,745,60);
+				
+				//takes place of graph obstacle
+				this.spikeObstacleEditor.addSpike(590,180,false,true,true,560,560,0);
+				
+				if(Settings.LEVEL_DIFFICULTY == 3)
+				{
+					// addGraph places a graph and activation object on the level
+					// addGraph may be called multiple times to create more than 1 graph
+					// args:
+					//		graphtype: two digit number expected,
+					//				first digit: 0=displacement, 1=velocity, 2=acceleration
+					//				second digit: 0=square, 1=tall, 2=wide
+					//		x, y: position of graph space
+					//		scale: this is the "zoom" scale of the plot (NOTE: must be > 21 or the avatar can't jump from idle to walk to run in the graph.)
+					// 		width, height: the size of the graph space
+					// 		offset: shifts the "0" of the graph space
+					//		orbx, orby: location for the activation orb
+					super.addGraph(0,0,80,99,330,180,180,40,370,456,0,370,439,2,50);
+					//has to have no obstacles or else player could be teleported to activation orb in enclosed area
+					super.addGraph(1,0,517,99,14,180,180,40,370,320,0,0,0,0,0);
+					
+					this.spikeObstacleEditor.addSpike(100,480,true,true,true,0,777,13);
+					this.spikeObstacleEditor.addSpike(200,480,true,true,true,0,777,13);
+				} else if(Settings.LEVEL_DIFFICULTY == 2) {
+					// addGraph places a graph and activation object on the level
+					// addGraph may be called multiple times to create more than 1 graph
+					// args:
+					//		graphtype: two digit number expected,
+					//				first digit: 0=displacement, 1=velocity, 2=acceleration
+					//				second digit: 0=square, 1=tall, 2=wide
+					//		x, y: position of graph space
+					//		scale: this is the "zoom" scale of the plot (NOTE: must be > 21 or the avatar can't jump from idle to walk to run in the graph.)
+					// 		width, height: the size of the graph space
+					// 		offset: shifts the "0" of the graph space
+					//		orbx, orby: location for the activation orb
+					super.addGraph(0,0,80,99,330,180,180,40,370,456,0,370,439,1,50);
+					//has to have no obstacles or else player could be teleported to activation orb in enclosed area
+					super.addGraph(1,0,517,99,14,180,180,40,370,320,0,0,0,0,0);
+				} else {
+					// addGraph places a graph and activation object on the level
+					// addGraph may be called multiple times to create more than 1 graph
+					// args:
+					//		graphtype: two digit number expected,
+					//				first digit: 0=displacement, 1=velocity, 2=acceleration
+					//				second digit: 0=square, 1=tall, 2=wide
+					//		x, y: position of graph space
+					//		scale: this is the "zoom" scale of the plot (NOTE: must be > 21 or the avatar can't jump from idle to walk to run in the graph.)
+					// 		width, height: the size of the graph space
+					// 		offset: shifts the "0" of the graph space
+					//		orbx, orby: location for the activation orb
+					super.addGraph(0,0,80,99,330,180,180,40,370,456,0,370,439,1,50);
+					//has to have no obstacles or else player could be teleported to activation orb in enclosed area
+					super.addGraph(1,0,517,99,14,180,180,40,370,320,0,0,0,0,0);
+				}
+				
+				setHint(AssetManager.level_hintsign,AssetManager.level_mixed0_hint,true,1*60);
+				
+				super.addSwitch(20,91,310,160,false,false,20,200,470,160,false,false,20,200);
+				super.addSwitch(740,91,350,200,false,false,20,80,430,200,false,false,20,80);
+
+			}
+			
+		]]>
+	</mx:Script>
+</level>

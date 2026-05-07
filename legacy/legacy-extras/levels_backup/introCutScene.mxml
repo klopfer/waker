@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	
+	<mx:Script>
+		<![CDATA[
+			
+			import AssetManager;
+			
+			public function initLvl():void
+			{	
+				soundManager.stopBGM();
+				soundManager.currentMusic = "world01";
+				trace (soundManager.currentMusic);
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = "td";
+				super.setBG(AssetManager.introCutScene);
+				super.setGround(AssetManager.cutScene_collision); 
+				super.setEntrance(0,460);
+				super.setExit(700,480);
+			}
+			
+		]]>
+	</mx:Script>
+	
+</level>

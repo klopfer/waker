@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<level xmlns="*" xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" creationComplete="initLvl()">
+	<mx:Script>
+		<![CDATA[
+
+			import AssetManager;
+			
+			public function initLvl():void
+			{
+				(this.parent as levelManager).currentLevel = this;
+
+				super.nextLvl = "mCutScene";
+				
+				super.setBG(AssetManager.bgWorld2_3);				
+				
+				// this png determines collision based on transparency:
+				super.setGround(AssetManager.levelv3_collision); 
+				
+				// select img for the entrance and exit and place on the canvas
+				super.setExit(490,27);
+				super.setEntrance(0,467);
+
+				// place graphs 
+				super.addGraph(1,0,200,200,21,320,320,55,160,460,0,0,0,3,5);	
+				super.addGraph(0,0,540,30,600,230,230,70,550,200,0,0,0,0,5);
+							
+				// (this.parent.parent as game).setPlayerLoc(this.entrance.x,this.entrance.y);
+				
+				this.spikeObstacleEditor.addSpike(640,170,false,true,true,0,0,0);
+				this.spikeObstacleEditor.addSpike(705,170,false,true,true,0,0,0);
+				
+				if(AssetManager.LEVEL_DIFFICULTY==3)
+				{
+				//this.spikeObstacleEditor.addSpike(500,490,true,true,true,0,510,5);
+				this.spikeObstacleEditor.addSpike(500,230,true,true,true,540,780,4);
+				this.spikeObstacleEditor.addSpike(520,480,true,false,true,100,480,8);
+				}
+			}
+		]]>
+	</mx:Script>
+</level>
