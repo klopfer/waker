@@ -10,7 +10,10 @@ body {
   background: #000;
   overflow: hidden;
   color: #ccc;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 body {

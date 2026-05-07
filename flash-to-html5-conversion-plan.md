@@ -22,16 +22,18 @@ This is a **template to be filled in**, not a finished plan. Sections marked wit
 **Why port now:** want people to still be able to play and show past work
 
 **Success criteria** (pick what applies):
+
 - [x] Plays in modern Chrome/Safari/Firefox at original framerate
 - [x] Mobile-playable would be a bonus, but not essential (touch input, responsive)
 - [x] Should look and feel like the original, but doesn't need pixel perfection
-- [ ] Save data migration from old SharedObject format *(N/A — game uses no SharedObject persistence)*
+- [ ] Save data migration from old SharedObject format _(N/A — game uses no SharedObject persistence)_
 - [ ] Maintainable in TypeScript by future contributors
 - [ ] Open source release / accessible bundle size
 
 **Explicit non-goals:**
+
 - [x] We will not preserve Flex MXML data binding semantics — UI is rebuilt in plain HTML/DOM
-- [ ] No multiplayer in v1 *(N/A — game is single-player only)*
+- [ ] No multiplayer in v1 _(N/A — game is single-player only)_
 
 ---
 
@@ -45,15 +47,15 @@ Generated 2026-05-07 from the source tree.
 
 **File counts (under `src/`):**
 
-| Type | Count | Notes |
-|---|---:|---|
-| `.as`  | 64 | Includes 25 inside vendored `gs/` (Greensock TweenMax, ~10.092) |
-| `.mxml`| 63 | All Flex 3.0 MXML, mostly `<mx:Canvas>` subclasses |
-| `.swc` |  0 in `src/`; 1 in `libs/` | `GaverRingtone1_sf.swc` (Sonoflash procedural-tone library) |
-| `.swf` (assets) | 198 total / 99 inside `src/story/` | Most are MovieClip animations, not just static art |
-| `.png` | 158 / 81 inside `src/story/` | Includes alpha-channel **collision masks** for ground geometry |
-| `.jpg` | 2 / 1 inside `src/story/` | Menu background |
-| `.mp3` | 85 / 50 inside `src/story/` | SFX, dialogue VO, end-game BGM |
+| Type            |                              Count | Notes                                                           |
+| --------------- | ---------------------------------: | --------------------------------------------------------------- |
+| `.as`           |                                 64 | Includes 25 inside vendored `gs/` (Greensock TweenMax, ~10.092) |
+| `.mxml`         |                                 63 | All Flex 3.0 MXML, mostly `<mx:Canvas>` subclasses              |
+| `.swc`          |          0 in `src/`; 1 in `libs/` | `GaverRingtone1_sf.swc` (Sonoflash procedural-tone library)     |
+| `.swf` (assets) | 198 total / 99 inside `src/story/` | Most are MovieClip animations, not just static art              |
+| `.png`          |       158 / 81 inside `src/story/` | Includes alpha-channel **collision masks** for ground geometry  |
+| `.jpg`          |          2 / 1 inside `src/story/` | Menu background                                                 |
+| `.mp3`          |        85 / 50 inside `src/story/` | SFX, dialogue VO, end-game BGM                                  |
 
 **Total lines of AS3 / MXML in `src/`:** **~15,435 LoC** (including the vendored `gs/` Greensock copy).
 
@@ -88,16 +90,17 @@ src/
 
 **External `.swc` / `.swf` libraries referenced:**
 
-| Library | Where | Replacement plan |
-|---|---|---|
-| `gs.TweenMax` (vendored AS3 source in `src/gs/`) | global tweens, glow filters | **GSAP 3** (web port has near-identical API) |
-| `GambitLib.HitTest` (vendored AS3 source in `src/GambitLib/`) | pixel-perfect collision throughout | **Custom port to OffscreenCanvas + getImageData** (see §2.4) |
-| `com.sonoflash.*` / `GaverRingTone1` (`libs/GaverRingtone1_sf.swc`) | procedural tone tied to graph drawing | **Custom Web Audio synth** (see §6 risk) |
-| `mx.controls.Image`, `mx.core.UIComponent`, `mx.collections.ArrayCollection`, `mx.events.IndexChangedEvent` | core display & state | Replaced wholesale by PixiJS / DOM / TS arrays |
+| Library                                                                                                     | Where                                 | Replacement plan                                             |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------ |
+| `gs.TweenMax` (vendored AS3 source in `src/gs/`)                                                            | global tweens, glow filters           | **GSAP 3** (web port has near-identical API)                 |
+| `GambitLib.HitTest` (vendored AS3 source in `src/GambitLib/`)                                               | pixel-perfect collision throughout    | **Custom port to OffscreenCanvas + getImageData** (see §2.4) |
+| `com.sonoflash.*` / `GaverRingTone1` (`libs/GaverRingtone1_sf.swc`)                                         | procedural tone tied to graph drawing | **Custom Web Audio synth** (see §6 risk)                     |
+| `mx.controls.Image`, `mx.core.UIComponent`, `mx.collections.ArrayCollection`, `mx.events.IndexChangedEvent` | core display & state                  | Replaced wholesale by PixiJS / DOM / TS arrays               |
 
 **No usage of:** `flash.net.SharedObject`, `URLLoader`, `URLRequest`, `NetConnection`, `Socket`, `WebSocket`, `ExternalInterface`, `describeType`, Stage3D, Starling, Box2D, AIR-only APIs. (Verified by grep across `src/`.) **No save data, no networking, no JS bridge, no reflection.** This is a major simplification.
 
 **Build configuration:**
+
 - `.actionScriptProperties` / `.flexProperties` / `.project` — Adobe Flash Builder 3 project files
 - `team5.build` — Apache Ant script invoking `mxmlc.exe` from **Flex SDK 3.0.0** (`C:\Program Files\Adobe\Flex Builder 3\sdks\3.0.0\bin`)
 - HTML wrapper template in `html-template/` is the stock Flex `AC_FL_RunContent` embed — **discard**
@@ -105,59 +108,59 @@ src/
 
 ### 2.2 Dependency analysis
 
-Concrete classification for *this* project:
+Concrete classification for _this_ project:
 
-| Library type | Used here? | Replacement strategy |
-|---|---|---|
-| Renderer / display | **Flash native + Flex `mx:Canvas` + MovieClip SWFs.** No Starling/Stage3D. | **PixiJS v8** — display-list metaphor maps cleanly onto the existing scene-graph |
-| Tweening | **Greensock TweenMax** (vendored AS3, `src/gs/`) | **GSAP 3** — drop-in mental-model replacement; `glowFilter` plugin → Pixi filter shim |
-| Physics | **None.** Hand-rolled gravity, fixed gameplay constants (gravity=2, jump=14.5, walk=6, run=12 px/frame), per-pixel collision response loop | Keep the same algorithms in TS — no physics engine needed |
-| Audio | **Native `flash.media.Sound` + Sonoflash `GaverRingTone1`** procedural synthesizer | **Howler.js** for SFX/BGM/VO + **custom Web Audio synth** for the parameterized tone modulated while drawing graphs (§6 risk) |
-| Networking | **None.** | N/A |
-| Utility | `flash.geom.Point`, `flash.geom.Rectangle`, `mx.collections.ArrayCollection` | Plain TS objects / arrays |
-| Flex framework | **mx.controls.Image**, **mx.core.UIComponent**, **mx.collections.ArrayCollection**, mxml states, `[Bindable]` (10 sites), no spark.* | Re-implemented as Pixi containers + DOM — no Royale needed |
-| Pixel collision | **`GambitLib.HitTest.pixelsOverlap`** — rasterizes both `DisplayObject`s to `BitmapData`, AND-s their alpha masks, scans for any non-zero pixel | **Custom OffscreenCanvas re-implementation** — the algorithm is ~60 lines and ports cleanly, but every callsite needs to migrate to the new types |
+| Library type       | Used here?                                                                                                                                      | Replacement strategy                                                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Renderer / display | **Flash native + Flex `mx:Canvas` + MovieClip SWFs.** No Starling/Stage3D.                                                                      | **PixiJS v8** — display-list metaphor maps cleanly onto the existing scene-graph                                                                  |
+| Tweening           | **Greensock TweenMax** (vendored AS3, `src/gs/`)                                                                                                | **GSAP 3** — drop-in mental-model replacement; `glowFilter` plugin → Pixi filter shim                                                             |
+| Physics            | **None.** Hand-rolled gravity, fixed gameplay constants (gravity=2, jump=14.5, walk=6, run=12 px/frame), per-pixel collision response loop      | Keep the same algorithms in TS — no physics engine needed                                                                                         |
+| Audio              | **Native `flash.media.Sound` + Sonoflash `GaverRingTone1`** procedural synthesizer                                                              | **Howler.js** for SFX/BGM/VO + **custom Web Audio synth** for the parameterized tone modulated while drawing graphs (§6 risk)                     |
+| Networking         | **None.**                                                                                                                                       | N/A                                                                                                                                               |
+| Utility            | `flash.geom.Point`, `flash.geom.Rectangle`, `mx.collections.ArrayCollection`                                                                    | Plain TS objects / arrays                                                                                                                         |
+| Flex framework     | **mx.controls.Image**, **mx.core.UIComponent**, **mx.collections.ArrayCollection**, mxml states, `[Bindable]` (10 sites), no spark.\*           | Re-implemented as Pixi containers + DOM — no Royale needed                                                                                        |
+| Pixel collision    | **`GambitLib.HitTest.pixelsOverlap`** — rasterizes both `DisplayObject`s to `BitmapData`, AND-s their alpha masks, scans for any non-zero pixel | **Custom OffscreenCanvas re-implementation** — the algorithm is ~60 lines and ports cleanly, but every callsite needs to migrate to the new types |
 
 ### 2.3 AS3 / Flash feature usage map
 
-| Feature | Use level | Notes / example call sites |
-|---|---|---|
-| `flash.display.MovieClip` | **Heavy** | All cutscenes, level-complete animations, BGM "music" SWFs, glow effects, hint signs are SWF MovieClips. `gotoAndStop`, `nextFrame`, `framesLoaded`, `play()` used throughout `Woosh2.mxml` and `level.mxml` |
-| `flash.display.Graphics` | **Heavy** | `genericGraph.mxml` — `terrainMain.graphics.lineTo(timer, value)` draws the curve in real time, then the rendered shape becomes the platform |
-| `flash.display.BitmapData` | **Heavy (indirect)** | Inside `GambitLib.HitTest` — rasterize-and-AND for pixel collision |
-| `flash.events.*` | **Light** | One custom event (`CustomEvent.ON_ENTRANCE_SET`); 9 `dispatchEvent` calls (most are inside vendored TweenMax). No bubbling reliance. |
-| `flash.events.Event.ENTER_FRAME` | **Heavy** | 5 `addEventListener(Event.ENTER_FRAME, ...)` sites driving the splash, the main game loop, the win countdown, etc. **Frame-locked logic everywhere.** |
-| `flash.geom.Point`, `Rectangle` | **Light** | `playerVel`, `playerAccel`, `previousPos`, occasional `systemManager.screen` |
-| `flash.geom.Matrix`, `ColorTransform` | **None directly** | Used only inside `HitTest` rasterization |
-| `flash.media.Sound` / `SoundChannel` / `SoundTransform` | **Heavy** | `soundManager.mxml` — BGM channel, VO channel, sprint/walk loops, fade via incrementing `SoundTransform.volume` |
-| `flash.net.*` | **None** | No SharedObject / URLLoader / Socket usage — confirmed by grep |
-| `flash.utils.Timer`, `getTimer`, `Dictionary`, `ByteArray` | **None** | Code uses frame counters instead of timers |
-| `flash.text.*` | **Trivial** | One `<mx:Text id="tracer">` debug label; no embedded fonts |
-| `flash.system.*`, `ExternalInterface` | **None** | No JS bridge, no capabilities sniffing |
-| Stage3D / Starling | **None** | Pure 2D Flex display list |
-| E4X / `XML` literals | **None** | No `<foo/>` literals, no e4x queries |
-| `Vector.<T>` typed arrays | **None** — uses `mx.collections.ArrayCollection` and untyped `Array` | Direct port to `T[]` |
-| `int` / `uint` / `Number` | Mixed but **no bitwise tricks** | Collapse to `number`; spot-check arithmetic |
-| `[Embed]` metadata | **Heavy** — ~250 sites in `AssetManager.as` alone | Replace with Vite static imports |
-| `[Bindable]` / data binding | **Light** — 10 sites total (one-way, mostly volume/visibility flags) | Replace with explicit setter calls |
-| Reflection (`describeType`, `getDefinitionByName`) | **None in game code** (one site inside `gs/TweenGroup.as`) | Nothing to port |
-| `cursorManager.setCursor` / `hideCursor` | **Light** — custom PNG cursor in `Woosh2.mxml` | CSS `cursor: url(...)` |
-| Flex states (`mx:State`, `currentState`) | **Heavy in UI** — 11 state blocks across `menu.mxml`, `imgButton.mxml`, `difficulty_selector.mxml`, `avatarImage.mxml`, etc. | Plain JS state machines / CSS classes |
+| Feature                                                    | Use level                                                                                                                    | Notes / example call sites                                                                                                                                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `flash.display.MovieClip`                                  | **Heavy**                                                                                                                    | All cutscenes, level-complete animations, BGM "music" SWFs, glow effects, hint signs are SWF MovieClips. `gotoAndStop`, `nextFrame`, `framesLoaded`, `play()` used throughout `Woosh2.mxml` and `level.mxml` |
+| `flash.display.Graphics`                                   | **Heavy**                                                                                                                    | `genericGraph.mxml` — `terrainMain.graphics.lineTo(timer, value)` draws the curve in real time, then the rendered shape becomes the platform                                                                 |
+| `flash.display.BitmapData`                                 | **Heavy (indirect)**                                                                                                         | Inside `GambitLib.HitTest` — rasterize-and-AND for pixel collision                                                                                                                                           |
+| `flash.events.*`                                           | **Light**                                                                                                                    | One custom event (`CustomEvent.ON_ENTRANCE_SET`); 9 `dispatchEvent` calls (most are inside vendored TweenMax). No bubbling reliance.                                                                         |
+| `flash.events.Event.ENTER_FRAME`                           | **Heavy**                                                                                                                    | 5 `addEventListener(Event.ENTER_FRAME, ...)` sites driving the splash, the main game loop, the win countdown, etc. **Frame-locked logic everywhere.**                                                        |
+| `flash.geom.Point`, `Rectangle`                            | **Light**                                                                                                                    | `playerVel`, `playerAccel`, `previousPos`, occasional `systemManager.screen`                                                                                                                                 |
+| `flash.geom.Matrix`, `ColorTransform`                      | **None directly**                                                                                                            | Used only inside `HitTest` rasterization                                                                                                                                                                     |
+| `flash.media.Sound` / `SoundChannel` / `SoundTransform`    | **Heavy**                                                                                                                    | `soundManager.mxml` — BGM channel, VO channel, sprint/walk loops, fade via incrementing `SoundTransform.volume`                                                                                              |
+| `flash.net.*`                                              | **None**                                                                                                                     | No SharedObject / URLLoader / Socket usage — confirmed by grep                                                                                                                                               |
+| `flash.utils.Timer`, `getTimer`, `Dictionary`, `ByteArray` | **None**                                                                                                                     | Code uses frame counters instead of timers                                                                                                                                                                   |
+| `flash.text.*`                                             | **Trivial**                                                                                                                  | One `<mx:Text id="tracer">` debug label; no embedded fonts                                                                                                                                                   |
+| `flash.system.*`, `ExternalInterface`                      | **None**                                                                                                                     | No JS bridge, no capabilities sniffing                                                                                                                                                                       |
+| Stage3D / Starling                                         | **None**                                                                                                                     | Pure 2D Flex display list                                                                                                                                                                                    |
+| E4X / `XML` literals                                       | **None**                                                                                                                     | No `<foo/>` literals, no e4x queries                                                                                                                                                                         |
+| `Vector.<T>` typed arrays                                  | **None** — uses `mx.collections.ArrayCollection` and untyped `Array`                                                         | Direct port to `T[]`                                                                                                                                                                                         |
+| `int` / `uint` / `Number`                                  | Mixed but **no bitwise tricks**                                                                                              | Collapse to `number`; spot-check arithmetic                                                                                                                                                                  |
+| `[Embed]` metadata                                         | **Heavy** — ~250 sites in `AssetManager.as` alone                                                                            | Replace with Vite static imports                                                                                                                                                                             |
+| `[Bindable]` / data binding                                | **Light** — 10 sites total (one-way, mostly volume/visibility flags)                                                         | Replace with explicit setter calls                                                                                                                                                                           |
+| Reflection (`describeType`, `getDefinitionByName`)         | **None in game code** (one site inside `gs/TweenGroup.as`)                                                                   | Nothing to port                                                                                                                                                                                              |
+| `cursorManager.setCursor` / `hideCursor`                   | **Light** — custom PNG cursor in `Woosh2.mxml`                                                                               | CSS `cursor: url(...)`                                                                                                                                                                                       |
+| Flex states (`mx:State`, `currentState`)                   | **Heavy in UI** — 11 state blocks across `menu.mxml`, `imgButton.mxml`, `difficulty_selector.mxml`, `avatarImage.mxml`, etc. | Plain JS state machines / CSS classes                                                                                                                                                                        |
 
 ### 2.4 Behavioral / runtime audit
 
-| Concern | Finding |
-|---|---|
-| **Target framerate** | **24 fps is the implicit assumption** — the win-countdown comment says `"//24fps"`, and the BGM/animation timing in `Woosh2.mxml` (e.g. `if (animationTimer >= 68 ...)`) assume that cadence. Flex 3 default stage frame rate is also 24. |
-| **Frame-based vs. time-based** | **Entirely frame-based.** Physics constants (`GRAVITY=2`, `JUMPSPEED=14.5`, `RUNSPEED=0.2*1.5`, `MAXFALLINGSPEED=-12`, `MAXRUNSPEED=12`) are pixels-per-frame at 24 fps. All timers (intro fade, win countdown, hint delay, hit-effect 12 frames) are frame counters, not ms. **Direct port must run a fixed 24 Hz simulation tick, decoupled from `requestAnimationFrame` rendering.** |
-| **Save data** | **None.** No `SharedObject`, no localStorage equivalent. Difficulty + volume are session-only. |
-| **Network** | **None.** `-use-network=false` compiler flag confirmed. |
-| **Pseudo-randomness** | Used only for jump / land / menu-click sound variant pick, and for procedural placement of decorative graph obstacles in `obstacles.mxml`. No reliance on a specific seed for gameplay. |
-| **Pixel-precise interactions** | **Pervasive.** `HitTest.pixelsOverlap` is used for: ground/platform collision (4 corners of the avatar against ~10 colliders/frame), graph-obstacle hits, switch activation, orb pickup, **and even button hit-testing in `imgButton.mxml`** (so non-rectangular bitmap buttons work correctly). |
-| **Mouse vs. touch** | Desktop-only. Mouse-move triggers cursor reveal/hide; click on splash skips intro; in-game options use keyboard (arrows + Enter/Esc). No `MouseEvent.MOUSE_DOWN` for gameplay — gameplay is keyboard only (← → for walk, Shift/`S` for sprint, ↑/Space for jump, `D` to pick/drop, Esc for pause). |
-| **Right-click / browser conflicts** | None handled. Browser context menu and standard shortcuts will work; consider preventing default for game-relevant keys (Space scrolls page, arrows scroll page). |
-| **Cheat code** | `controlScheme.as` has a hardcoded "changyou" + PageUp cheat that warps the player to y=0. Harmless, can be preserved or stripped. |
-| **Resolution** | **800 × 600.** `Woosh2.mxml` scales the inner `resizeCanvas` (id) to fit the window with `Math.min(scaleX, scaleY)`, capped at a minimum of 0.5×. Aspect-fit letterboxing — easy to replicate. |
+| Concern                             | Finding                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Target framerate**                | **24 fps is the implicit assumption** — the win-countdown comment says `"//24fps"`, and the BGM/animation timing in `Woosh2.mxml` (e.g. `if (animationTimer >= 68 ...)`) assume that cadence. Flex 3 default stage frame rate is also 24.                                                                                                                                               |
+| **Frame-based vs. time-based**      | **Entirely frame-based.** Physics constants (`GRAVITY=2`, `JUMPSPEED=14.5`, `RUNSPEED=0.2*1.5`, `MAXFALLINGSPEED=-12`, `MAXRUNSPEED=12`) are pixels-per-frame at 24 fps. All timers (intro fade, win countdown, hint delay, hit-effect 12 frames) are frame counters, not ms. **Direct port must run a fixed 24 Hz simulation tick, decoupled from `requestAnimationFrame` rendering.** |
+| **Save data**                       | **None.** No `SharedObject`, no localStorage equivalent. Difficulty + volume are session-only.                                                                                                                                                                                                                                                                                          |
+| **Network**                         | **None.** `-use-network=false` compiler flag confirmed.                                                                                                                                                                                                                                                                                                                                 |
+| **Pseudo-randomness**               | Used only for jump / land / menu-click sound variant pick, and for procedural placement of decorative graph obstacles in `obstacles.mxml`. No reliance on a specific seed for gameplay.                                                                                                                                                                                                 |
+| **Pixel-precise interactions**      | **Pervasive.** `HitTest.pixelsOverlap` is used for: ground/platform collision (4 corners of the avatar against ~10 colliders/frame), graph-obstacle hits, switch activation, orb pickup, **and even button hit-testing in `imgButton.mxml`** (so non-rectangular bitmap buttons work correctly).                                                                                        |
+| **Mouse vs. touch**                 | Desktop-only. Mouse-move triggers cursor reveal/hide; click on splash skips intro; in-game options use keyboard (arrows + Enter/Esc). No `MouseEvent.MOUSE_DOWN` for gameplay — gameplay is keyboard only (← → for walk, Shift/`S` for sprint, ↑/Space for jump, `D` to pick/drop, Esc for pause).                                                                                      |
+| **Right-click / browser conflicts** | None handled. Browser context menu and standard shortcuts will work; consider preventing default for game-relevant keys (Space scrolls page, arrows scroll page).                                                                                                                                                                                                                       |
+| **Cheat code**                      | `controlScheme.as` has a hardcoded "changyou" + PageUp cheat that warps the player to y=0. Harmless, can be preserved or stripped.                                                                                                                                                                                                                                                      |
+| **Resolution**                      | **800 × 600.** `Woosh2.mxml` scales the inner `resizeCanvas` (id) to fit the window with `Math.min(scaleX, scaleY)`, capped at a minimum of 0.5×. Aspect-fit letterboxing — easy to replicate.                                                                                                                                                                                          |
 
 ---
 
@@ -176,12 +179,12 @@ Concrete classification for *this* project:
 
 The two main candidates you mentioned, plus alternatives:
 
-| Renderer | API similarity to Flash | Performance | Maintenance status | Recommended when |
-|---|---|---|---|---|
-| **PixiJS** | Display-list metaphor (`Container`/`Sprite`/`Graphics`) — close but not identical | WebGL/WebGPU, very fast | Active, modern (v8+) | Default choice; mobile or perf matters; modern dev experience |
-| **CreateJS / EaselJS** | Closest API match to Flash (Sprite, MovieClip, Stage, Ticker) | Canvas2D, slower | **Largely stagnant** — last meaningful releases years ago | Quick faithful port, prototyping, no perf budget; not ideal for long-term ownership |
-| **Phaser 3** | Full game framework, less Flash-like | WebGL/Canvas, fast | Active | If you'd rather rewrite around a framework than port file-by-file |
-| **Three.js** | 3D-first | WebGL, fast | Very active | Only if game has 3D / Stage3D usage |
+| Renderer               | API similarity to Flash                                                           | Performance             | Maintenance status                                        | Recommended when                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------- | ----------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **PixiJS**             | Display-list metaphor (`Container`/`Sprite`/`Graphics`) — close but not identical | WebGL/WebGPU, very fast | Active, modern (v8+)                                      | Default choice; mobile or perf matters; modern dev experience                       |
+| **CreateJS / EaselJS** | Closest API match to Flash (Sprite, MovieClip, Stage, Ticker)                     | Canvas2D, slower        | **Largely stagnant** — last meaningful releases years ago | Quick faithful port, prototyping, no perf budget; not ideal for long-term ownership |
+| **Phaser 3**           | Full game framework, less Flash-like                                              | WebGL/Canvas, fast      | Active                                                    | If you'd rather rewrite around a framework than port file-by-file                   |
+| **Three.js**           | 3D-first                                                                          | WebGL, fast             | Very active                                               | Only if game has 3D / Stage3D usage                                                 |
 
 **Recommendation:** **PixiJS** for almost any game-sized project. The display-list mental model survives the port; the GPU rendering path absorbs the kind of bitmap-heavy work old AS3 games tend to do; and active maintenance matters when the port is going to live another 5+ years.
 
@@ -189,17 +192,17 @@ CreateJS is tempting for the API similarity, but you'd be inheriting a slowly-bi
 
 ### 3.3 Supporting libraries
 
-| Concern | Recommended |
-|---|---|
-| Audio | **Howler.js** (handles format fallback, mobile unlock, sprites) |
-| Tweening | **GSAP** (drop-in mental model from Greensock; if you used GS in AS3, the API is nearly identical) |
-| Physics 2D | **matter.js** (easy) or **planck.js** (Box2D-faithful) or **Rapier** (Rust, fastest) |
-| Input | Native DOM events; **hammer.js** if multi-touch gestures are heavy |
-| State / data | Plain TS classes for game state; **Zustand** or **Valtio** if you want reactive state for UI |
-| Random / math | **seedrandom** if you need deterministic RNG; **gl-matrix** for vector math |
-| XML parsing | **fast-xml-parser** (replacement for E4X) |
-| Persistence | `localStorage` for simple, **IndexedDB** (via **Dexie**) for larger save data |
-| HTML UI (replacing MXML) | Plain TS + DOM, or **Preact** / **React** / **Svelte** if MXML had real component complexity |
+| Concern                  | Recommended                                                                                        |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| Audio                    | **Howler.js** (handles format fallback, mobile unlock, sprites)                                    |
+| Tweening                 | **GSAP** (drop-in mental model from Greensock; if you used GS in AS3, the API is nearly identical) |
+| Physics 2D               | **matter.js** (easy) or **planck.js** (Box2D-faithful) or **Rapier** (Rust, fastest)               |
+| Input                    | Native DOM events; **hammer.js** if multi-touch gestures are heavy                                 |
+| State / data             | Plain TS classes for game state; **Zustand** or **Valtio** if you want reactive state for UI       |
+| Random / math            | **seedrandom** if you need deterministic RNG; **gl-matrix** for vector math                        |
+| XML parsing              | **fast-xml-parser** (replacement for E4X)                                                          |
+| Persistence              | `localStorage` for simple, **IndexedDB** (via **Dexie**) for larger save data                      |
+| HTML UI (replacing MXML) | Plain TS + DOM, or **Preact** / **React** / **Svelte** if MXML had real component complexity       |
 
 ### 3.4 Asset pipeline
 
@@ -243,7 +246,7 @@ Read each AS3 module, then write the equivalent TypeScript using PixiJS and your
 2. **Build a `/legacy/` directory** containing the original `.as` and `.mxml` source, read-only. The new TS lives in `/src/`.
 3. **Maintain `CONVERSION_LOG.md`** with one entry per ported module: source path, dest path, date, notes on tricky bits, deviations from original.
 4. **Port in vertical slices**, not breadth-first. A vertical slice = one playable feature end-to-end. Better to have menu-screen working completely than 60% of every module ported.
-5. **Test harness before logic.** Stand up a `vitest` suite around the *original* expected behavior (you describe it; Claude writes the test) before porting the implementation. This catches drift.
+5. **Test harness before logic.** Stand up a `vitest` suite around the _original_ expected behavior (you describe it; Claude writes the test) before porting the implementation. This catches drift.
 6. **Small commits, one module per commit** when feasible. AS3 → TS diffs are large; reviewability matters.
 7. **Snapshot screenshots** of the original for visual reference. Playwright can capture and diff the new build against these.
 8. **Use Claude Code subagents** (or split sessions) for parallel work on independent subsystems (audio, input, save/load), but keep rendering on a single pair of hands until the display abstraction stabilizes.
@@ -269,44 +272,45 @@ For most games, **option 2** wins. Game UI is usually a small fraction of the co
 
 Keep this in `CLAUDE.md` so every Claude Code session sees it.
 
-| AS3 / Flash | TypeScript / Web | Notes |
-|---|---|---|
-| `Sprite`, `MovieClip`, `DisplayObjectContainer` | `PIXI.Container` | Animation frames need explicit replacement (sprite sheet, Spine, etc.) |
-| `Bitmap`, `BitmapData` | `PIXI.Sprite` + `PIXI.Texture`, or `OffscreenCanvas` for direct pixel access |
-| `Shape`, `Graphics` | `PIXI.Graphics` | API is similar (`.beginFill`, `.drawRect`, etc.) |
-| `Stage` | `PIXI.Application` + DOM canvas |
-| `Event`, `EventDispatcher` | `EventTarget` (built-in) or a typed emitter (e.g., `mitt`, `eventemitter3`) | Bubbling generally not preserved automatically |
-| `Event.ENTER_FRAME` | `PIXI.Ticker` callback or `requestAnimationFrame` loop | Switch to delta-time logic |
-| `Timer` | `setInterval` / `setTimeout`, or a tick-driven scheduler |
-| `URLLoader`, `URLRequest` | `fetch()` |
-| `Socket`, `XMLSocket` | `WebSocket` |
-| `NetConnection` (AMF) | Replace with JSON over fetch/WebSocket; or `amf.js` if you must keep AMF |
-| `flash.media.Sound`, `SoundChannel` | `Howl` instances (Howler.js) |
-| `SharedObject` | `localStorage` for small JSON; `IndexedDB` (via Dexie) for larger |
-| `Vector.<T>` | `T[]` |
-| `Dictionary` | `Map<K, V>` |
-| `int`, `uint`, `Number` | `number` (audit any bitwise math for unsigned semantics) |
-| `String`, `Boolean` | `string`, `boolean` |
-| `flash.geom.Point` | Custom `{x, y}` interface, `PIXI.Point`, or `gl-matrix` `vec2` |
-| `flash.geom.Rectangle` | `PIXI.Rectangle` or custom |
-| `flash.geom.Matrix` | `PIXI.Matrix` |
-| `ByteArray` | `Uint8Array` / `ArrayBuffer` + `DataView` |
-| `XML` (E4X) | Parse with `fast-xml-parser`; rewrite E4X queries as object access |
-| `Object` (untyped bag) | `Record<string, unknown>` (then narrow) |
-| `[Embed(source="...")]` | Bundler import: `import imageUrl from './foo.png'` |
-| `[Bindable]` properties | Reactive store (Zustand/Valtio) or framework state |
-| `getDefinitionByName` / reflection | Explicit registry / map |
-| `flash.utils.getTimer()` | `performance.now()` |
-| `flash.system.Capabilities` | Browser feature detection / `navigator.*` |
-| `ExternalInterface.call` | Direct JS call (you're already in JS) |
-| `trace()` | `console.log` (consider a leveled logger) |
-| Package `com.foo.bar` | ES module path `src/foo/bar/...` |
+| AS3 / Flash                                     | TypeScript / Web                                                             | Notes                                                                  |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `Sprite`, `MovieClip`, `DisplayObjectContainer` | `PIXI.Container`                                                             | Animation frames need explicit replacement (sprite sheet, Spine, etc.) |
+| `Bitmap`, `BitmapData`                          | `PIXI.Sprite` + `PIXI.Texture`, or `OffscreenCanvas` for direct pixel access |
+| `Shape`, `Graphics`                             | `PIXI.Graphics`                                                              | API is similar (`.beginFill`, `.drawRect`, etc.)                       |
+| `Stage`                                         | `PIXI.Application` + DOM canvas                                              |
+| `Event`, `EventDispatcher`                      | `EventTarget` (built-in) or a typed emitter (e.g., `mitt`, `eventemitter3`)  | Bubbling generally not preserved automatically                         |
+| `Event.ENTER_FRAME`                             | `PIXI.Ticker` callback or `requestAnimationFrame` loop                       | Switch to delta-time logic                                             |
+| `Timer`                                         | `setInterval` / `setTimeout`, or a tick-driven scheduler                     |
+| `URLLoader`, `URLRequest`                       | `fetch()`                                                                    |
+| `Socket`, `XMLSocket`                           | `WebSocket`                                                                  |
+| `NetConnection` (AMF)                           | Replace with JSON over fetch/WebSocket; or `amf.js` if you must keep AMF     |
+| `flash.media.Sound`, `SoundChannel`             | `Howl` instances (Howler.js)                                                 |
+| `SharedObject`                                  | `localStorage` for small JSON; `IndexedDB` (via Dexie) for larger            |
+| `Vector.<T>`                                    | `T[]`                                                                        |
+| `Dictionary`                                    | `Map<K, V>`                                                                  |
+| `int`, `uint`, `Number`                         | `number` (audit any bitwise math for unsigned semantics)                     |
+| `String`, `Boolean`                             | `string`, `boolean`                                                          |
+| `flash.geom.Point`                              | Custom `{x, y}` interface, `PIXI.Point`, or `gl-matrix` `vec2`               |
+| `flash.geom.Rectangle`                          | `PIXI.Rectangle` or custom                                                   |
+| `flash.geom.Matrix`                             | `PIXI.Matrix`                                                                |
+| `ByteArray`                                     | `Uint8Array` / `ArrayBuffer` + `DataView`                                    |
+| `XML` (E4X)                                     | Parse with `fast-xml-parser`; rewrite E4X queries as object access           |
+| `Object` (untyped bag)                          | `Record<string, unknown>` (then narrow)                                      |
+| `[Embed(source="...")]`                         | Bundler import: `import imageUrl from './foo.png'`                           |
+| `[Bindable]` properties                         | Reactive store (Zustand/Valtio) or framework state                           |
+| `getDefinitionByName` / reflection              | Explicit registry / map                                                      |
+| `flash.utils.getTimer()`                        | `performance.now()`                                                          |
+| `flash.system.Capabilities`                     | Browser feature detection / `navigator.*`                                    |
+| `ExternalInterface.call`                        | Direct JS call (you're already in JS)                                        |
+| `trace()`                                       | `console.log` (consider a leveled logger)                                    |
+| Package `com.foo.bar`                           | ES module path `src/foo/bar/...`                                             |
 
 ---
 
 ## 7. Phased plan
 
 ### Phase 0 — Discovery (1–2 weeks)
+
 - Complete §2 audit
 - Stand up empty TS/Vite project with chosen libs
 - Try Apache Royale on one module as a sanity check
@@ -315,6 +319,7 @@ Keep this in `CLAUDE.md` so every Claude Code session sees it.
 **Exit criteria:** This document is fully filled in. No `[FILL IN]` left in §1–§3.
 
 ### Phase 1 — Foundation (1–2 weeks)
+
 - Build pipeline, lint, typecheck, test runner all green on a hello-world
 - `PIXI.Application` boots, draws a sprite, plays a sound (Howler), reads a key
 - Asset import convention established
@@ -323,6 +328,7 @@ Keep this in `CLAUDE.md` so every Claude Code session sees it.
 **Exit criteria:** "Hello game" — title screen draws, plays a sound, responds to input.
 
 ### Phase 2 — Core systems
+
 - Input abstraction (keyboard, mouse, touch unified)
 - Audio system wrapping Howler
 - Save/load (localStorage or IndexedDB) with migration path from SharedObject AMF if needed
@@ -333,26 +339,31 @@ Keep this in `CLAUDE.md` so every Claude Code session sees it.
 **Exit criteria:** All non-rendering services available as clean TS APIs.
 
 ### Phase 3 — Asset pipeline
+
 - All images converted, sprite-sheeted where useful
 - All audio converted to OGG+MP3
 - Fonts loaded
 - Asset manifest / preloader matches original load behavior
 
 ### Phase 4 — Game logic port
+
 - Port modules in dependency order, leaves first
 - Maintain `CONVERSION_LOG.md` discipline
 - Ship vertical slices: title → main menu → one playable level → save → resume
 
 ### Phase 5 — UI port (MXML replacement)
+
 - Per §5 strategy
 - Accessibility pass (keyboard navigation, screen reader landmarks for menus) — Flash had none of this; this is your chance
 
 ### Phase 6 — Testing & polish
+
 - Visual regression suite (Playwright + screenshot diff vs. original recordings)
 - Cross-browser pass: Chrome, Safari, Firefox, plus iOS Safari and Chrome Android
 - Performance pass: profile on mid-range mobile, hit framerate budget
 
 ### Phase 7 — Release prep
+
 - Bundle size audit
 - Loading screens / progressive asset loading
 - Analytics if desired
@@ -362,17 +373,17 @@ Keep this in `CLAUDE.md` so every Claude Code session sees it.
 
 ## 8. Risk register
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Frame-rate-dependent logic produces drift on web | High | High | Audit and refactor to delta-time early; write tests around physics/timing |
-| Pixel-perfect rendering differences (anti-aliasing, blending) | High | Medium | Decide early: parity vs. "feels right." Capture original screenshots for diff testing |
-| Audio latency / mobile unlock issues | Medium | Medium | Howler.js handles most; build a "tap to start" gate |
-| MXML data binding loss causes UI bugs | Medium | Medium | Pick framework (or plain DOM) deliberately; don't half-port |
-| Hidden Flex framework dependencies | Medium | High | List every `mx.*` / `spark.*` import in audit; decide replace-or-skip per import |
-| Save data migration breaks existing players | Low–Medium | High (if applies) | Write a one-time AMF reader (e.g., `amf.js`) and migrate to JSON on first launch |
-| Performance regression on mobile | Medium | High | Profile early on a real low-end device, not just desktop devtools throttling |
-| Stage3D / Starling code requires architectural rewrite | Variable | High | If heavy, plan PixiJS-based rendering early; don't try to emulate Stage3D |
-| Apache Royale output looked promising but breaks on edge cases | Medium | Medium | Don't commit to Royale for the whole codebase; use it as a tool, not a product |
+| Risk                                                           | Likelihood | Impact            | Mitigation                                                                            |
+| -------------------------------------------------------------- | ---------- | ----------------- | ------------------------------------------------------------------------------------- |
+| Frame-rate-dependent logic produces drift on web               | High       | High              | Audit and refactor to delta-time early; write tests around physics/timing             |
+| Pixel-perfect rendering differences (anti-aliasing, blending)  | High       | Medium            | Decide early: parity vs. "feels right." Capture original screenshots for diff testing |
+| Audio latency / mobile unlock issues                           | Medium     | Medium            | Howler.js handles most; build a "tap to start" gate                                   |
+| MXML data binding loss causes UI bugs                          | Medium     | Medium            | Pick framework (or plain DOM) deliberately; don't half-port                           |
+| Hidden Flex framework dependencies                             | Medium     | High              | List every `mx.*` / `spark.*` import in audit; decide replace-or-skip per import      |
+| Save data migration breaks existing players                    | Low–Medium | High (if applies) | Write a one-time AMF reader (e.g., `amf.js`) and migrate to JSON on first launch      |
+| Performance regression on mobile                               | Medium     | High              | Profile early on a real low-end device, not just desktop devtools throttling          |
+| Stage3D / Starling code requires architectural rewrite         | Variable   | High              | If heavy, plan PixiJS-based rendering early; don't try to emulate Stage3D             |
+| Apache Royale output looked promising but breaks on edge cases | Medium     | Medium            | Don't commit to Royale for the whole codebase; use it as a tool, not a product        |
 
 ---
 
@@ -414,12 +425,12 @@ Most of the game is small (≤30 sprites on screen, 4:3 at 800×600, no Stage3D)
 
 There are **99 `.swf` files inside `src/story/`** and the codebase loads them as `MovieClip` objects, calling `play()`, `gotoAndStop()`, `nextFrame()`, `framesLoaded`. They fall into roughly three buckets:
 
-| Bucket | Examples | Likely conversion |
-|---|---|---|
-| **Single-frame static art** (used as if it were a PNG) | `Glow_Effect_reddishorange.swf`, `displaceOrigin.swf`, `placeholder_entrance.png`-equivalent SWFs, level backgrounds | Re-export as PNG/WebP (one frame) |
-| **Short looped/animated sprites** | `graphSpark.swf`, `Blink.swf`, orb effects, avatar sprite sheet `avatarSheet.swf` | Sprite-sheet (TexturePacker) or short PNG sequence |
-| **Long pre-rendered cutscenes** | `intro.swf`, `pre_world1.swf`, `ending.swf`, `levelcomplete.swf` (~24 fps, dozens of frames each) | **Best option: render to MP4/WebM** during build and play via `<video>`. Alternative: extract frames to a sprite atlas (huge), or use a SWF→Lottie/Spine pipeline. |
-| **Audio-as-SWF** | `bgm/world01.swf`, `bgm/menu.swf`, `sfx/graph/graph_draw.swf` etc. | These are MP3 streams wrapped in SWF for AS3 Embed semantics — extract to MP3/OGG via JPEXS or `swfextract`. |
+| Bucket                                                 | Examples                                                                                                             | Likely conversion                                                                                                                                                  |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Single-frame static art** (used as if it were a PNG) | `Glow_Effect_reddishorange.swf`, `displaceOrigin.swf`, `placeholder_entrance.png`-equivalent SWFs, level backgrounds | Re-export as PNG/WebP (one frame)                                                                                                                                  |
+| **Short looped/animated sprites**                      | `graphSpark.swf`, `Blink.swf`, orb effects, avatar sprite sheet `avatarSheet.swf`                                    | Sprite-sheet (TexturePacker) or short PNG sequence                                                                                                                 |
+| **Long pre-rendered cutscenes**                        | `intro.swf`, `pre_world1.swf`, `ending.swf`, `levelcomplete.swf` (~24 fps, dozens of frames each)                    | **Best option: render to MP4/WebM** during build and play via `<video>`. Alternative: extract frames to a sprite atlas (huge), or use a SWF→Lottie/Spine pipeline. |
+| **Audio-as-SWF**                                       | `bgm/world01.swf`, `bgm/menu.swf`, `sfx/graph/graph_draw.swf` etc.                                                   | These are MP3 streams wrapped in SWF for AS3 Embed semantics — extract to MP3/OGG via JPEXS or `swfextract`.                                                       |
 
 **Proposed:** Set up a **one-time build-script that decompiles every `src/story/*.swf` via [JPEXS Free Flash Decompiler](https://github.com/jindrapetrik/jpexs-decompiler)** (CLI mode), classifies each into one of the three buckets, and emits PNG/WebP/MP4/MP3 alongside a JSON manifest mapping the original Embed name → new web URL. We invest a couple of days in this script up front; afterwards the AssetManager port is mechanical.
 
@@ -427,11 +438,11 @@ There are **99 `.swf` files inside `src/story/`** and the codebase loads them as
 
 ### Q3. Sonoflash / GaverRingTone1 — the hardest dependency
 
-The `varSnd` synthesizer is **not** a library you can swap; it's a compiled `.swc` that exposes a parameterized tone (`PNAME_PULSERATE`, `PNAME_DAMPING`, `PNAME_TONE0/1`, `PNAME_SHIFT0/1`). The game **modulates these parameters every frame** while a graph is being drawn — the sound is *part of the gameplay feedback*, mapping the player's velocity / displacement to pitch and pulse rate.
+The `varSnd` synthesizer is **not** a library you can swap; it's a compiled `.swc` that exposes a parameterized tone (`PNAME_PULSERATE`, `PNAME_DAMPING`, `PNAME_TONE0/1`, `PNAME_SHIFT0/1`). The game **modulates these parameters every frame** while a graph is being drawn — the sound is _part of the gameplay feedback_, mapping the player's velocity / displacement to pitch and pulse rate.
 
 Three options:
 
-1. **Faithful replacement (recommended):** Implement an equivalent in [Tone.js](https://tonejs.github.io) using two FM synths + an LFO modulated by the same `pulseRate`/`damping`/`shift` inputs. ~1–2 days of audio R&D to dial in something that *feels right* but won't be sample-identical.
+1. **Faithful replacement (recommended):** Implement an equivalent in [Tone.js](https://tonejs.github.io) using two FM synths + an LFO modulated by the same `pulseRate`/`damping`/`shift` inputs. ~1–2 days of audio R&D to dial in something that _feels right_ but won't be sample-identical.
 2. **Recording fallback:** Pre-render representative tones to a small library of OGG samples and crossfade based on the parameter values. Cheap, but loses the continuous-modulation feel.
 3. **Drop the dynamic tone entirely** — replace with a static "graph drawing" loop. Simplest, but a clear gameplay-feel regression.
 
@@ -443,7 +454,7 @@ Three options:
 
 The MXML in this codebase is **mostly imperative AS3 inside `<mx:Script>` blocks**, with `<mx:Canvas>` as a glorified container. The Flex-y bits (`[Bindable]`, `mx:State`, button rollover states) are real but isolated to ~10 files.
 
-**Proposed:** **Option 2 — treat MXML as throwaway scaffolding.** We rebuild the menu/options/HUD as plain HTML+CSS overlaid above the Pixi canvas. This actually *upgrades* the UI (responsive, keyboard-accessible) and avoids carrying Flex idioms into the new codebase.
+**Proposed:** **Option 2 — treat MXML as throwaway scaffolding.** We rebuild the menu/options/HUD as plain HTML+CSS overlaid above the Pixi canvas. This actually _upgrades_ the UI (responsive, keyboard-accessible) and avoids carrying Flex idioms into the new codebase.
 
 For the in-level UI (hint sign, win animation, pause overlay), it's likely cleaner to keep those as Pixi children of the game canvas so they can scale/translate with the gameplay viewport. Final call to be made per-component during Phase 5.
 
@@ -464,7 +475,7 @@ Every physics constant in the game is calibrated for 24 fps (`GRAVITY=2 px/frame
 Each of the 19 levels is a small MXML class whose `initLvl()` calls `super.addGraph(0, 0, 308, 200, 400, 300, 300, 100, 200, 430, 0, 200, 438, 3, 20)` etc. Two viable ports:
 
 a) **TS modules**, one per level, each calling `level.addGraph(...)` — minimal restructuring, easy to diff against the original.
-b) **JSON DSL** + a single loader. Cleaner separation of data and code; opens the door to a level editor later. But it's strictly more work *for v1*.
+b) **JSON DSL** + a single loader. Cleaner separation of data and code; opens the door to a level editor later. But it's strictly more work _for v1_.
 
 **Proposed:** **Start with (a)**, ship the port, then refactor to (b) only if a community or mod-maker wants it. (a) preserves the original numbers and call ordering, which makes it easier to verify visually.
 
@@ -492,19 +503,19 @@ The repo has two parallel art sets (`src/abstract/` and `src/story/`) — `Asset
 
 Locked in on 2026-05-07 based on user answers to §10. **§3 and §5 above are superseded by these where they conflict.**
 
-| # | Decision |
-|---|---|
-| **D1** | **Renderer: PixiJS v8.** Use `Container`/`Sprite`/`Graphics`. Use Pixi's built-in `GlowFilter` (or `@pixi/filter-glow`) instead of TweenMax's GlowFilterPlugin. |
-| **D2** | **No central `.fla` archive available.** User has some prototype `.fla` files; we'll evaluate them once filenames are matched (see §15). Default plan: **JPEXS Free Flash Decompiler CLI** to extract every `src/story/*.swf` into PNG / WebP / MP3 / MP4 outputs + JSON manifest. |
-| **D3** | **Sound spec dramatically simplified.** The graph-drawing tone only needs to **rise in pitch when the line goes up and fall when the line goes down.** Not a faithful Sonoflash port. ⇒ **Single Web Audio `OscillatorNode`** with `frequency` set each tick from the current y-value of the curve, plus a small gain envelope on start/stop. ~2 hours of work, no Tone.js dependency required. Howler.js still handles BGM / SFX / VO. |
-| **D4** | **UI: plain HTML + CSS overlay** above the Pixi canvas. The whole menu / options / instructions / credits / pause / confirmation / sound-options layer is rebuilt in DOM; the in-level overlays (hint sign, win animation, hit-effect) stay as Pixi children. No React/Vue/Svelte. |
-| **D5** | **Fixed 24 Hz simulation step**, decoupled from `requestAnimationFrame`. Accumulator pattern. All original physics constants (`GRAVITY=2`, `JUMPSPEED=14.5`, `MAXFALLINGSPEED=-12`, `MAXRUNSPEED=12`, `WALKINGSPEED=6`, `RUNSPEED=0.3`, `RUNBRAKE=1.5`) preserved verbatim. |
-| **D6** | **Faithful pixel-perfect collision.** Port `GambitLib.HitTest.pixelsOverlap` to OffscreenCanvas + `getImageData`. **Bake static masks once at level load** (the ground PNG and once-solidified graph polygons). Rasterize moving objects (avatar corner auras) per-tick. AABB pre-filter on every test. |
-| **D7** | **Levels: one TS module per MXML level**, calling builder methods on a `Level` base class — same numbers, same call ordering as the original. No JSON DSL in v1. |
-| **D8** | **`git init` immediately.** Create an immutable `legacy/` directory containing the current AS3 sources, commit it, then branch `port` for all new TS work. |
-| **D9** | **Ruffle: keep as a sanity-checking aid where it works.** User reports the menu is broken in Ruffle for the full game SWF, but parts of individual SWFs may still play; we'll embed a "reference" page during dev for cutscene comparison only. The user has a full original `.swf` build artifact — useful for visual diffs. |
-| **D10** | **Archive `src/abstract/` and `src/levels_backup/`** into the `legacy/` baseline. They are leftover prototype / duplicate folders. Port targets only `src/story/` art and `src/levels/`. |
-| **D11** | **Game name: Waker** (project codename was "Woosh2" in the team5 era). Confirmed by SWF fingerprint analysis (2026-05-07): `waker.swf` matches `bin-debug/Woosh2.swf` in uncompressed size and content fingerprint to within 0.5%. The smaller `woosh.swf` is the same code built with the `/abstract/` art set. New repo folder name: **`waker`** (or `waker-html5`). |
+| #       | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1**  | **Renderer: PixiJS v8.** Use `Container`/`Sprite`/`Graphics`. Use Pixi's built-in `GlowFilter` (or `@pixi/filter-glow`) instead of TweenMax's GlowFilterPlugin.                                                                                                                                                                                                                                                                         |
+| **D2**  | **No central `.fla` archive available.** User has some prototype `.fla` files; we'll evaluate them once filenames are matched (see §15). Default plan: **JPEXS Free Flash Decompiler CLI** to extract every `src/story/*.swf` into PNG / WebP / MP3 / MP4 outputs + JSON manifest.                                                                                                                                                      |
+| **D3**  | **Sound spec dramatically simplified.** The graph-drawing tone only needs to **rise in pitch when the line goes up and fall when the line goes down.** Not a faithful Sonoflash port. ⇒ **Single Web Audio `OscillatorNode`** with `frequency` set each tick from the current y-value of the curve, plus a small gain envelope on start/stop. ~2 hours of work, no Tone.js dependency required. Howler.js still handles BGM / SFX / VO. |
+| **D4**  | **UI: plain HTML + CSS overlay** above the Pixi canvas. The whole menu / options / instructions / credits / pause / confirmation / sound-options layer is rebuilt in DOM; the in-level overlays (hint sign, win animation, hit-effect) stay as Pixi children. No React/Vue/Svelte.                                                                                                                                                      |
+| **D5**  | **Fixed 24 Hz simulation step**, decoupled from `requestAnimationFrame`. Accumulator pattern. All original physics constants (`GRAVITY=2`, `JUMPSPEED=14.5`, `MAXFALLINGSPEED=-12`, `MAXRUNSPEED=12`, `WALKINGSPEED=6`, `RUNSPEED=0.3`, `RUNBRAKE=1.5`) preserved verbatim.                                                                                                                                                             |
+| **D6**  | **Faithful pixel-perfect collision.** Port `GambitLib.HitTest.pixelsOverlap` to OffscreenCanvas + `getImageData`. **Bake static masks once at level load** (the ground PNG and once-solidified graph polygons). Rasterize moving objects (avatar corner auras) per-tick. AABB pre-filter on every test.                                                                                                                                 |
+| **D7**  | **Levels: one TS module per MXML level**, calling builder methods on a `Level` base class — same numbers, same call ordering as the original. No JSON DSL in v1.                                                                                                                                                                                                                                                                        |
+| **D8**  | **`git init` immediately.** Create an immutable `legacy/` directory containing the current AS3 sources, commit it, then branch `port` for all new TS work.                                                                                                                                                                                                                                                                              |
+| **D9**  | **Ruffle: keep as a sanity-checking aid where it works.** User reports the menu is broken in Ruffle for the full game SWF, but parts of individual SWFs may still play; we'll embed a "reference" page during dev for cutscene comparison only. The user has a full original `.swf` build artifact — useful for visual diffs.                                                                                                           |
+| **D10** | **Archive `src/abstract/` and `src/levels_backup/`** into the `legacy/` baseline. They are leftover prototype / duplicate folders. Port targets only `src/story/` art and `src/levels/`.                                                                                                                                                                                                                                                |
+| **D11** | **Game name: Waker** (project codename was "Woosh2" in the team5 era). Confirmed by SWF fingerprint analysis (2026-05-07): `waker.swf` matches `bin-debug/Woosh2.swf` in uncompressed size and content fingerprint to within 0.5%. The smaller `woosh.swf` is the same code built with the `/abstract/` art set. New repo folder name: **`waker`** (or `waker-html5`).                                                                  |
 
 ---
 
@@ -512,7 +523,7 @@ Locked in on 2026-05-07 based on user answers to §10. **§3 and §5 above are s
 
 This supersedes the generic §7. Time estimates are rough; treat them as ordering hints, not commitments.
 
-### Phase 0 — Discovery & repo setup *(1 day, mostly already done)*
+### Phase 0 — Discovery & repo setup _(1 day, mostly already done)_
 
 - [x] Code audit completed → §2 of this doc
 - [x] Open questions resolved → §10 / §12 of this doc
@@ -524,7 +535,7 @@ This supersedes the generic §7. Time estimates are rough; treat them as orderin
 
 **Exit:** repo is committed, legacy is read-only, `CLAUDE.md` is in place.
 
-### Phase 1 — Empty TS/Vite scaffold *(1–2 days)*
+### Phase 1 — Empty TS/Vite scaffold _(1–2 days)_
 
 - [ ] `pnpm create vite woosh-html --template vanilla-ts` (use `pnpm` or `npm`; Vite is the default)
 - [ ] Add deps: `pixi.js@^8`, `@pixi/filter-glow`, `gsap`, `howler`, `@types/howler`, `vitest`, `playwright`, `eslint`, `typescript-eslint`, `prettier`
@@ -550,7 +561,7 @@ This supersedes the generic §7. Time estimates are rough; treat them as orderin
 
 **Exit:** `pnpm dev` opens a black 800×600 canvas with a placeholder, lint+typecheck green.
 
-### Phase 2 — Asset extraction pipeline *(2–3 days)*
+### Phase 2 — Asset extraction pipeline _(2–3 days)_
 
 This is the biggest non-code chunk of work; doing it once cleanly makes everything downstream mechanical.
 
@@ -558,16 +569,23 @@ This is the biggest non-code chunk of work; doing it once cleanly makes everythi
 - [ ] Build `tools/extract-swf.mjs`:
   - For each `legacy/src/story/**/*.swf`:
     - `ffdec.exe -export image,sprite,frame,sound,movie <out> <in>`
-    - Inspect: 1 frame? → emit PNG. 2–~30 frames? → sprite-sheet (one PNG row, plus a JSON `{frames: number, fps: 24, width, height}`). 30+ frames? → emit MP4 *(via ffmpeg from PNG sequence)* OR keep as sprite-sheet if ≤500 KB.
+    - Inspect: 1 frame? → emit PNG. 2–~30 frames? → sprite-sheet (one PNG row, plus a JSON `{frames: number, fps: 24, width, height}`). 30+ frames? → emit MP4 _(via ffmpeg from PNG sequence)_ OR keep as sprite-sheet if ≤500 KB.
     - SWF that wraps a single MP3 (BGM/SFX) → extract MP3 directly.
   - Emit `src/assets/manifest.json` mapping the original Embed name → asset URL + type:
     ```json
     {
-      "graphSpark":   { "type": "spritesheet", "url": "/assets/fx/graphSpark.png", "frames": 8, "fps": 24, "w": 64, "h": 64 },
-      "introCutScene":{ "type": "video",        "url": "/assets/cutscenes/intro.mp4", "duration": 12.5 },
-      "bgmWorld1":    { "type": "audio",        "url": "/assets/bgm/world01.mp3" },
-      "leveld1_collision": { "type": "image",   "url": "/assets/collision/leveld1.png" },
-      "guiBtnStart":  { "type": "image",        "url": "/assets/gui/menu/start.png" }
+      "graphSpark": {
+        "type": "spritesheet",
+        "url": "/assets/fx/graphSpark.png",
+        "frames": 8,
+        "fps": 24,
+        "w": 64,
+        "h": 64
+      },
+      "introCutScene": { "type": "video", "url": "/assets/cutscenes/intro.mp4", "duration": 12.5 },
+      "bgmWorld1": { "type": "audio", "url": "/assets/bgm/world01.mp3" },
+      "leveld1_collision": { "type": "image", "url": "/assets/collision/leveld1.png" },
+      "guiBtnStart": { "type": "image", "url": "/assets/gui/menu/start.png" }
     }
     ```
 - [ ] Spot-check **20% of outputs** by eye against Ruffle previews where possible
@@ -575,7 +593,7 @@ This is the biggest non-code chunk of work; doing it once cleanly makes everythi
 
 **Exit:** every Embed name in `legacy/src/AssetManager.as` has a corresponding entry in `manifest.json`.
 
-### Phase 3 — Engine layer *(3–5 days)*
+### Phase 3 — Engine layer _(3–5 days)_
 
 - [ ] **`engine/AssetLoader.ts`** — preload all manifest entries via `PIXI.Assets.load`, return a typed asset registry (replaces `AssetManager.as`)
 - [ ] **`engine/Input.ts`** — keyboard state machine (just-pressed, held, just-released) for `←`, `→`, `↑`/Space, `D`, `S`/Shift, Esc, plus mouse for menu and cheat code. Prevents default scrolling on game-relevant keys.
@@ -590,7 +608,7 @@ This is the biggest non-code chunk of work; doing it once cleanly makes everythi
 
 **Exit:** all engine APIs typed and tested in isolation.
 
-### Phase 4 — Game logic port *(7–10 days)*
+### Phase 4 — Game logic port _(7–10 days)_
 
 Module-by-module; see §14 for order.
 
@@ -601,7 +619,7 @@ Module-by-module; see §14 for order.
 
 **Exit:** all 19 levels playable end-to-end, win-screen returns to menu.
 
-### Phase 5 — Polish *(3–5 days)*
+### Phase 5 — Polish _(3–5 days)_
 
 - [ ] Cross-browser pass (Chrome / Firefox / Safari)
 - [ ] Mobile pass: touch buttons for ←, →, jump, pick/drop, sprint; responsive scaling already handled by canvas letterbox
@@ -612,7 +630,7 @@ Module-by-module; see §14 for order.
 
 **Exit:** ship-ready build, hostable on any static host.
 
-### Phase 6 — Release prep *(1 day)*
+### Phase 6 — Release prep _(1 day)_
 
 - [ ] Loading screen with progress bar (Pixi has `PIXI.Assets.loadBundle` callbacks)
 - [ ] `README.md` with playthrough GIF, controls, credit to original team
@@ -624,26 +642,26 @@ Module-by-module; see §14 for order.
 
 Top of list is leaves (no game-internal deps); each row depends only on rows above it.
 
-| Order | Source files | Target | Why |
-|---:|---|---|---|
-| 1 | `Color.as`, `Settings.as`, `pairObject.as`, `CustomEvent.as` | `engine/types.ts` + `game/state.ts` | Tiny, no deps |
-| 2 | `GambitLib/HitTest.as` | `engine/HitTest.ts` | Foundation for everything |
-| 3 | `AssetManager.as` (Embeds → manifest) | `engine/AssetLoader.ts` + `assets/manifest.json` | Everything else loads through this |
-| 4 | `soundManager.mxml` + `GaverRingTone1` calls | `engine/Audio.ts` + `engine/GraphTone.ts` | Game and graphs reference it |
-| 5 | `controlScheme.as` (key handlers part) | `engine/Input.ts` + `game/PauseMenuController.ts` | Pause menu is intertwined with input; split it now |
-| 6 | `avatarImage.mxml`, `avatar.mxml` | `game/Avatar.ts` (sprite + 4 corner masks + state animation) | Self-contained |
-| 7 | `obstacles.mxml` | `game/GraphObstacles.ts` | Procedural placement, no other deps |
-| 8 | `genericGraph.mxml` | `game/Graph.ts` | Drawing + solidify, depends on HitTest + Audio |
-| 9 | `activationOrb.mxml` | `game/Orb.ts` | Drops via gravity, depends on level base |
-| 10 | `obstaclesClass.mxml`, `platform.mxml`, `switchObject.mxml`, `spikeClass.mxml`, `spikeObstacle.mxml` | `game/Switch.ts`, `game/MovingPlatform.ts`, `game/Spike.ts` | Hazards |
-| 11 | `level.mxml` (base class) | `game/Level.ts` (`addGraph`, `addSwitch`, `setExit`, `setEntrance`, `setHint`, `setBG`, `setGround`) | Used by every level |
-| 12 | `movements.mxml` (physics + collision response) | `game/Movements.ts` | Depends on Avatar, Level, HitTest |
-| 13 | `levels/displacement0..3.mxml`, `velocity0..3.mxml`, `mixed0..3.mxml`, `cutsceneIntro/Displacement/Velocity/Mixed.mxml`, `gameending.mxml` | `levels/*.ts` | Each is ~30 lines of `level.addGraph(...)` calls |
-| 14 | `levelManager.mxml` | `game/LevelManager.ts` (string → factory map) | Drives level transitions |
-| 15 | `gui.mxml` (in-game pause/HUD/hint/confirm) | mostly `ui/Hud.ts` (DOM) + a Pixi child for hint sign | Crosses Pixi/DOM boundary |
-| 16 | `imgButton.mxml`, `difficulty_selector.mxml`, `soundOptions.mxml`, `anotherLvl.mxml`, `menu.mxml` | `ui/Menu.ts`, `ui/Options.ts`, `ui/Instructions.ts`, `ui/Credits.ts` | Plain DOM |
-| 17 | `Woosh2.mxml` (splash screens, intro cutscene gate) | `main.ts` | Orchestrates everything; port last |
-| 18 | `gs/*` (vendored TweenMax) | **deleted** — replaced by `gsap` import | No port needed |
+| Order | Source files                                                                                                                               | Target                                                                                               | Why                                                |
+| ----: | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+|     1 | `Color.as`, `Settings.as`, `pairObject.as`, `CustomEvent.as`                                                                               | `engine/types.ts` + `game/state.ts`                                                                  | Tiny, no deps                                      |
+|     2 | `GambitLib/HitTest.as`                                                                                                                     | `engine/HitTest.ts`                                                                                  | Foundation for everything                          |
+|     3 | `AssetManager.as` (Embeds → manifest)                                                                                                      | `engine/AssetLoader.ts` + `assets/manifest.json`                                                     | Everything else loads through this                 |
+|     4 | `soundManager.mxml` + `GaverRingTone1` calls                                                                                               | `engine/Audio.ts` + `engine/GraphTone.ts`                                                            | Game and graphs reference it                       |
+|     5 | `controlScheme.as` (key handlers part)                                                                                                     | `engine/Input.ts` + `game/PauseMenuController.ts`                                                    | Pause menu is intertwined with input; split it now |
+|     6 | `avatarImage.mxml`, `avatar.mxml`                                                                                                          | `game/Avatar.ts` (sprite + 4 corner masks + state animation)                                         | Self-contained                                     |
+|     7 | `obstacles.mxml`                                                                                                                           | `game/GraphObstacles.ts`                                                                             | Procedural placement, no other deps                |
+|     8 | `genericGraph.mxml`                                                                                                                        | `game/Graph.ts`                                                                                      | Drawing + solidify, depends on HitTest + Audio     |
+|     9 | `activationOrb.mxml`                                                                                                                       | `game/Orb.ts`                                                                                        | Drops via gravity, depends on level base           |
+|    10 | `obstaclesClass.mxml`, `platform.mxml`, `switchObject.mxml`, `spikeClass.mxml`, `spikeObstacle.mxml`                                       | `game/Switch.ts`, `game/MovingPlatform.ts`, `game/Spike.ts`                                          | Hazards                                            |
+|    11 | `level.mxml` (base class)                                                                                                                  | `game/Level.ts` (`addGraph`, `addSwitch`, `setExit`, `setEntrance`, `setHint`, `setBG`, `setGround`) | Used by every level                                |
+|    12 | `movements.mxml` (physics + collision response)                                                                                            | `game/Movements.ts`                                                                                  | Depends on Avatar, Level, HitTest                  |
+|    13 | `levels/displacement0..3.mxml`, `velocity0..3.mxml`, `mixed0..3.mxml`, `cutsceneIntro/Displacement/Velocity/Mixed.mxml`, `gameending.mxml` | `levels/*.ts`                                                                                        | Each is ~30 lines of `level.addGraph(...)` calls   |
+|    14 | `levelManager.mxml`                                                                                                                        | `game/LevelManager.ts` (string → factory map)                                                        | Drives level transitions                           |
+|    15 | `gui.mxml` (in-game pause/HUD/hint/confirm)                                                                                                | mostly `ui/Hud.ts` (DOM) + a Pixi child for hint sign                                                | Crosses Pixi/DOM boundary                          |
+|    16 | `imgButton.mxml`, `difficulty_selector.mxml`, `soundOptions.mxml`, `anotherLvl.mxml`, `menu.mxml`                                          | `ui/Menu.ts`, `ui/Options.ts`, `ui/Instructions.ts`, `ui/Credits.ts`                                 | Plain DOM                                          |
+|    17 | `Woosh2.mxml` (splash screens, intro cutscene gate)                                                                                        | `main.ts`                                                                                            | Orchestrates everything; port last                 |
+|    18 | `gs/*` (vendored TweenMax)                                                                                                                 | **deleted** — replaced by `gsap` import                                                              | No port needed                                     |
 
 ---
 
@@ -655,42 +673,42 @@ If you can find `.fla` source files that match the names below, send them and I'
 
 These are multi-second pre-rendered animations. Re-exporting from the `.fla` (Adobe Animate → HTML5 Canvas or Animate → MP4) is dramatically cleaner than decompiling.
 
-| SWF (legacy path) | Likely `.fla` name | What it is |
-|---|---|---|
-| `src/story/cutscenes/intro.swf` | `intro.fla` / `gameintro.fla` / `cutscene_intro.fla` | Opening cutscene |
-| `src/story/cutscenes/ending.swf` | `ending.fla` / `endgame.fla` / `cutscene_ending.fla` | Final cutscene |
-| `src/story/cutscenes/pre_world1.swf` | `pre_world1.fla` / `cutscene1.fla` / `displacement_intro.fla` | Pre-world-1 cutscene |
-| `src/story/cutscenes/pre_world2.swf` | `pre_world2.fla` / `cutscene2.fla` / `velocity_intro.fla` | Pre-world-2 cutscene |
-| `src/story/cutscenes/pre_world3.swf` | `pre_world3.fla` / `cutscene3.fla` / `mixed_intro.fla` | Pre-world-3 cutscene |
-| `src/story/misc/levelcomplete.swf` | `levelcomplete.fla` / `wisp.fla` / `levelend.fla` | Win animation (shown when player reaches exit) |
-| `src/story/misc/levelcomplete_cutscene.swf` | `levelcomplete_cutscene.fla` / `levelend_cs.fla` | Win animation for cutscene levels |
-| `src/story/splash/gambitlogo.swf` | `gambit.fla` / `gambitlogo.fla` | Studio splash |
+| SWF (legacy path)                           | Likely `.fla` name                                            | What it is                                     |
+| ------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| `src/story/cutscenes/intro.swf`             | `intro.fla` / `gameintro.fla` / `cutscene_intro.fla`          | Opening cutscene                               |
+| `src/story/cutscenes/ending.swf`            | `ending.fla` / `endgame.fla` / `cutscene_ending.fla`          | Final cutscene                                 |
+| `src/story/cutscenes/pre_world1.swf`        | `pre_world1.fla` / `cutscene1.fla` / `displacement_intro.fla` | Pre-world-1 cutscene                           |
+| `src/story/cutscenes/pre_world2.swf`        | `pre_world2.fla` / `cutscene2.fla` / `velocity_intro.fla`     | Pre-world-2 cutscene                           |
+| `src/story/cutscenes/pre_world3.swf`        | `pre_world3.fla` / `cutscene3.fla` / `mixed_intro.fla`        | Pre-world-3 cutscene                           |
+| `src/story/misc/levelcomplete.swf`          | `levelcomplete.fla` / `wisp.fla` / `levelend.fla`             | Win animation (shown when player reaches exit) |
+| `src/story/misc/levelcomplete_cutscene.swf` | `levelcomplete_cutscene.fla` / `levelend_cs.fla`              | Win animation for cutscene levels              |
+| `src/story/splash/gambitlogo.swf`           | `gambit.fla` / `gambitlogo.fla`                               | Studio splash                                  |
 
 ### Tier 2 — high payoff (avatar + frequently-used animated effects)
 
-| SWF | Likely `.fla` | What it is |
-|---|---|---|
-| `src/story/sprite/avatarSheet.swf` | `avatar.fla` / `avatarSheet.fla` / `character.fla` / `playable.fla` | **Player sprite sheet** — multiple animation states (idle/walk/run/jump up/jump down × left/right). Almost certainly worth tracking down. |
-| `src/story/graph/graphSpark.swf` | `graphSpark.fla` / `spark.fla` | Sparkles while drawing graph |
-| `src/story/graph/Blink.swf`, `Blink Tall.swf`, `Blink Wide.swf` | `Blink.fla` / `graphFlash.fla` | Graph countdown blink effect |
-| `src/story/graph/displacementOrb/orbEFFECT.swf`, `velocityOrb/orbEFFECT.swf` | `orb_effect.fla` / `displacementOrb.fla` / `velocityOrb.fla` | Spinning triangles around the orb |
-| `src/story/misc/hitEffect.swf` | `hitEffect.fla` / `redCircle.fla` | Red circle that grows + fades when player hits a graph obstacle |
+| SWF                                                                          | Likely `.fla`                                                       | What it is                                                                                                                                |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/story/sprite/avatarSheet.swf`                                           | `avatar.fla` / `avatarSheet.fla` / `character.fla` / `playable.fla` | **Player sprite sheet** — multiple animation states (idle/walk/run/jump up/jump down × left/right). Almost certainly worth tracking down. |
+| `src/story/graph/graphSpark.swf`                                             | `graphSpark.fla` / `spark.fla`                                      | Sparkles while drawing graph                                                                                                              |
+| `src/story/graph/Blink.swf`, `Blink Tall.swf`, `Blink Wide.swf`              | `Blink.fla` / `graphFlash.fla`                                      | Graph countdown blink effect                                                                                                              |
+| `src/story/graph/displacementOrb/orbEFFECT.swf`, `velocityOrb/orbEFFECT.swf` | `orb_effect.fla` / `displacementOrb.fla` / `velocityOrb.fla`        | Spinning triangles around the orb                                                                                                         |
+| `src/story/misc/hitEffect.swf`                                               | `hitEffect.fla` / `redCircle.fla`                                   | Red circle that grows + fades when player hits a graph obstacle                                                                           |
 
 ### Tier 3 — medium payoff (looks like static or near-static art)
 
 These are likely single-frame or very short loops; JPEXS extraction usually works fine, but `.fla` is nicer if available.
 
-| Group | Examples | Likely `.fla` candidates |
-|---|---|---|
-| Level backgrounds | `leveld1_bg.swf`, `levelv1_bg.swf`, `levelm1_bg.swf`, `levelTD_bg.swf` etc. (14 total) | `leveld1.fla`, `world1_bg.fla`, `bg_*.fla` |
-| Glow effects | `Glow_Effect_reddishorange.swf`, `Glow_Red_dbl_height.swf`, `Glow_Yellow_*.swf` | `glow.fla` / `graph_bg.fla` |
-| Orb origins / pickups | `displacementOrb/justORB.swf`, `velocityOrb/justORB.swf`, `ORBpicked L/R.swf`, `pointer.swf`, `origin.swf` | `orb.fla` / `pickup.fla` |
-| Switch art | `switch_mode_1.swf`, `switch_mode_2.swf` | `switch.fla` |
-| Obstacles | `Obstacle.swf`, `Portal.swf`, `obs_vert80.swf`, `obs_vert140.swf`, `obs_vert200.swf`, `obs_horz160.swf` | `obstacle.fla` / `portal.fla` |
-| Hint signs | `hints/level_*_hint.swf`, `level_hintsign.swf` | `hints.fla` / `hint_sign.fla` |
-| Help icons | `help/+S.swf`, `D.swf`, `L.swf`, `R.swf`, `pointRIGHT.swf`, `spacebar.swf` | `help.fla` / `controls.fla` |
-| Menu screens | `instructions_screen.swf`, `credits_screen.swf`, `settings_screen.swf` | `menu.fla` / `instructions.fla` / `credits.fla` |
-| Exits | `exit.swf`, `exitcutscene.swf`, `placeholder_exit.swf` | `exit.fla` |
+| Group                 | Examples                                                                                                   | Likely `.fla` candidates                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Level backgrounds     | `leveld1_bg.swf`, `levelv1_bg.swf`, `levelm1_bg.swf`, `levelTD_bg.swf` etc. (14 total)                     | `leveld1.fla`, `world1_bg.fla`, `bg_*.fla`      |
+| Glow effects          | `Glow_Effect_reddishorange.swf`, `Glow_Red_dbl_height.swf`, `Glow_Yellow_*.swf`                            | `glow.fla` / `graph_bg.fla`                     |
+| Orb origins / pickups | `displacementOrb/justORB.swf`, `velocityOrb/justORB.swf`, `ORBpicked L/R.swf`, `pointer.swf`, `origin.swf` | `orb.fla` / `pickup.fla`                        |
+| Switch art            | `switch_mode_1.swf`, `switch_mode_2.swf`                                                                   | `switch.fla`                                    |
+| Obstacles             | `Obstacle.swf`, `Portal.swf`, `obs_vert80.swf`, `obs_vert140.swf`, `obs_vert200.swf`, `obs_horz160.swf`    | `obstacle.fla` / `portal.fla`                   |
+| Hint signs            | `hints/level_*_hint.swf`, `level_hintsign.swf`                                                             | `hints.fla` / `hint_sign.fla`                   |
+| Help icons            | `help/+S.swf`, `D.swf`, `L.swf`, `R.swf`, `pointRIGHT.swf`, `spacebar.swf`                                 | `help.fla` / `controls.fla`                     |
+| Menu screens          | `instructions_screen.swf`, `credits_screen.swf`, `settings_screen.swf`                                     | `menu.fla` / `instructions.fla` / `credits.fla` |
+| Exits                 | `exit.swf`, `exitcutscene.swf`, `placeholder_exit.swf`                                                     | `exit.fla`                                      |
 
 ### Tier 4 — don't need `.fla` for these (audio wrapped in SWF)
 
@@ -708,16 +726,16 @@ If you find **none** — that's fine, the JPEXS pipeline (Phase 2) handles all o
 
 User dropped `.fla` files in `legacy/possible-fla-assets/` (renamed during Phase 0 from the original `possible fla assets/`). Cross-referenced and confirmed:
 
-| `.fla` (in `legacy/possible-fla-assets/`) | → SWF target | Confirmed by |
-|---|---|---|
-| `intro.fla` (10.4 MB) | `legacy/src/story/cutscenes/intro.swf` (247 KB) — `AssetManager.introCutScene` | name + size ratio ✓ |
-| `pre_world1.fla` (8.1 MB) | `cutscenes/pre_world1.swf` (242 KB) — `AssetManager.preDisplacementCutScene` | ✓ |
-| `pre_world2.fla` (5.4 MB) | `cutscenes/pre_world2.swf` (132 KB) — `AssetManager.preVelocityCutScene` | ✓ |
-| `pre_world3.fla` (8.5 MB) | `cutscenes/pre_world3.swf` (123 KB) — `AssetManager.preMixedCutScene` | ✓ |
-| `ending.fla` (4.7 MB) | `cutscenes/ending.swf` (206 KB) — `AssetManager.endingCutScene` | ✓ |
-| `Levelcomplete.fla` (4.2 MB) | `misc/levelcomplete.swf` (59 KB) — `AssetManager.levelComplete` | ✓ |
-| `Blink.fla` (20 KB) | `graph/Blink.swf` (0.1 KB) — `AssetManager.graphFlash` *(also re-export at scale to cover `Blink Tall.swf` and `Blink Wide.swf`)* | ✓ |
-| `graphSpark.fla` (30 KB) | `graph/graphSpark.swf` (0.6 KB) — `AssetManager.graphSpark` | ✓ |
+| `.fla` (in `legacy/possible-fla-assets/`) | → SWF target                                                                                                                      | Confirmed by        |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `intro.fla` (10.4 MB)                     | `legacy/src/story/cutscenes/intro.swf` (247 KB) — `AssetManager.introCutScene`                                                    | name + size ratio ✓ |
+| `pre_world1.fla` (8.1 MB)                 | `cutscenes/pre_world1.swf` (242 KB) — `AssetManager.preDisplacementCutScene`                                                      | ✓                   |
+| `pre_world2.fla` (5.4 MB)                 | `cutscenes/pre_world2.swf` (132 KB) — `AssetManager.preVelocityCutScene`                                                          | ✓                   |
+| `pre_world3.fla` (8.5 MB)                 | `cutscenes/pre_world3.swf` (123 KB) — `AssetManager.preMixedCutScene`                                                             | ✓                   |
+| `ending.fla` (4.7 MB)                     | `cutscenes/ending.swf` (206 KB) — `AssetManager.endingCutScene`                                                                   | ✓                   |
+| `Levelcomplete.fla` (4.2 MB)              | `misc/levelcomplete.swf` (59 KB) — `AssetManager.levelComplete`                                                                   | ✓                   |
+| `Blink.fla` (20 KB)                       | `graph/Blink.swf` (0.1 KB) — `AssetManager.graphFlash` _(also re-export at scale to cover `Blink Tall.swf` and `Blink Wide.swf`)_ | ✓                   |
+| `graphSpark.fla` (30 KB)                  | `graph/graphSpark.swf` (0.6 KB) — `AssetManager.graphSpark`                                                                       | ✓                   |
 
 **TBD — needs visual inspection in Adobe Animate:**
 
@@ -741,17 +759,17 @@ User dropped `.fla` files in `legacy/possible-fla-assets/` (renamed during Phase
 
 `C:\Users\Eric Klopfer\MIT Dropbox\Eric Klopfer\Game Preservation\Source\Flash\Waker\` contains the **complete authoring archive** — every cutscene FLA, the avatar sprite sheet sources, level backgrounds, orb art, glows, switches, etc. Notable finds:
 
-| Path under `Waker/Art/` | What it is |
-|---|---|
-| `Characters/Character animation/AVATAR_Collision Detection/SPRITESHEETII.fla` | **Canonical avatar sprite sheet source** (with `SPRITESHEET.fla` as the original iteration) |
-| `Characters/Character animation/{Idle,Run,Walk,Jump}/` | Per-state avatar FLAs — `graftIDLEanimation.fla`, `graftRUNanimation.fla`, `graftJumpUP.fla`, `graftJumpDOWN.fla`, `graftJumptransition.fla`, with `withONLYorb` and `WITHOUTobject` variants matching the in-game avatar-with-orb states |
-| `Characters/Character animation/Wisps/` | Wisp animations (`wisp_stoned.fla`, `wisp_upontouching.fla`) |
-| `Environment concept/Interactive/` | `graphSpark.fla`, `Blink.fla`, `Glow_Velo.fla`, `Disp orb + Origin.fla`, `Teleporter + Wisp.fla`, `VELO Orb pickedup.fla`, ORB / DISPLACEMENT PAD activational-object FLAs |
-| `Environment concept/Abstract/` and `N Backgrounds/` | Multiple level background FLAs (W1, W2, W3 sets, multiple revisions) |
-| `Environment concept/Non-interactive/Abstract/level completion.fla` | Possible source for `misc/levelcomplete.swf` |
-| `CUTSCENE/` | `intro.fla`, `pre_world1/2/3.fla`, `Levelcomplete + ending.fla` (duplicates of `legacy/possible-fla-assets/`) |
-| `Abstract Cut Scenes/` | Older cutscene drafts |
-| `For programmers/Art Sprite/{IDLE,JUMP,RUN} swf/` | **Per-state SWFs** ← can be JPEXS-extracted directly as a fallback if `legacy/src/story/sprite/avatarSheet.swf` doesn't decompose cleanly |
+| Path under `Waker/Art/`                                                       | What it is                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Characters/Character animation/AVATAR_Collision Detection/SPRITESHEETII.fla` | **Canonical avatar sprite sheet source** (with `SPRITESHEET.fla` as the original iteration)                                                                                                                                               |
+| `Characters/Character animation/{Idle,Run,Walk,Jump}/`                        | Per-state avatar FLAs — `graftIDLEanimation.fla`, `graftRUNanimation.fla`, `graftJumpUP.fla`, `graftJumpDOWN.fla`, `graftJumptransition.fla`, with `withONLYorb` and `WITHOUTobject` variants matching the in-game avatar-with-orb states |
+| `Characters/Character animation/Wisps/`                                       | Wisp animations (`wisp_stoned.fla`, `wisp_upontouching.fla`)                                                                                                                                                                              |
+| `Environment concept/Interactive/`                                            | `graphSpark.fla`, `Blink.fla`, `Glow_Velo.fla`, `Disp orb + Origin.fla`, `Teleporter + Wisp.fla`, `VELO Orb pickedup.fla`, ORB / DISPLACEMENT PAD activational-object FLAs                                                                |
+| `Environment concept/Abstract/` and `N Backgrounds/`                          | Multiple level background FLAs (W1, W2, W3 sets, multiple revisions)                                                                                                                                                                      |
+| `Environment concept/Non-interactive/Abstract/level completion.fla`           | Possible source for `misc/levelcomplete.swf`                                                                                                                                                                                              |
+| `CUTSCENE/`                                                                   | `intro.fla`, `pre_world1/2/3.fla`, `Levelcomplete + ending.fla` (duplicates of `legacy/possible-fla-assets/`)                                                                                                                             |
+| `Abstract Cut Scenes/`                                                        | Older cutscene drafts                                                                                                                                                                                                                     |
+| `For programmers/Art Sprite/{IDLE,JUMP,RUN} swf/`                             | **Per-state SWFs** ← can be JPEXS-extracted directly as a fallback if `legacy/src/story/sprite/avatarSheet.swf` doesn't decompose cleanly                                                                                                 |
 
 ### Operational note: no Adobe Animate available
 
@@ -762,6 +780,7 @@ User does not have Adobe Animate installed, so **`.fla` files cannot be re-expor
 - **Per-state avatar SWFs** in `MIT Dropbox/.../For programmers/Art Sprite/{IDLE,JUMP,RUN} swf/` are a **direct fallback** if extracting the consolidated `avatarSheet.swf` produces a messy output — these per-state SWFs map 1:1 to the `currentState` values (`faceRight`, `runLeft`, `jumpUpRight`, etc.) in `avatarImage.mxml`.
 
 **Escalation paths if JPEXS quality is insufficient for a given asset:**
+
 1. **Animate 7-day free trial** — temporary install to re-export the problem cutscene(s) from FLA, then uninstall. Probably worth it for the four pre-world cutscenes (`intro.swf`, `pre_world1/2/3.swf`, `ending.swf`) if vector content rasterizes oddly.
 2. **Per-state SWF substitution** for the avatar specifically (see above).
 3. **`character walk sizes.fla` and similar exploration FLAs** are skipped — they were sizing/iteration files, not production sources.

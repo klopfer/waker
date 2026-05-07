@@ -21,3 +21,8 @@ desktop.ini
 .env
 .env.*
 !.env.example
+
+# Claude Code per-developer state (shared settings stay tracked)
+.claude/settings.local.json
+.claude/cache/
+.claude/logs/
