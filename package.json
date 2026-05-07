@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "extract:swf": "node tools/extract-swf.mjs",
     "extract:swf:dry": "node tools/extract-swf.mjs --dry-run",
-    "extract:cutscenes": "node tools/extract-swf.mjs --cutscenes-only"
+    "extract:cutscenes": "node tools/extract-swf.mjs --cutscenes-only",
+    "extract:avatar": "node tools/extract-avatar.mjs"
   },
   "dependencies": {
     "gsap": "^3.12.5",

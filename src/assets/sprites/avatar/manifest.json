@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-05-07T18:47:57.577Z",
+  "states": {
+    "idle-left": {
+      "sheet": "idle-left.png",
+      "frameCount": 104,
+      "frameWidth": 236,
+      "frameHeight": 157,
+      "cols": 11,
+      "rows": 10,
+      "sheetWidth": 2596,
+      "sheetHeight": 1570
+    },
+    "idle-right": {
+      "sheet": "idle-right.png",
+      "frameCount": 104,
+      "frameWidth": 236,
+      "frameHeight": 157,
+      "cols": 11,
+      "rows": 10,
+      "sheetWidth": 2596,
+      "sheetHeight": 1570
+    },
+    "run-right": {
+      "sheet": "run-right.png",
+      "frameCount": 10,
+      "frameWidth": 367,
+      "frameHeight": 367,
+      "cols": 4,
+      "rows": 3,
+      "sheetWidth": 1468,
+      "sheetHeight": 1101
+    },
+    "walk-right": {
+      "sheet": "walk-right.png",
+      "frameCount": 44,
+      "frameWidth": 550,
+      "frameHeight": 400,
+      "cols": 7,
+      "rows": 7,
+      "sheetWidth": 3850,
+      "sheetHeight": 2800
+    },
+    "jumpup-right": {
+      "sheet": "jumpup-right.png",
+      "frameCount": 2,
+      "frameWidth": 237,
+      "frameHeight": 348,
+      "cols": 2,
+      "rows": 1,
+      "sheetWidth": 474,
+      "sheetHeight": 348
+    },
+    "jumpdown-right": {
+      "sheet": "jumpdown-right.png",
+      "frameCount": 3,
+      "frameWidth": 249,
+      "frameHeight": 314,
+      "cols": 2,
+      "rows": 2,
+      "sheetWidth": 498,
+      "sheetHeight": 628
+    },
+    "run-left": {
+      "sheet": "run-right.png",
+      "frameCount": 10,
+      "frameWidth": 367,
+      "frameHeight": 367,
+      "cols": 4,
+      "rows": 3,
+      "sheetWidth": 1468,
+      "sheetHeight": 1101,
+      "flipHorizontal": true
+    },
+    "walk-left": {
+      "sheet": "walk-right.png",
+      "frameCount": 44,
+      "frameWidth": 550,
+      "frameHeight": 400,
+      "cols": 7,
+      "rows": 7,
+      "sheetWidth": 3850,
+      "sheetHeight": 2800,
+      "flipHorizontal": true
+    },
+    "jumpup-left": {
+      "sheet": "jumpup-right.png",
+      "frameCount": 2,
+      "frameWidth": 237,
+      "frameHeight": 348,
+      "cols": 2,
+      "rows": 1,
+      "sheetWidth": 474,
+      "sheetHeight": 348,
+      "flipHorizontal": true
+    },
+    "jumpdown-left": {
+      "sheet": "jumpdown-right.png",
+      "frameCount": 3,
+      "frameWidth": 249,
+      "frameHeight": 314,
+      "cols": 2,
+      "rows": 2,
+      "sheetWidth": 498,
+      "sheetHeight": 628,
+      "flipHorizontal": true
+    }
+  }
+}
