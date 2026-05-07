@@ -2,7 +2,7 @@
 
 HTML5/TypeScript port of **Waker** (project codename *Woosh2*), an educational physics platformer originally built in Flash/Flex by [MIT Gambit Game Lab](https://gambit.mit.edu) circa 2008–2012. The player picks up "orbs" and *draws* velocity / displacement / mixed graphs whose curves solidify into platforms.
 
-> **Status: early port.** Discovery and planning are complete. Foundations (Vite + PixiJS + the engine leaves) are committed; the asset extraction pipeline runs and the cutscene-rendering pass is the next milestone. See [`flash-to-html5-conversion-plan.md`](flash-to-html5-conversion-plan.md) for the full plan and phase-by-phase status.
+> **Status: early port.** Discovery and planning are complete. The foundation (Vite + PixiJS + engine leaves), the full asset pipeline (JPEXS → MP4/PNG/MP3 + curation), and the first visual milestone (the avatar walks across the canvas with idle/run state switching) are committed. See [`flash-to-html5-conversion-plan.md`](flash-to-html5-conversion-plan.md) for the full plan and phase-by-phase status.
 
 ---
 
@@ -112,12 +112,14 @@ The plan is in seven phases (full text in [`flash-to-html5-conversion-plan.md` �
 |---|---|---|
 | 0 | Discovery + repo reorg + `CLAUDE.md` | ✅ done |
 | 1 | Vite + PixiJS scaffold + smoke test | ✅ done |
-| 2 | JPEXS asset extraction pipeline | ✅ tool committed; full extraction run; cutscene sprite-render pass next |
-| 3 | Engine layer (FixedStep, Input, HitTest, Audio, GraphTone, AssetLoader, MovieClipShim) | 🟡 leaves done (6/8); AssetLoader + MovieClipShim pending |
+| 2 | JPEXS asset extraction + curation (181 entries, 13.8 MB committed) | ✅ done — `extract:swf`, `extract:cutscenes`, `extract:avatar`, `curate` |
+| 3 | Engine layer (FixedStep, Input, HitTest, Audio, GraphTone, AssetLoader, MovieClipShim) | 🟡 8/8 modules done — avatar wired into smoke scene, idle / run / face L+R switch by arrow keys |
 | 4 | Game logic port — module by module in dependency order ([§14](flash-to-html5-conversion-plan.md)) | ⏳ |
 | 5 | UI port — DOM overlay (menu, options, instructions, credits, HUD) | ⏳ |
 | 6 | Testing + polish (cross-browser, mobile, perf) | ⏳ |
 | 7 | Release prep | ⏳ |
+
+**Latest milestone:** `npm run dev` shows Waker idling on a ground line; arrow keys move him across the canvas with run animations playing at 24 fps. Bundle is 300 KB (95 KB gzipped) plus assets.
 
 Conversion log entries land in `CONVERSION_LOG.md` (one per ported module) once Phase 4 starts.
 

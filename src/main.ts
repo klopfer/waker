@@ -1,10 +1,14 @@
-import { Application, Graphics, Text } from 'pixi.js';
+import { Application, Container, Graphics, Text } from 'pixi.js';
 import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
+import { preloadAvatarStates, type LoadedAvatarState } from './game/AvatarSprites.js';
+import type { AvatarStateName } from './assets/sprites/avatar/manifest.types.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
 const SIM_HZ = 24;
+const AVATAR_DISPLAY_WIDTH = 80;
+const GROUND_Y = STAGE_HEIGHT - 60;
 
 const GAME_KEYS = [
   'ArrowLeft',
@@ -16,6 +20,13 @@ const GAME_KEYS = [
   'KeyS',
   'Escape',
 ] as const;
+
+const PRELOAD_STATES: readonly AvatarStateName[] = [
+  'idle-left',
+  'idle-right',
+  'run-left',
+  'run-right',
+];
 
 function fitStageToViewport(): void {
   const stage = document.getElementById('stage');
@@ -42,16 +53,14 @@ async function main(): Promise<void> {
     antialias: true,
   });
 
-  const placeholder = new Graphics().rect(-20, -20, 40, 40).fill(0xffaa00);
-  placeholder.x = STAGE_WIDTH / 2;
-  placeholder.y = STAGE_HEIGHT / 2;
-  app.stage.addChild(placeholder);
+  const ground = new Graphics().rect(0, GROUND_Y + 1, STAGE_WIDTH, 4).fill(0x2a3140);
+  app.stage.addChild(ground);
 
   const label = new Text({
     text:
-      'Waker — Phase 1+3 scaffold\n' +
-      'arrows: move   |   click: beep   |   any key: log\n' +
-      'simulation: 24 Hz fixed step (tick counter below)',
+      'Waker — Phase 3 milestone\n' +
+      'arrows: walk + face   |   click: beep\n' +
+      'simulation: 24 Hz fixed step',
     style: { fill: 0xaaaaaa, fontFamily: 'monospace', fontSize: 14, align: 'center' },
   });
   label.anchor.set(0.5, 0);
@@ -60,7 +69,7 @@ async function main(): Promise<void> {
   app.stage.addChild(label);
 
   const tickReadout = new Text({
-    text: 'tick 0',
+    text: 'tick 0   state idle-right',
     style: { fill: 0x66ccff, fontFamily: 'monospace', fontSize: 14 },
   });
   tickReadout.anchor.set(0.5, 1);
@@ -68,30 +77,68 @@ async function main(): Promise<void> {
   tickReadout.y = STAGE_HEIGHT - 16;
   app.stage.addChild(tickReadout);
 
+  const avatarLayer = new Container();
+  app.stage.addChild(avatarLayer);
+
+  const states = await preloadAvatarStates(PRELOAD_STATES);
+
+  let currentName: AvatarStateName = 'idle-right';
+  let current: LoadedAvatarState | null = null;
+  let avatarX = STAGE_WIDTH / 2;
+
+  const setState = (name: AvatarStateName): void => {
+    if (current && currentName === name) return;
+    if (current) avatarLayer.removeChild(current.sprite);
+    const next = states.get(name);
+    if (!next) throw new Error(`state not preloaded: ${name}`);
+    next.sprite.anchor.set(0.5, 1);
+    next.sprite.width = AVATAR_DISPLAY_WIDTH;
+    const aspect = next.meta.frameHeight / next.meta.frameWidth;
+    next.sprite.height = AVATAR_DISPLAY_WIDTH * aspect;
+    next.sprite.x = avatarX;
+    next.sprite.y = GROUND_Y;
+    next.clip.gotoAndPlay(0);
+    avatarLayer.addChild(next.sprite);
+    current = next;
+    currentName = name;
+  };
+
+  setState('idle-right');
+
   const input = new Input(window, { preventDefaultFor: GAME_KEYS });
   const sim = new FixedStep({ hz: SIM_HZ });
 
   let tickCount = 0;
-  let pulse = 0;
-  const speed = 4;
+  const moveSpeed = 4;
 
   app.ticker.add(({ deltaMS }) => {
-    const { steps, alpha } = sim.advance(deltaMS);
+    const { steps } = sim.advance(deltaMS);
     for (let i = 0; i < steps; i++) {
       tickCount++;
-      pulse += 1;
 
-      if (input.wasPressed('Escape')) console.log('escape pressed');
-      if (input.isDown('ArrowLeft')) placeholder.x -= speed;
-      if (input.isDown('ArrowRight')) placeholder.x += speed;
-      if (input.isDown('ArrowUp')) placeholder.y -= speed;
-      if (input.isDown('ArrowDown')) placeholder.y += speed;
+      const left = input.isDown('ArrowLeft');
+      const right = input.isDown('ArrowRight');
+
+      let nextState: AvatarStateName = currentName;
+      if (right && !left) {
+        avatarX = Math.min(STAGE_WIDTH - AVATAR_DISPLAY_WIDTH / 2, avatarX + moveSpeed);
+        nextState = 'run-right';
+      } else if (left && !right) {
+        avatarX = Math.max(AVATAR_DISPLAY_WIDTH / 2, avatarX - moveSpeed);
+        nextState = 'run-left';
+      } else {
+        nextState = currentName.endsWith('-left') ? 'idle-left' : 'idle-right';
+      }
+
+      if (nextState !== currentName) setState(nextState);
+      if (current) {
+        current.sprite.x = avatarX;
+        current.clip.update();
+      }
 
       input.endTick();
     }
-
-    placeholder.alpha = 0.5 + 0.5 * Math.sin(pulse / 6 + alpha);
-    tickReadout.text = `tick ${tickCount}`;
+    tickReadout.text = `tick ${tickCount}   state ${currentName}`;
   });
 
   let audioCtx: AudioContext | null = null;
@@ -108,11 +155,7 @@ async function main(): Promise<void> {
     osc.stop(audioCtx.currentTime + 0.13);
   });
 
-  window.addEventListener('keydown', (e) => {
-    console.log(`key: ${e.key} (code=${e.code})`);
-  });
-
-  console.log('Waker scaffold ready (24 Hz sim wired up).');
+  console.log('Waker Phase 3 milestone ready: avatar wired up.');
 }
 
 void main();
