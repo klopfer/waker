@@ -1,0 +1,1099 @@
+{
+  "generatedAt": "2026-05-07T21:41:30.844Z",
+  "counts": {
+    "audio": 42,
+    "image": 135,
+    "video": 4,
+    "unknown": 0
+  },
+  "skipped": 0,
+  "skippedDetails": [],
+  "byEmbedName": {
+    "OnePx": {
+      "url": "misc/1px.png",
+      "type": "image",
+      "source": "misc/1px.png",
+      "symbol": null
+    },
+    "gambitClass": {
+      "url": "splash/gambitlogo.png",
+      "type": "image",
+      "source": "splash/gambitlogo.swf",
+      "symbol": null
+    },
+    "poofClass": {
+      "url": "splash/poofLogo.png",
+      "type": "image",
+      "source": "splash/poofLogo.png",
+      "symbol": null
+    },
+    "cursorImg": {
+      "url": "gui/menu/cursor.png",
+      "type": "image",
+      "source": "gui/menu/cursor.png",
+      "symbol": null
+    },
+    "guiBtnStart": {
+      "url": "gui/menu/start.png",
+      "type": "image",
+      "source": "gui/menu/start.png",
+      "symbol": null
+    },
+    "guiBtnStartMo": {
+      "url": "gui/menu/start_mouseover.png",
+      "type": "image",
+      "source": "gui/menu/start_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnInstruct": {
+      "url": "gui/menu/instructions.png",
+      "type": "image",
+      "source": "gui/menu/instructions.png",
+      "symbol": null
+    },
+    "guiBtnInstructMo": {
+      "url": "gui/menu/instructions_mouseover.png",
+      "type": "image",
+      "source": "gui/menu/instructions_mouseover.png",
+      "symbol": null
+    },
+    "guiMenuBG": {
+      "url": "gui/menu/menuBG.jpg",
+      "type": "image",
+      "source": "gui/menu/menuBG.jpg",
+      "symbol": null
+    },
+    "guiBtnCredits": {
+      "url": "gui/menu/credits.png",
+      "type": "image",
+      "source": "gui/menu/credits.png",
+      "symbol": null
+    },
+    "guiBtnCreditsMo": {
+      "url": "gui/menu/credits_mouseover.png",
+      "type": "image",
+      "source": "gui/menu/credits_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnSettings": {
+      "url": "gui/menu/settings.png",
+      "type": "image",
+      "source": "gui/menu/settings.png",
+      "symbol": null
+    },
+    "guiBtnSettingsMo": {
+      "url": "gui/menu/settings_mouseover.png",
+      "type": "image",
+      "source": "gui/menu/settings_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnEasy": {
+      "url": "gui/menu/difficulty_easy.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_easy.png",
+      "symbol": null
+    },
+    "guiBtnEasyMO": {
+      "url": "gui/menu/difficulty_easy_mouseover.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_easy_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnEasySelected": {
+      "url": "gui/menu/difficulty_easy_selected.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_easy_selected.png",
+      "symbol": null
+    },
+    "guiBtnMedium": {
+      "url": "gui/menu/difficulty_medium.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_medium.png",
+      "symbol": null
+    },
+    "guiBtnMediumMO": {
+      "url": "gui/menu/difficulty_medium_mouseover.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_medium_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnMediumSelected": {
+      "url": "gui/menu/difficulty_medium_selected.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_medium_selected.png",
+      "symbol": null
+    },
+    "guiBtnHard": {
+      "url": "gui/menu/difficulty_hard.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_hard.png",
+      "symbol": null
+    },
+    "guiBtnHardMO": {
+      "url": "gui/menu/difficulty_hard_mouseover.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_hard_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnHardSelected": {
+      "url": "gui/menu/difficulty_hard_selected.png",
+      "type": "image",
+      "source": "gui/menu/difficulty_hard_selected.png",
+      "symbol": null
+    },
+    "guiOptionsScreenBG": {
+      "url": "gui/menu/settings_screen.png",
+      "type": "image",
+      "source": "gui/menu/settings_screen.swf",
+      "symbol": null
+    },
+    "guiInstructionScreen": {
+      "url": "gui/menu/instructions_screen.png",
+      "type": "image",
+      "source": "gui/menu/instructions_screen.swf",
+      "symbol": null
+    },
+    "guiCreditsScreen": {
+      "url": "gui/menu/credits_screen.png",
+      "type": "image",
+      "source": "gui/menu/credits_screen.swf",
+      "symbol": null
+    },
+    "guiOption_bg": {
+      "url": "gui/in-game/GUIoption_bg.png",
+      "type": "image",
+      "source": "gui/in-game/GUIoption_bg.swf",
+      "symbol": null
+    },
+    "guiBtnOptions": {
+      "url": "gui/in-game/option.png",
+      "type": "image",
+      "source": "gui/in-game/option.png",
+      "symbol": null
+    },
+    "guiBtnOptionsPressed": {
+      "url": "gui/in-game/option_pressed.png",
+      "type": "image",
+      "source": "gui/in-game/option_pressed.png",
+      "symbol": null
+    },
+    "level_displacement0_hint": {
+      "url": "gui/in-game/hints/level_displacement0_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_displacement0_hint.swf",
+      "symbol": null
+    },
+    "level_displacement1_hint": {
+      "url": "gui/in-game/hints/level_displacement1_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_displacement1_hint.swf",
+      "symbol": null
+    },
+    "level_displacement2_hint": {
+      "url": "gui/in-game/hints/level_displacement2_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_displacement2_hint.swf",
+      "symbol": null
+    },
+    "level_displacement3_hint": {
+      "url": "gui/in-game/hints/level_displacement3_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_displacement3_hint.swf",
+      "symbol": null
+    },
+    "level_velocity0_hint": {
+      "url": "gui/in-game/hints/level_velocity0_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_velocity0_hint.swf",
+      "symbol": null
+    },
+    "level_velocity1_hint": {
+      "url": "gui/in-game/hints/level_velocity1_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_velocity1_hint.swf",
+      "symbol": null
+    },
+    "level_velocity2_hint": {
+      "url": "gui/in-game/hints/level_velocity2_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_velocity2_hint.swf",
+      "symbol": null
+    },
+    "level_velocity3_hint": {
+      "url": "gui/in-game/hints/level_velocity3_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_velocity3_hint.swf",
+      "symbol": null
+    },
+    "level_mixed0_hint": {
+      "url": "gui/in-game/hints/level_mixed0_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_mixed0_hint.swf",
+      "symbol": null
+    },
+    "level_mixed1_hint": {
+      "url": "gui/in-game/hints/level_mixed1_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_mixed1_hint.swf",
+      "symbol": null
+    },
+    "level_mixed2_hint": {
+      "url": "gui/in-game/hints/level_mixed2_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_mixed2_hint.swf",
+      "symbol": null
+    },
+    "level_mixed3_hint": {
+      "url": "gui/in-game/hints/level_mixed3_hint.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_mixed3_hint.swf",
+      "symbol": null
+    },
+    "level_hintsign": {
+      "url": "gui/in-game/hints/level_hintsign.png",
+      "type": "image",
+      "source": "gui/in-game/hints/level_hintsign.swf",
+      "symbol": null
+    },
+    "cheatSourceFile": {
+      "url": "misc/cheat.png",
+      "type": "image",
+      "source": "misc/cheat.png",
+      "symbol": null
+    },
+    "help_image_Plus_S": {
+      "url": "help/+S.png",
+      "type": "image",
+      "source": "help/+S.swf",
+      "symbol": null
+    },
+    "help_image_D": {
+      "url": "help/D.png",
+      "type": "image",
+      "source": "help/D.swf",
+      "symbol": null
+    },
+    "help_image_L": {
+      "url": "help/L.png",
+      "type": "image",
+      "source": "help/L.swf",
+      "symbol": null
+    },
+    "help_image_R": {
+      "url": "help/R.png",
+      "type": "image",
+      "source": "help/R.swf",
+      "symbol": null
+    },
+    "help_image_pointRight": {
+      "url": "help/pointRIGHT.png",
+      "type": "image",
+      "source": "help/pointRIGHT.swf",
+      "symbol": null
+    },
+    "help_image_spacebar": {
+      "url": "help/spacebar.png",
+      "type": "image",
+      "source": "help/spacebar.swf",
+      "symbol": null
+    },
+    "guiBtnContinue": {
+      "url": "gui/in-game/return.png",
+      "type": "image",
+      "source": "gui/in-game/return.png",
+      "symbol": null
+    },
+    "guiBtnContinuePressed": {
+      "url": "gui/in-game/return_pressed.png",
+      "type": "image",
+      "source": "gui/in-game/return_pressed.png",
+      "symbol": null
+    },
+    "guiBtnContinueMO": {
+      "url": "gui/in-game/return_mouseover.png",
+      "type": "image",
+      "source": "gui/in-game/return_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnInstructions": {
+      "url": "gui/in-game/instructions.png",
+      "type": "image",
+      "source": "gui/in-game/instructions.png",
+      "symbol": null
+    },
+    "guiBtnInstructionsPressed": {
+      "url": "gui/in-game/instructions_pressed.png",
+      "type": "image",
+      "source": "gui/in-game/instructions_pressed.png",
+      "symbol": null
+    },
+    "guiBtnInstructionsMO": {
+      "url": "gui/in-game/instructions_mouseover.png",
+      "type": "image",
+      "source": "gui/in-game/instructions_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnSound": {
+      "url": "gui/in-game/settings.png",
+      "type": "image",
+      "source": "gui/in-game/settings.png",
+      "symbol": null
+    },
+    "guiBtnSoundPressed": {
+      "url": "gui/in-game/settings_pressed.png",
+      "type": "image",
+      "source": "gui/in-game/settings_pressed.png",
+      "symbol": null
+    },
+    "guiBtnSoundMO": {
+      "url": "gui/in-game/settings_mouseover.png",
+      "type": "image",
+      "source": "gui/in-game/settings_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnRestart": {
+      "url": "gui/in-game/restart.png",
+      "type": "image",
+      "source": "gui/in-game/restart.png",
+      "symbol": null
+    },
+    "guiBtnRestartPressed": {
+      "url": "gui/in-game/restart_pressed.png",
+      "type": "image",
+      "source": "gui/in-game/restart_pressed.png",
+      "symbol": null
+    },
+    "guiBtnRestartMO": {
+      "url": "gui/in-game/restart_mouseover.png",
+      "type": "image",
+      "source": "gui/in-game/restart_mouseover.png",
+      "symbol": null
+    },
+    "guiBtnQuit": {
+      "url": "gui/in-game/quit.png",
+      "type": "image",
+      "source": "gui/in-game/quit.png",
+      "symbol": null
+    },
+    "guiBtnQuitPressed": {
+      "url": "gui/in-game/quit_pressed.png",
+      "type": "image",
+      "source": "gui/in-game/quit_pressed.png",
+      "symbol": null
+    },
+    "guiBtnQuitMO": {
+      "url": "gui/in-game/quit_mouseover.png",
+      "type": "image",
+      "source": "gui/in-game/quit_mouseover.png",
+      "symbol": null
+    },
+    "guiInstructionOverlayInGame": {
+      "url": "gui/menu/instructions_screen.png",
+      "type": "image",
+      "source": "gui/menu/instructions_screen.swf",
+      "symbol": null
+    },
+    "guiConfirmationInGameScreen": {
+      "url": "gui/in-game/confirmation_screen.png",
+      "type": "image",
+      "source": "gui/in-game/confirmation_screen.swf",
+      "symbol": null
+    },
+    "guiConfirmationYesInGame": {
+      "url": "gui/in-game/confirmation_yes.png",
+      "type": "image",
+      "source": "gui/in-game/confirmation_yes.png",
+      "symbol": null
+    },
+    "guiConfirmationNoInGame": {
+      "url": "gui/in-game/confirmation_no.png",
+      "type": "image",
+      "source": "gui/in-game/confirmation_no.png",
+      "symbol": null
+    },
+    "graphBGD": {
+      "url": "graph/Glow_Effect_reddishorange.png",
+      "type": "image",
+      "source": "graph/Glow_Effect_reddishorange.swf",
+      "symbol": null
+    },
+    "graphBGTD": {
+      "url": "graph/Glow_Red_dbl_height.png",
+      "type": "image",
+      "source": "graph/Glow_Red_dbl_height.swf",
+      "symbol": null
+    },
+    "graphBGWD": {
+      "url": "graph/Glow_Red_dbl_width.png",
+      "type": "image",
+      "source": "graph/Glow_Red_dbl_width.swf",
+      "symbol": null
+    },
+    "graphBGV": {
+      "url": "graph/Glow_Yellow.png",
+      "type": "image",
+      "source": "graph/Glow_Yellow.swf",
+      "symbol": null
+    },
+    "graphBGTV": {
+      "url": "graph/Glow_Yellow_dbl_height.png",
+      "type": "image",
+      "source": "graph/Glow_Yellow_dbl_height.swf",
+      "symbol": null
+    },
+    "graphBGWV": {
+      "url": "graph/Glow_Yellow_dbl_width.png",
+      "type": "image",
+      "source": "graph/Glow_Yellow_dbl_width.swf",
+      "symbol": null
+    },
+    "displaceOrigin": {
+      "url": "graph/displacementOrb/origin.png",
+      "type": "image",
+      "source": "graph/displacementOrb/origin.swf",
+      "symbol": null
+    },
+    "disOrb": {
+      "url": "graph/displacementOrb/justORB.png",
+      "type": "image",
+      "source": "graph/displacementOrb/justORB.swf",
+      "symbol": null
+    },
+    "disEffect": {
+      "url": "graph/displacementOrb/orbEFFECT.png",
+      "type": "image",
+      "source": "graph/displacementOrb/orbEFFECT.swf",
+      "symbol": null
+    },
+    "graphSpark": {
+      "url": "graph/graphSpark.png",
+      "type": "image",
+      "source": "graph/graphSpark.swf",
+      "symbol": null
+    },
+    "graphFlash": {
+      "url": "graph/Blink.png",
+      "type": "image",
+      "source": "graph/Blink.swf",
+      "symbol": null
+    },
+    "graphFlashTall": {
+      "url": "graph/Blink Tall.png",
+      "type": "image",
+      "source": "graph/Blink Tall.swf",
+      "symbol": null
+    },
+    "graphFlashWide": {
+      "url": "graph/Blink Wide.png",
+      "type": "image",
+      "source": "graph/Blink Wide.swf",
+      "symbol": null
+    },
+    "velOrb": {
+      "url": "graph/velocityOrb/justORB.png",
+      "type": "image",
+      "source": "graph/velocityOrb/justORB.swf",
+      "symbol": null
+    },
+    "velEffect": {
+      "url": "graph/velocityOrb/orbEFFECT.png",
+      "type": "image",
+      "source": "graph/velocityOrb/orbEFFECT.swf",
+      "symbol": null
+    },
+    "graphObstacles": {
+      "url": "tempObs/Obstacle.png",
+      "type": "image",
+      "source": "tempObs/Obstacle.swf",
+      "symbol": null
+    },
+    "spikeyObjects": {
+      "url": "tempObs/Portal.png",
+      "type": "image",
+      "source": "tempObs/Portal.swf",
+      "symbol": null
+    },
+    "levelCompleteClass": {
+      "url": "cutscenes/levelcomplete.mp4",
+      "type": "video",
+      "source": "misc/levelcomplete.swf",
+      "symbol": "levelcomplete"
+    },
+    "levelCompleteCutSceneClass": {
+      "url": "cutscenes/levelcomplete-cs.mp4",
+      "type": "video",
+      "source": "misc/levelcomplete_cutscene.swf",
+      "symbol": "levelcompleteCS"
+    },
+    "bgWorld1_t": {
+      "url": "background/levelTD_bg.png",
+      "type": "image",
+      "source": "background/levelTD_bg.swf",
+      "symbol": null
+    },
+    "bgWorld1_1": {
+      "url": "background/leveld1_bg.png",
+      "type": "image",
+      "source": "background/leveld1_bg.swf",
+      "symbol": null
+    },
+    "bgWorld1_2": {
+      "url": "background/leveld2_bg.png",
+      "type": "image",
+      "source": "background/leveld2_bg.swf",
+      "symbol": null
+    },
+    "bgWorld1_3": {
+      "url": "background/leveld3_bg.png",
+      "type": "image",
+      "source": "background/leveld3_bg.swf",
+      "symbol": null
+    },
+    "bgWorld2_t": {
+      "url": "background/levelTV_bg.png",
+      "type": "image",
+      "source": "background/levelTV_bg.swf",
+      "symbol": null
+    },
+    "bgWorld2_1": {
+      "url": "background/levelv1_bg.png",
+      "type": "image",
+      "source": "background/levelv1_bg.swf",
+      "symbol": null
+    },
+    "bgWorld2_2": {
+      "url": "background/levelv2_bg.png",
+      "type": "image",
+      "source": "background/levelv2_bg.swf",
+      "symbol": null
+    },
+    "bgWorld2_3": {
+      "url": "background/levelv3_bg.png",
+      "type": "image",
+      "source": "background/levelv3_bg.swf",
+      "symbol": null
+    },
+    "bgWorld3_1": {
+      "url": "background/levelm1_bg.png",
+      "type": "image",
+      "source": "background/levelm1_bg.swf",
+      "symbol": null
+    },
+    "bgWorld3_2": {
+      "url": "background/levelm2_bg.png",
+      "type": "image",
+      "source": "background/levelm2_bg.swf",
+      "symbol": null
+    },
+    "bgWorld3_3": {
+      "url": "background/levelm3_bg.png",
+      "type": "image",
+      "source": "background/levelm3_bg.swf",
+      "symbol": null
+    },
+    "bgWorld3_4": {
+      "url": "background/levelm4_bg.png",
+      "type": "image",
+      "source": "background/levelm4_bg.swf",
+      "symbol": null
+    },
+    "introCutScene": {
+      "url": "cutscenes/intro.mp4",
+      "type": "video",
+      "source": "cutscenes/intro.swf",
+      "symbol": "intro"
+    },
+    "preDisplacementCutScene": {
+      "url": "cutscenes/pre_world1.png",
+      "type": "image",
+      "source": "cutscenes/pre_world1.swf",
+      "symbol": null
+    },
+    "preVelocityCutScene": {
+      "url": "cutscenes/pre_world2.png",
+      "type": "image",
+      "source": "cutscenes/pre_world2.swf",
+      "symbol": null
+    },
+    "preMixedCutScene": {
+      "url": "cutscenes/pre_world3.png",
+      "type": "image",
+      "source": "cutscenes/pre_world3.swf",
+      "symbol": null
+    },
+    "endingCutSceneClass": {
+      "url": "cutscenes/ending.mp4",
+      "type": "video",
+      "source": "cutscenes/ending.swf",
+      "symbol": "gameEnding"
+    },
+    "levelTD_collision": {
+      "url": "collision/levelTD_ground.png",
+      "type": "image",
+      "source": "collision/levelTD_ground.png",
+      "symbol": null
+    },
+    "leveld1_collision": {
+      "url": "collision/leveld1_ground.png",
+      "type": "image",
+      "source": "collision/leveld1_ground.png",
+      "symbol": null
+    },
+    "leveld2_collision": {
+      "url": "collision/leveld2_collision.png",
+      "type": "image",
+      "source": "collision/leveld2_collision.png",
+      "symbol": null
+    },
+    "leveld3_collision": {
+      "url": "collision/leveld3_ground.png",
+      "type": "image",
+      "source": "collision/leveld3_ground.png",
+      "symbol": null
+    },
+    "leveltv_collision": {
+      "url": "collision/leveltv_collision.png",
+      "type": "image",
+      "source": "collision/leveltv_collision.png",
+      "symbol": null
+    },
+    "levelv1_collision": {
+      "url": "collision/levelv1_ground.png",
+      "type": "image",
+      "source": "collision/levelv1_ground.png",
+      "symbol": null
+    },
+    "levelv1_easy_collision": {
+      "url": "collision/levelv1_ground_easy.png",
+      "type": "image",
+      "source": "collision/levelv1_ground_easy.png",
+      "symbol": null
+    },
+    "levelv3_collision": {
+      "url": "collision/levelv3_ground.png",
+      "type": "image",
+      "source": "collision/levelv3_ground.png",
+      "symbol": null
+    },
+    "levelv3_collision_medium": {
+      "url": "collision/levelv3_ground_medium.png",
+      "type": "image",
+      "source": "collision/levelv3_ground_medium.png",
+      "symbol": null
+    },
+    "levelv3_collision_easy": {
+      "url": "collision/levelv3_ground_easy.png",
+      "type": "image",
+      "source": "collision/levelv3_ground_easy.png",
+      "symbol": null
+    },
+    "levelv4_collision": {
+      "url": "collision/levelv4_ground.png",
+      "type": "image",
+      "source": "collision/levelv4_ground.png",
+      "symbol": null
+    },
+    "levelm3_easy_collision": {
+      "url": "collision/levelm3_ground_easy.png",
+      "type": "image",
+      "source": "collision/levelm3_ground_easy.png",
+      "symbol": null
+    },
+    "levelm4_collision": {
+      "url": "collision/levelm4_ground.png",
+      "type": "image",
+      "source": "collision/levelm4_ground.png",
+      "symbol": null
+    },
+    "levelm5_collision": {
+      "url": "collision/levelm5_ground.png",
+      "type": "image",
+      "source": "collision/levelm5_ground.png",
+      "symbol": null
+    },
+    "levelm6_collision": {
+      "url": "collision/levelm6_ground.png",
+      "type": "image",
+      "source": "collision/levelm6_ground.png",
+      "symbol": null
+    },
+    "cutScene_collision": {
+      "url": "collision/cutscene_ground.png",
+      "type": "image",
+      "source": "collision/cutscene_ground.png",
+      "symbol": null
+    },
+    "exit": {
+      "url": "props/exit.png",
+      "type": "image",
+      "source": "props/exit.swf",
+      "symbol": null
+    },
+    "exitCutScene": {
+      "url": "props/exitcutscene.png",
+      "type": "image",
+      "source": "props/exitcutscene.swf",
+      "symbol": null
+    },
+    "entrance": {
+      "url": "props/placeholder_entrance.png",
+      "type": "image",
+      "source": "props/placeholder_entrance.png",
+      "symbol": null
+    },
+    "downAura": {
+      "url": "sprite/avatarDOWNcollision.png",
+      "type": "image",
+      "source": "sprite/avatarDOWNcollision.swf",
+      "symbol": null
+    },
+    "upAura": {
+      "url": "sprite/avatarUPcollision.png",
+      "type": "image",
+      "source": "sprite/avatarUPcollision.swf",
+      "symbol": null
+    },
+    "leftAura": {
+      "url": "sprite/avatarLEFTcollision.png",
+      "type": "image",
+      "source": "sprite/avatarLEFTcollision.swf",
+      "symbol": null
+    },
+    "rightAura": {
+      "url": "sprite/avatarRIGHTcollision.png",
+      "type": "image",
+      "source": "sprite/avatarRIGHTcollision.swf",
+      "symbol": null
+    },
+    "avatarSprite": {
+      "url": "sprite/avatarSheet.png",
+      "type": "image",
+      "source": "sprite/avatarSheet.swf",
+      "symbol": null
+    },
+    "inventryOrbDL": {
+      "url": "graph/displacementOrb/ORBpicked L.png",
+      "type": "image",
+      "source": "graph/displacementOrb/ORBpicked L.swf",
+      "symbol": null
+    },
+    "inventryOrbDR": {
+      "url": "graph/displacementOrb/ORBpicked R.png",
+      "type": "image",
+      "source": "graph/displacementOrb/ORBpicked R.swf",
+      "symbol": null
+    },
+    "inventryOrbVL": {
+      "url": "graph/velocityOrb/ORBpicked L.png",
+      "type": "image",
+      "source": "graph/velocityOrb/ORBpicked L.swf",
+      "symbol": null
+    },
+    "inventryOrbVR": {
+      "url": "graph/velocityOrb/ORBpicked R.png",
+      "type": "image",
+      "source": "graph/velocityOrb/ORBpicked R.swf",
+      "symbol": null
+    },
+    "velocityArrowStand": {
+      "url": "graph/velocityOrb/pointer.png",
+      "type": "image",
+      "source": "graph/velocityOrb/pointer.swf",
+      "symbol": null
+    },
+    "hitEffectClass": {
+      "url": "misc/hitEffect.png",
+      "type": "image",
+      "source": "misc/hitEffect.swf",
+      "symbol": null
+    },
+    "bgmWorld1": {
+      "url": "bgm/world01.mp3",
+      "type": "audio",
+      "source": "bgm/world01.swf",
+      "symbol": "world01"
+    },
+    "bgmWorld2": {
+      "url": "bgm/world02.mp3",
+      "type": "audio",
+      "source": "bgm/world02.swf",
+      "symbol": "world02"
+    },
+    "bgmWorld3": {
+      "url": "bgm/world03.mp3",
+      "type": "audio",
+      "source": "bgm/world03.swf",
+      "symbol": "world03"
+    },
+    "menu": {
+      "url": "bgm/menu.mp3",
+      "type": "audio",
+      "source": "bgm/menu.swf",
+      "symbol": "menu02"
+    },
+    "bgmCutscene01": {
+      "url": "bgm/cutscene01.mp3",
+      "type": "audio",
+      "source": "bgm/cutscene01.swf",
+      "symbol": "cutscene01"
+    },
+    "bgmEndGame": {
+      "url": "bgm/endgame.mp3",
+      "type": "audio",
+      "source": "bgm/endgame.mp3",
+      "symbol": null
+    },
+    "sfxPoof": {
+      "url": "sfx/poof.mp3",
+      "type": "audio",
+      "source": "sfx/poof.mp3",
+      "symbol": null
+    },
+    "sfxRemove": {
+      "url": "sfx/player/player_orbremove.mp3",
+      "type": "audio",
+      "source": "sfx/player/player_orbremove.mp3",
+      "symbol": null
+    },
+    "sfxDrop": {
+      "url": "sfx/player/drop/player_drop_cloudorb.mp3",
+      "type": "audio",
+      "source": "sfx/player/drop/player_drop_cloudorb.mp3",
+      "symbol": null
+    },
+    "sfxPickup": {
+      "url": "sfx/player/pickup/player_pickup_cloudorb.mp3",
+      "type": "audio",
+      "source": "sfx/player/pickup/player_pickup_cloudorb.mp3",
+      "symbol": null
+    },
+    "sfxHurt": {
+      "url": "sfx/player/player_hurt.mp3",
+      "type": "audio",
+      "source": "sfx/player/player_hurt.mp3",
+      "symbol": null
+    },
+    "sfxGraphDraw": {
+      "url": "sfx/graph/graph_draw.mp3",
+      "type": "audio",
+      "source": "sfx/graph/graph_draw.swf",
+      "symbol": "graph_draw"
+    },
+    "sfxGraphReset": {
+      "url": "sfx/graph/graph_reset.mp3",
+      "type": "audio",
+      "source": "sfx/graph/graph_reset.mp3",
+      "symbol": null
+    },
+    "sfxSwitchOne": {
+      "url": "sfx/switch/switch_one.mp3",
+      "type": "audio",
+      "source": "sfx/switch/switch_one.mp3",
+      "symbol": null
+    },
+    "sfxSwitchTwo": {
+      "url": "sfx/switch/switch_two.mp3",
+      "type": "audio",
+      "source": "sfx/switch/switch_two.mp3",
+      "symbol": null
+    },
+    "sfxWin": {
+      "url": "sfx/victory.mp3",
+      "type": "audio",
+      "source": "sfx/victory.mp3",
+      "symbol": null
+    },
+    "sfxWinCS": {
+      "url": "sfx/cutscene_victory.mp3",
+      "type": "audio",
+      "source": "sfx/cutscene_victory.mp3",
+      "symbol": null
+    },
+    "sfxPlayerSprint": {
+      "url": "sfx/player/player_sprint.mp3",
+      "type": "audio",
+      "source": "sfx/player/player_sprint.swf",
+      "symbol": "player_sprint"
+    },
+    "sfxPlayerWalk": {
+      "url": "sfx/player/player_walk.mp3",
+      "type": "audio",
+      "source": "sfx/player/player_walk.swf",
+      "symbol": "player_walk"
+    },
+    "sfxJump01": {
+      "url": "sfx/player/jump/player_jump_01.mp3",
+      "type": "audio",
+      "source": "sfx/player/jump/player_jump_01.mp3",
+      "symbol": null
+    },
+    "sfxJump02": {
+      "url": "sfx/player/jump/player_jump_02.mp3",
+      "type": "audio",
+      "source": "sfx/player/jump/player_jump_02.mp3",
+      "symbol": null
+    },
+    "sfxJump03": {
+      "url": "sfx/player/jump/player_jump_03.mp3",
+      "type": "audio",
+      "source": "sfx/player/jump/player_jump_03.mp3",
+      "symbol": null
+    },
+    "sfxJump04": {
+      "url": "sfx/player/jump/player_jump_04.mp3",
+      "type": "audio",
+      "source": "sfx/player/jump/player_jump_04.mp3",
+      "symbol": null
+    },
+    "sfxJump05": {
+      "url": "sfx/player/jump/player_jump_05.mp3",
+      "type": "audio",
+      "source": "sfx/player/jump/player_jump_05.mp3",
+      "symbol": null
+    },
+    "sfxLand01": {
+      "url": "sfx/player/land/player_land_01.mp3",
+      "type": "audio",
+      "source": "sfx/player/land/player_land_01.mp3",
+      "symbol": null
+    },
+    "sfxLand02": {
+      "url": "sfx/player/land/player_land_02.mp3",
+      "type": "audio",
+      "source": "sfx/player/land/player_land_02.mp3",
+      "symbol": null
+    },
+    "sfxLand03": {
+      "url": "sfx/player/land/player_land_03.mp3",
+      "type": "audio",
+      "source": "sfx/player/land/player_land_03.mp3",
+      "symbol": null
+    },
+    "sfxLand04": {
+      "url": "sfx/player/land/player_land_04.mp3",
+      "type": "audio",
+      "source": "sfx/player/land/player_land_04.mp3",
+      "symbol": null
+    },
+    "sfxLand05": {
+      "url": "sfx/player/land/player_land_05.mp3",
+      "type": "audio",
+      "source": "sfx/player/land/player_land_05.mp3",
+      "symbol": null
+    },
+    "sfxMenuMO01": {
+      "url": "sfx/ui/ui_mouseover_01.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_mouseover_01.mp3",
+      "symbol": null
+    },
+    "sfxMenuMO02": {
+      "url": "sfx/ui/ui_mouseover_02.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_mouseover_02.mp3",
+      "symbol": null
+    },
+    "sfxMenuMO03": {
+      "url": "sfx/ui/ui_mouseover_03.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_mouseover_03.mp3",
+      "symbol": null
+    },
+    "sfxMenuMO04": {
+      "url": "sfx/ui/ui_mouseover_04.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_mouseover_04.mp3",
+      "symbol": null
+    },
+    "sfxMenuSelect01": {
+      "url": "sfx/ui/ui_select_01.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_select_01.mp3",
+      "symbol": null
+    },
+    "sfxMenuSelect02": {
+      "url": "sfx/ui/ui_select_02.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_select_02.mp3",
+      "symbol": null
+    },
+    "sfxMenuSelect03": {
+      "url": "sfx/ui/ui_select_03.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_select_03.mp3",
+      "symbol": null
+    },
+    "sfxMenuSelect04": {
+      "url": "sfx/ui/ui_select_04.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_select_04.mp3",
+      "symbol": null
+    },
+    "sfxGameStart": {
+      "url": "sfx/ui/ui_gamestart.mp3",
+      "type": "audio",
+      "source": "sfx/ui/ui_gamestart.mp3",
+      "symbol": null
+    },
+    "voIntro": {
+      "url": "dialogue/gameintro.mp3",
+      "type": "audio",
+      "source": "dialogue/gameintro.mp3",
+      "symbol": null
+    },
+    "voCS1": {
+      "url": "dialogue/skyintro.mp3",
+      "type": "audio",
+      "source": "dialogue/skyintro.mp3",
+      "symbol": null
+    },
+    "voCS2": {
+      "url": "dialogue/earthintro.mp3",
+      "type": "audio",
+      "source": "dialogue/earthintro.mp3",
+      "symbol": null
+    },
+    "voCS3": {
+      "url": "dialogue/starintro.mp3",
+      "type": "audio",
+      "source": "dialogue/starintro.mp3",
+      "symbol": null
+    },
+    "switchMode1": {
+      "url": "switch/switch_mode_1.png",
+      "type": "image",
+      "source": "switch/switch_mode_1.swf",
+      "symbol": null
+    },
+    "switchMode2": {
+      "url": "switch/switch_mode_2.png",
+      "type": "image",
+      "source": "switch/switch_mode_2.swf",
+      "symbol": null
+    },
+    "vertObstacle80": {
+      "url": "tempObs/obs_vert80.png",
+      "type": "image",
+      "source": "tempObs/obs_vert80.swf",
+      "symbol": null
+    },
+    "vertObstacle140": {
+      "url": "tempObs/obs_vert140.png",
+      "type": "image",
+      "source": "tempObs/obs_vert140.swf",
+      "symbol": null
+    },
+    "vertObstacle200": {
+      "url": "tempObs/obs_vert200.png",
+      "type": "image",
+      "source": "tempObs/obs_vert200.swf",
+      "symbol": null
+    },
+    "horzObstacle160": {
+      "url": "tempObs/obs_horz160.png",
+      "type": "image",
+      "source": "tempObs/obs_horz160.swf",
+      "symbol": null
+    }
+  }
+}

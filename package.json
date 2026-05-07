@@ -16,7 +16,8 @@
     "extract:swf": "node tools/extract-swf.mjs",
     "extract:swf:dry": "node tools/extract-swf.mjs --dry-run",
     "extract:cutscenes": "node tools/extract-swf.mjs --cutscenes-only",
-    "extract:avatar": "node tools/extract-avatar.mjs"
+    "extract:avatar": "node tools/extract-avatar.mjs",
+    "curate": "node tools/curate-assets.mjs"
   },
   "dependencies": {
     "gsap": "^3.12.5",

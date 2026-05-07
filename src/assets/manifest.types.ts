@@ -1,19 +1,22 @@
-export type OutputType = 'audio' | 'image' | 'spritesheet' | 'sequence' | 'unknown' | 'dry-run';
+export type CuratedAssetType = 'audio' | 'image' | 'video' | 'unknown';
 
-export type ClassGuess = 'audio' | 'cutscene' | 'background' | 'sprite';
-
-export interface ManifestEntry {
+export interface CuratedAsset {
+  url: string;
+  type: CuratedAssetType;
   source: string;
-  classGuess: ClassGuess;
-  outputs: string[];
-  outputType: OutputType;
-  embedName?: string;
+  symbol: string | null;
 }
 
-export interface AssetManifest {
+export interface SkippedEntry {
+  embedName: string;
+  source: string;
+  reason: string;
+}
+
+export interface CuratedManifest {
   generatedAt: string;
-  sourceRoot: string;
-  outputRoot: string;
-  jpexsPath: string | null;
-  entries: ManifestEntry[];
+  counts: Partial<Record<CuratedAssetType, number>>;
+  skipped: number;
+  skippedDetails: SkippedEntry[];
+  byEmbedName: Record<string, CuratedAsset>;
 }
