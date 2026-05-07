@@ -12,7 +12,9 @@
     "lint": "eslint src tests",
     "format": "prettier --write \"{src,tests,tools}/**/*.{ts,js,html,css,json}\" \"*.{ts,js,html,css,json,md}\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "extract:swf": "node tools/extract-swf.mjs",
+    "extract:swf:dry": "node tools/extract-swf.mjs --dry-run"
   },
   "dependencies": {
     "gsap": "^3.12.5",
