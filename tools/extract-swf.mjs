@@ -199,6 +199,8 @@ function processCutscene(rel, cfg) {
   mkdirSync(CUTSCENE_DIR, { recursive: true });
   const mp4Path = join(CUTSCENE_DIR, `${cfg.outName}.mp4`);
 
+  // pad to even dimensions: libx264 + yuv420p requires width and height divisible by 2.
+  // JPEXS sprite renders include rendered bounds that are often odd (e.g., 822x623, 855x983).
   const ff = spawnSync(
     FFMPEG_PATH,
     [
@@ -206,6 +208,7 @@ function processCutscene(rel, cfg) {
       '-loglevel', 'error',
       '-framerate', '24',
       '-i', join(frameDir, '%d.png'),
+      '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2:0:0:black',
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
       '-crf', '23',
