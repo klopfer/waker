@@ -25,21 +25,37 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_DIR = join(REPO_ROOT, 'legacy', 'src', 'story');
 const OUT_DIR = join(REPO_ROOT, 'src', 'assets');
 const EXTRACT_ROOT = join(OUT_DIR, '_extracted');
+const CUTSCENE_DIR = join(OUT_DIR, 'cutscenes');
 const MANIFEST_PATH = join(OUT_DIR, 'manifest.json');
 
 const FFDEC_PATH = process.env.FFDEC_PATH ?? 'C:\\Program Files (x86)\\FFDec\\ffdec-cli.exe';
+const FFMPEG_PATH = process.env.FFMPEG_PATH ?? 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+
+// SWFs whose actual animation lives inside a nested DefineSprite (the main timeline
+// is a 1-frame stub). For each, JPEXS renders the named sprite as a PNG sequence
+// which ffmpeg then encodes to a single MP4. Sprite classes match the symbol="..."
+// attribute of the original [Embed(source="...", symbol="...")] in AssetManager.as.
+const CUTSCENE_SPRITES = {
+  'cutscenes/intro.swf': { spriteClass: 'intro', outName: 'intro' },
+  'cutscenes/ending.swf': { spriteClass: 'gameEnding', outName: 'ending' },
+  'misc/levelcomplete.swf': { spriteClass: 'levelcomplete', outName: 'levelcomplete' },
+  'misc/levelcomplete_cutscene.swf': { spriteClass: 'levelcompleteCS', outName: 'levelcomplete-cs' },
+};
 
 const args = parseArgs(process.argv.slice(2));
 
 function parseArgs(argv) {
-  const out = { limit: Infinity, only: null, dryRun: false };
+  const out = { limit: Infinity, only: null, dryRun: false, cutscenesOnly: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--limit') out.limit = Number(argv[++i]);
     else if (a === '--only') out.only = argv[++i];
     else if (a === '--dry-run') out.dryRun = true;
+    else if (a === '--cutscenes-only') out.cutscenesOnly = true;
     else if (a === '--help' || a === '-h') {
-      console.log('Usage: extract-swf.mjs [--limit N] [--only <substring>] [--dry-run]');
+      console.log(
+        'Usage: extract-swf.mjs [--limit N] [--only <substring>] [--dry-run] [--cutscenes-only]',
+      );
       process.exit(0);
     } else throw new Error(`Unknown arg: ${a}`);
   }
@@ -131,6 +147,122 @@ function ensureFfdec() {
   }
 }
 
+function ensureFfmpeg() {
+  if (!existsSync(FFMPEG_PATH)) {
+    throw new Error(
+      `ffmpeg not found at ${FFMPEG_PATH}. Set FFMPEG_PATH env var to the full path of ffmpeg.exe.`,
+    );
+  }
+}
+
+function processCutscene(rel, cfg) {
+  const swfFull = join(SOURCE_DIR, rel);
+  if (!existsSync(swfFull)) {
+    console.warn(`  ! source not found: ${rel}`);
+    return null;
+  }
+  const outBase = join(EXTRACT_ROOT, rel.replace(/\.swf$/i, ''));
+  const spriteRoot = join(outBase, '_sprites');
+  if (existsSync(spriteRoot)) rmSync(spriteRoot, { recursive: true, force: true });
+  mkdirSync(spriteRoot, { recursive: true });
+
+  console.log(`  rendering DefineSprite class:${cfg.spriteClass} ...`);
+  const r = runJpexs(['-format', 'sprite:png', '-export', 'sprite', spriteRoot, swfFull]);
+  if (r.error) {
+    console.warn(`  ! JPEXS spawn error: ${r.error.message}`);
+    return null;
+  }
+  if (r.status !== 0 && r.status !== null) {
+    console.warn(`  ! JPEXS exit ${r.status}; stderr head: ${r.stderr.slice(0, 200)}`);
+    return null;
+  }
+
+  const folders = readdirSync(spriteRoot, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  const match = folders.find((n) => n.endsWith(`_${cfg.spriteClass}`));
+  if (!match) {
+    console.warn(
+      `  ! no sprite folder ending in "_${cfg.spriteClass}". Found: ${folders.join(', ') || '<none>'}`,
+    );
+    return null;
+  }
+
+  const frameDir = join(spriteRoot, match);
+  const frames = readdirSync(frameDir).filter((n) => /\.png$/i.test(n));
+  if (frames.length === 0) {
+    console.warn(`  ! sprite folder ${match} has no PNG frames`);
+    return null;
+  }
+  console.log(`  ${frames.length} frames in ${match}`);
+
+  mkdirSync(CUTSCENE_DIR, { recursive: true });
+  const mp4Path = join(CUTSCENE_DIR, `${cfg.outName}.mp4`);
+
+  const ff = spawnSync(
+    FFMPEG_PATH,
+    [
+      '-y',
+      '-loglevel', 'error',
+      '-framerate', '24',
+      '-i', join(frameDir, '%d.png'),
+      '-c:v', 'libx264',
+      '-pix_fmt', 'yuv420p',
+      '-crf', '23',
+      '-movflags', '+faststart',
+      mp4Path,
+    ],
+    { encoding: 'utf-8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 },
+  );
+  if (ff.error) {
+    console.warn(`  ! ffmpeg spawn error: ${ff.error.message}`);
+    return null;
+  }
+  if (ff.status !== 0 && ff.status !== null) {
+    console.warn(`  ! ffmpeg exit ${ff.status}; stderr tail: ${ff.stderr.slice(-300)}`);
+    return null;
+  }
+
+  const sizeKB = Math.round(statSync(mp4Path).size / 1024);
+  const mp4Rel = toPosix(relative(OUT_DIR, mp4Path));
+  console.log(`  encoded ${mp4Rel} (${sizeKB} KB, ${frames.length}f @ 24fps)`);
+
+  return {
+    source: toPosix(rel),
+    spriteClass: cfg.spriteClass,
+    outName: cfg.outName,
+    frameCount: frames.length,
+    mp4Path: mp4Rel,
+    mp4SizeKB: sizeKB,
+  };
+}
+
+function runCutsceneMode() {
+  ensureFfdec();
+  ensureFfmpeg();
+  console.log(`Using JPEXS at:  ${FFDEC_PATH}`);
+  console.log(`Using ffmpeg at: ${FFMPEG_PATH}`);
+  console.log(`Output dir:      ${toPosix(relative(REPO_ROOT, CUTSCENE_DIR))}\n`);
+
+  const results = [];
+  const entries = Object.entries(CUTSCENE_SPRITES);
+  for (let i = 0; i < entries.length; i++) {
+    const [rel, cfg] = entries[i];
+    console.log(`[${i + 1}/${entries.length}] ${rel}  →  ${cfg.outName}.mp4`);
+    const r = processCutscene(rel, cfg);
+    results.push({ source: rel, cfg, result: r });
+  }
+
+  console.log('\nCutscene summary:');
+  for (const { source, cfg, result } of results) {
+    if (result) {
+      console.log(`  OK   ${source.padEnd(40)} → ${cfg.outName}.mp4 (${result.frameCount}f, ${result.mp4SizeKB} KB)`);
+    } else {
+      console.log(`  FAIL ${source.padEnd(40)} → see warnings above`);
+    }
+  }
+}
+
 function processSwf(swfFull, idx, total) {
   const rel = relative(SOURCE_DIR, swfFull);
   const relPosix = toPosix(rel);
@@ -169,6 +301,11 @@ function processSwf(swfFull, idx, total) {
 }
 
 function main() {
+  if (args.cutscenesOnly) {
+    runCutsceneMode();
+    return;
+  }
+
   ensureFfdec();
 
   if (!existsSync(SOURCE_DIR)) {
