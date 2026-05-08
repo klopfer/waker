@@ -23,7 +23,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, posix, relative, sep } from 'node:path';
+import { basename, dirname, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,12 +47,25 @@ const FFMPEG_PATH = process.env.FFMPEG_PATH ?? 'C:\\ffmpeg\\bin\\ffmpeg.exe';
 // jumpup/jumpdown stay on the per-state SWFs (avatarSheet doesn't have
 // dedicated jump sprites — it composes them from the multi-pose static
 // frames).
+// avatarSheet.swf renders its main timeline as a single 400x1000 composite
+// containing all 10 tile poses. The grid is 2 cols x 5 rows of 200x200 tiles:
+//   row 0  faceLeft    | faceRight    (idle-pose tiles, animated via sub-clip)
+//   row 1  walkLeft    | walkRight    (animated via sub-clip)
+//   row 2  runLeft     | runRight     (animated via sub-clip)
+//   row 3  jumpUpLeft  | jumpUpRight  (single-frame held pose)
+//   row 4  jumpDownL   | jumpDownR    (single-frame held pose)
+// Idle/walk/run animations live in dedicated DefineSprites we already pin
+// by name. Jump tiles are static in the original — no animation, just one
+// pose held throughout the jump arc — so we crop directly from the main
+// timeline composite.
+const SHEET_TILE = { w: 200, h: 200 };
+
 const STATES = {
   'idle-right':     { swf: AVATAR_SHEET, spriteName: 'DefineSprite_153' },
   'walk-right':     { swf: AVATAR_SHEET, spriteName: 'DefineSprite_38'  },
   'run-right':      { swf: AVATAR_SHEET, spriteName: 'DefineSprite_176' },
-  'jumpup-right':   { swf: join(PER_STATE_DIR, 'jumpup-right.swf'),   spriteName: null },
-  'jumpdown-right': { swf: join(PER_STATE_DIR, 'jumpdown-right.swf'), spriteName: null },
+  'jumpup-right':   { swf: AVATAR_SHEET, tile: { x: 200, y: 600, ...SHEET_TILE } },
+  'jumpdown-right': { swf: AVATAR_SHEET, tile: { x: 200, y: 800, ...SHEET_TILE } },
 };
 
 const FLIPS = {
@@ -82,16 +95,64 @@ function readPngDims(path) {
   };
 }
 
+function ensureMainFrame(swfPath) {
+  // JPEXS-renders the SWF's main timeline once and caches the result so
+  // multiple `tile`-mode states share a single render pass.
+  const cacheDir = join(EXTRACT_ROOT, '_main-frame', basename(swfPath, '.swf'));
+  const cachedPng = join(cacheDir, '1.png');
+  if (existsSync(cachedPng)) return cachedPng;
+  if (existsSync(cacheDir)) rmSync(cacheDir, { recursive: true, force: true });
+  mkdirSync(cacheDir, { recursive: true });
+  console.log(`  rendering main-timeline frame of ${basename(swfPath)}...`);
+  const r = runJpexs(['-format', 'frame:png', '-export', 'frame', cacheDir, swfPath]);
+  if (r.status !== 0 && r.status !== null) {
+    throw new Error(`JPEXS frame export failed: ${r.stderr.slice(0, 300)}`);
+  }
+  if (!existsSync(cachedPng)) throw new Error(`main-timeline render produced no 1.png`);
+  return cachedPng;
+}
+
+function cropTile(srcPng, dstDir, tile) {
+  if (existsSync(dstDir)) rmSync(dstDir, { recursive: true, force: true });
+  mkdirSync(dstDir, { recursive: true });
+  const dstPng = join(dstDir, '1.png');
+  const r = spawnSync(
+    FFMPEG_PATH,
+    [
+      '-y',
+      '-loglevel', 'error',
+      '-i', srcPng,
+      '-vf', `crop=${tile.w}:${tile.h}:${tile.x}:${tile.y}`,
+      '-frames:v', '1',
+      '-update', '1',
+      dstPng,
+    ],
+    { encoding: 'utf-8', windowsHide: true, maxBuffer: 32 * 1024 * 1024 },
+  );
+  if (r.status !== 0 && r.status !== null) {
+    throw new Error(`ffmpeg crop failed: ${r.stderr.slice(-300)}`);
+  }
+  return dstPng;
+}
+
 function extractFrames(state, cfg) {
   if (!existsSync(cfg.swf)) {
     console.warn(`  ! source not found: ${cfg.swf}`);
     return null;
   }
   const stateExtractDir = join(EXTRACT_ROOT, state);
+
+  if (cfg.tile) {
+    // Tile mode: crop a fixed rectangle out of the SWF's main-timeline render.
+    const main = ensureMainFrame(cfg.swf);
+    cropTile(main, stateExtractDir, cfg.tile);
+    return { dir: stateExtractDir, frames: ['1.png'] };
+  }
+
   if (existsSync(stateExtractDir)) rmSync(stateExtractDir, { recursive: true, force: true });
   mkdirSync(stateExtractDir, { recursive: true });
 
-  // Always sprite mode: tight bounds, transparent backgrounds.
+  // Sprite mode: tight bounds, transparent backgrounds.
   const r = runJpexs(['-format', 'sprite:png', '-export', 'sprite', stateExtractDir, cfg.swf]);
   if (r.status !== 0 && r.status !== null) {
     console.warn(`  ! JPEXS sprite export exit ${r.status}: ${r.stderr.slice(0, 300)}`);
@@ -192,7 +253,11 @@ function main() {
   for (let i = 0; i < stateNames.length; i++) {
     const name = stateNames[i];
     const cfg = STATES[name];
-    const tag = cfg.spriteName ? `pin=${cfg.spriteName}` : 'auto-pick';
+    const tag = cfg.tile
+      ? `tile=${cfg.tile.x},${cfg.tile.y} ${cfg.tile.w}x${cfg.tile.h}`
+      : cfg.spriteName
+        ? `pin=${cfg.spriteName}`
+        : 'auto-pick';
     console.log(`[${i + 1}/${stateNames.length}] ${name}  ${tag}`);
 
     const extracted = extractFrames(name, cfg);

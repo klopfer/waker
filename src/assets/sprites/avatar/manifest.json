@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-07T23:58:43.963Z",
+  "generatedAt": "2026-05-08T00:27:02.711Z",
   "states": {
     "idle-right": {
       "sheet": "idle-right.png",
@@ -33,23 +33,23 @@
     },
     "jumpup-right": {
       "sheet": "jumpup-right.png",
-      "frameCount": 2,
-      "frameWidth": 237,
-      "frameHeight": 348,
-      "cols": 2,
+      "frameCount": 1,
+      "frameWidth": 200,
+      "frameHeight": 200,
+      "cols": 1,
       "rows": 1,
-      "sheetWidth": 474,
-      "sheetHeight": 348
+      "sheetWidth": 200,
+      "sheetHeight": 200
     },
     "jumpdown-right": {
       "sheet": "jumpdown-right.png",
-      "frameCount": 3,
-      "frameWidth": 249,
-      "frameHeight": 314,
-      "cols": 2,
-      "rows": 2,
-      "sheetWidth": 498,
-      "sheetHeight": 628
+      "frameCount": 1,
+      "frameWidth": 200,
+      "frameHeight": 200,
+      "cols": 1,
+      "rows": 1,
+      "sheetWidth": 200,
+      "sheetHeight": 200
     },
     "idle-left": {
       "sheet": "idle-right.png",
@@ -86,24 +86,24 @@
     },
     "jumpup-left": {
       "sheet": "jumpup-right.png",
-      "frameCount": 2,
-      "frameWidth": 237,
-      "frameHeight": 348,
-      "cols": 2,
+      "frameCount": 1,
+      "frameWidth": 200,
+      "frameHeight": 200,
+      "cols": 1,
       "rows": 1,
-      "sheetWidth": 474,
-      "sheetHeight": 348,
+      "sheetWidth": 200,
+      "sheetHeight": 200,
       "flipHorizontal": true
     },
     "jumpdown-left": {
       "sheet": "jumpdown-right.png",
-      "frameCount": 3,
-      "frameWidth": 249,
-      "frameHeight": 314,
-      "cols": 2,
-      "rows": 2,
-      "sheetWidth": 498,
-      "sheetHeight": 628,
+      "frameCount": 1,
+      "frameWidth": 200,
+      "frameHeight": 200,
+      "cols": 1,
+      "rows": 1,
+      "sheetWidth": 200,
+      "sheetHeight": 200,
       "flipHorizontal": true
     }
   }

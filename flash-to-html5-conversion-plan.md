@@ -805,6 +805,8 @@ These bit us during the first Phase 3 milestone and burned ~30 minutes diagnosin
 
 8. **Pick the LAST frame for "static" extraction of multi-frame splash logos.** `gambitlogo.swf` produces a 200-frame fade-in sequence; the canonical static still is the fully-faded-in last frame, not the empty first frame. The curate script already does this.
 
+9. **For "held-pose" states with no real animation, crop a tile out of the consolidated sheet.** `graftJumpUP.swf` (the per-state authoring SWF) is the *with-orb* master and only has 2 internal frames — playing it at 24 fps gives a flicker that toggles the orb on and off twice per second. The avatarSheet's main timeline render is a 400×1000 composite of 10 200×200 tiles (2 cols × 5 rows: idle / walk / run / jumpUp / jumpDown × L+R), and the jump tiles there are intentionally single-frame *held* poses with no orb. The right move is to crop the jumpup-right tile (x=200, y=600, 200×200) directly from the sheet render. `tools/extract-avatar.mjs` supports this via `mode: 'tile'` with `{x, y, w, h}`. Use the same approach for any future state where the original game holds a still pose rather than animating.
+
 ---
 
 ## 16. References
