@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-08T00:27:02.711Z",
+  "generatedAt": "2026-05-08T00:31:41.097Z",
   "states": {
     "idle-right": {
       "sheet": "idle-right.png",
@@ -34,22 +34,22 @@
     "jumpup-right": {
       "sheet": "jumpup-right.png",
       "frameCount": 1,
-      "frameWidth": 200,
-      "frameHeight": 200,
+      "frameWidth": 186,
+      "frameHeight": 273,
       "cols": 1,
       "rows": 1,
-      "sheetWidth": 200,
-      "sheetHeight": 200
+      "sheetWidth": 186,
+      "sheetHeight": 273
     },
     "jumpdown-right": {
       "sheet": "jumpdown-right.png",
       "frameCount": 1,
-      "frameWidth": 200,
-      "frameHeight": 200,
+      "frameWidth": 183,
+      "frameHeight": 299,
       "cols": 1,
       "rows": 1,
-      "sheetWidth": 200,
-      "sheetHeight": 200
+      "sheetWidth": 183,
+      "sheetHeight": 299
     },
     "idle-left": {
       "sheet": "idle-right.png",
@@ -87,23 +87,23 @@
     "jumpup-left": {
       "sheet": "jumpup-right.png",
       "frameCount": 1,
-      "frameWidth": 200,
-      "frameHeight": 200,
+      "frameWidth": 186,
+      "frameHeight": 273,
       "cols": 1,
       "rows": 1,
-      "sheetWidth": 200,
-      "sheetHeight": 200,
+      "sheetWidth": 186,
+      "sheetHeight": 273,
       "flipHorizontal": true
     },
     "jumpdown-left": {
       "sheet": "jumpdown-right.png",
       "frameCount": 1,
-      "frameWidth": 200,
-      "frameHeight": 200,
+      "frameWidth": 183,
+      "frameHeight": 299,
       "cols": 1,
       "rows": 1,
-      "sheetWidth": 200,
-      "sheetHeight": 200,
+      "sheetWidth": 183,
+      "sheetHeight": 299,
       "flipHorizontal": true
     }
   }

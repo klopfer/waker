@@ -47,25 +47,23 @@ const FFMPEG_PATH = process.env.FFMPEG_PATH ?? 'C:\\ffmpeg\\bin\\ffmpeg.exe';
 // jumpup/jumpdown stay on the per-state SWFs (avatarSheet doesn't have
 // dedicated jump sprites — it composes them from the multi-pose static
 // frames).
-// avatarSheet.swf renders its main timeline as a single 400x1000 composite
-// containing all 10 tile poses. The grid is 2 cols x 5 rows of 200x200 tiles:
-//   row 0  faceLeft    | faceRight    (idle-pose tiles, animated via sub-clip)
-//   row 1  walkLeft    | walkRight    (animated via sub-clip)
-//   row 2  runLeft     | runRight     (animated via sub-clip)
-//   row 3  jumpUpLeft  | jumpUpRight  (single-frame held pose)
-//   row 4  jumpDownL   | jumpDownR    (single-frame held pose)
-// Idle/walk/run animations live in dedicated DefineSprites we already pin
-// by name. Jump tiles are static in the original — no animation, just one
-// pose held throughout the jump arc — so we crop directly from the main
-// timeline composite.
-const SHEET_TILE = { w: 200, h: 200 };
-
+// avatarSheet.swf has dedicated single-frame DefineSprites for the jump-up
+// and jump-down held poses (the original game holds one pose throughout
+// each jump arc — no internal animation). Sprite mode renders them with
+// transparent backgrounds and tight bounding boxes; frame-mode tile crops
+// of the same content carried the SWF's opaque white stage background and
+// huge empty padding around the small character figure.
+//
+// Sprite IDs verified against the avatarSheet audit (15 DefineSprites
+// total; the two narrow-tall 1-frame ones are jumpup and jumpdown):
+//   DefineSprite_180  1f  186x273  -> jumpup-right
+//   DefineSprite_184  1f  183x299  -> jumpdown-right
 const STATES = {
   'idle-right':     { swf: AVATAR_SHEET, spriteName: 'DefineSprite_153' },
   'walk-right':     { swf: AVATAR_SHEET, spriteName: 'DefineSprite_38'  },
   'run-right':      { swf: AVATAR_SHEET, spriteName: 'DefineSprite_176' },
-  'jumpup-right':   { swf: AVATAR_SHEET, tile: { x: 200, y: 600, ...SHEET_TILE } },
-  'jumpdown-right': { swf: AVATAR_SHEET, tile: { x: 200, y: 800, ...SHEET_TILE } },
+  'jumpup-right':   { swf: AVATAR_SHEET, spriteName: 'DefineSprite_180' },
+  'jumpdown-right': { swf: AVATAR_SHEET, spriteName: 'DefineSprite_184' },
 };
 
 const FLIPS = {
