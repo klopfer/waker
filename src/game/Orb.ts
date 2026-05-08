@@ -1,4 +1,5 @@
 import { Container, Sprite, Texture } from 'pixi.js';
+import { GlowFilter } from 'pixi-filters';
 import { Graph } from './Graph.js';
 import type { GroundProvider } from './Movements.js';
 
@@ -16,7 +17,6 @@ export interface OrbOptions {
   initialX: number;
   initialY: number;
   texture: Texture;
-  effectTexture?: Texture;
   pairedGraph: Graph;
   valueProvider: OrbValueProvider;
 }
@@ -26,31 +26,38 @@ export interface OrbOptions {
 // touches the orb, not when their center is on top of it.
 const ORB_PICKUP_RADIUS = 75;
 // Pixel offset above avatar.y where the held orb's BOTTOM sits. Negative =
-// above. With both orb and avatar anchored bottom-center, -55 puts the orb
-// just above the head of the displayed avatar (~50 px tall at scale 0.3).
-const ORB_HELD_OFFSET_Y = -55;
+// above. With both orb and avatar anchored bottom-center, -75 puts the
+// black glyph just above the head of the displayed avatar (~50 px tall at
+// scale 0.3).
+const ORB_HELD_OFFSET_Y = -75;
 const ORB_GRAVITY = 2;
 const ORB_MAX_FALL = 12;
 
-// Native size of the curated orb assets — used to position the rotating
-// effect at the visual center of the orb.
-const ORB_SPRITE_SIZE = 60;
+// The curated orb texture is a 60×60 PNG with the actual black glyph in a
+// 20×20 box centered at (29.5, 29.5). With anchor (0.5, 0.5) the sprite's
+// rotation pivot lands on that center; offsetting the sprite by GLYPH_FOOT
+// inside the container puts the visible glyph's BOTTOM at the container
+// origin (the orb's "feet"), so a grounded orb sits on the floor like the
+// avatar / origin stand do, instead of floating ~20 px above the floor.
+const ORB_GLYPH_HALF = 10;
+const ORB_GLYPH_FOOT_OFFSET = -ORB_GLYPH_HALF;
 
-// Effect (orbiting triangles) — fast spin, scaled down so the halo is just
-// slightly larger than the orb glyph, tinted toward warm white-yellow
-// (matches the original game's glow), and partly transparent.
-const EFFECT_ROTATION_PER_TICK = 0.06;
-const EFFECT_SCALE = 0.7;
-const EFFECT_ALPHA = 0.65;
-const EFFECT_TINT = 0xffffaa;
-
-// Core (orb glyph itself) — slower counter-spin so it doesn't look locked
-// to the effect, plus a slow alpha pulse that reads as a "glow" without
-// needing a separate animated bitmap (~one breath per 1.5 sec at 24 Hz).
+// Slow alpha pulse on the orb's core that reads as a "glow" without needing
+// a separate animated bitmap (~one breath per 1.5 sec at 24 Hz). Stays
+// near-opaque so the glyph itself never fades out — the user wants the
+// orb visible and the GLOW pulsing.
 const CORE_ROTATION_PER_TICK = 0.03;
-const CORE_PULSE_RATE = 0.18;
-const CORE_PULSE_BASE = 0.85;
-const CORE_PULSE_AMPLITUDE = 0.15;
+const PULSE_RATE = 0.18;
+
+// Procedural glow halo, replaces the SWF-extracted "orbiting triangles"
+// effect sprite (which contained 1082 opaque green pixels of intentional
+// non-sentinel content that the user read as "the orb still has a green
+// box around it"). The glow's outer strength pulses with the same phase
+// as the core alpha so the orb visibly breathes.
+const GLOW_COLOR = 0xffffaa;
+const GLOW_DISTANCE = 18;
+const GLOW_STRENGTH_BASE = 2.5;
+const GLOW_STRENGTH_AMPLITUDE = 1.5;
 
 export class Orb {
   state: OrbState = 'in_world';
@@ -63,8 +70,8 @@ export class Orb {
   private vy = 0;
   private pulsePhase = 0;
   private readonly valueProvider: OrbValueProvider;
-  private readonly effectSprite: Sprite | null;
   private readonly coreSprite: Sprite;
+  private readonly glow: GlowFilter;
 
   constructor(opts: OrbOptions) {
     this.x = opts.initialX;
@@ -74,45 +81,37 @@ export class Orb {
 
     this.container = new Container();
 
-    // The core orb is bottom-anchored so orb.y = ground means the orb's
-    // BOTTOM rests on the floor (matching the avatar). The effect sprite is
-    // pinned at the visual center of the orb (half a sprite-height above the
-    // anchor) and uses center-anchor so it can rotate around its middle
-    // without precessing across the orb body.
-    // The `npm run colorkey` build step has already turned each texture's
-    // sentinel-color halo transparent, so default ('normal') blending is
-    // correct here. Both sprites are positioned at the orb's visual center
-    // (y = -ORB_SPRITE_SIZE/2 inside the container, which is bottom-anchored
-    // to (orb.x, orb.y)) and use anchor (0.5, 0.5) so they rotate cleanly
-    // around their own center.
-    if (opts.effectTexture) {
-      const fx = new Sprite(opts.effectTexture);
-      fx.anchor.set(0.5, 0.5);
-      fx.x = 0;
-      fx.y = -ORB_SPRITE_SIZE / 2;
-      fx.scale.set(EFFECT_SCALE);
-      fx.alpha = EFFECT_ALPHA;
-      fx.tint = EFFECT_TINT;
-      this.container.addChild(fx);
-      this.effectSprite = fx;
-    } else {
-      this.effectSprite = null;
-    }
+    // Container is positioned at (orb.x, orb.y) — the orb's "feet." The
+    // core sprite's anchor sits at the visible glyph's CENTER (so rotation
+    // looks centered) but the sprite is shifted up by ORB_GLYPH_HALF so
+    // the visible bottom of the glyph lands exactly at the container
+    // origin — same arrangement the bottom-anchored origin stand uses.
+    // The `npm run colorkey` build step keys the dark-green sentinel halo
+    // out, so default 'normal' blend is correct.
     this.coreSprite = new Sprite(opts.texture);
     this.coreSprite.anchor.set(0.5, 0.5);
     this.coreSprite.x = 0;
-    this.coreSprite.y = -ORB_SPRITE_SIZE / 2;
+    this.coreSprite.y = ORB_GLYPH_FOOT_OFFSET;
     this.container.addChild(this.coreSprite);
+
+    this.glow = new GlowFilter({
+      color: GLOW_COLOR,
+      distance: GLOW_DISTANCE,
+      outerStrength: GLOW_STRENGTH_BASE,
+      innerStrength: 0,
+      quality: 0.3,
+    });
+    this.coreSprite.filters = [this.glow];
 
     this.container.x = Math.round(this.x);
     this.container.y = Math.round(this.y);
   }
 
   update(avatarX: number, avatarY: number, ground: GroundProvider): void {
-    if (this.effectSprite) this.effectSprite.rotation += EFFECT_ROTATION_PER_TICK;
     this.coreSprite.rotation += CORE_ROTATION_PER_TICK;
-    this.pulsePhase += CORE_PULSE_RATE;
-    this.coreSprite.alpha = CORE_PULSE_BASE + Math.sin(this.pulsePhase) * CORE_PULSE_AMPLITUDE;
+    this.pulsePhase += PULSE_RATE;
+    this.glow.outerStrength =
+      GLOW_STRENGTH_BASE + Math.sin(this.pulsePhase) * GLOW_STRENGTH_AMPLITUDE;
 
     if (this.state === 'held') {
       this.x = avatarX;

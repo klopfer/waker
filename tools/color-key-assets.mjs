@@ -18,7 +18,23 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** @type {Array<{file: string, key: [number, number, number], tolerance?: number, label: string}>} */
+/**
+ * @typedef {(r: number, g: number, b: number) => boolean} PixelPredicate
+ *
+ * Extra "kill this pixel" predicate that runs IN ADDITION to the
+ * sentinel-distance check. Used when the antialiased ramp around the
+ * sentinel reaches into territory that overlaps with the GLYPH's
+ * Manhattan distance from the sentinel. (Origin: pure-black glyph is
+ * Manhattan-51 from sentinel; antialiased ramp reaches ~50, so widening
+ * tolerance can't separate them — we have to discriminate by direction.)
+ */
+
+/** Origin's halo is on the blue axis. Any opaque pixel where blue
+ *  dominates by 2× over either of R/G AND blue is > 20 is on the
+ *  sentinel ramp, never on the pure-black glyph (which has B=0). */
+const BLUE_RAMP = (r, g, b) => b > 20 && b > 2 * Math.max(r, g);
+
+/** @type {Array<{file: string, key: [number, number, number], tolerance?: number, predicate?: PixelPredicate, label: string}>} */
 const TARGETS = [
   {
     file: 'src/assets/graph/displacementOrb/justORB.png',
@@ -31,21 +47,23 @@ const TARGETS = [
     label: 'displacement orb effect (orbiting triangles)',
   },
   {
-    // Origin uses a wider tolerance because the antialiased edges of the
-    // (partial-ring) glyph leave a few px of intermediate dark-blue values
-    // that the strict-20 default left as a faint purple speckle.
-    // 35 still won't touch the pure-black glyph (#000000 is dist 51 from
-    // the sentinel).
+    // Origin: sentinel #000033 + pure-black glyph #000000 lie on the same
+    // blue axis only 51 Manhattan-units apart. Antialiased ramp pixels
+    // (e.g. #0a103e, #0c1340, #1019…) sit between them. Tolerance alone
+    // can't separate "halo edge" from "glyph edge" — they overlap. So we
+    // also kill any "blue-dominant" pixel via BLUE_RAMP, which preserves
+    // pure black (B=0) but eats the entire blue ramp.
     file: 'src/assets/graph/displacementOrb/origin.png',
     key: [0x00, 0x00, 0x33],
     tolerance: 35,
+    predicate: BLUE_RAMP,
     label: 'displacement origin (stand)',
   },
 ];
 
 const DEFAULT_TOLERANCE = 20; // Manhattan RGB distance
 
-function processPng({ file, key, tolerance = DEFAULT_TOLERANCE, label }) {
+function processPng({ file, key, tolerance = DEFAULT_TOLERANCE, predicate, label }) {
   return new Promise((resolve, reject) => {
     const full = join(REPO_ROOT, file);
     fs.createReadStream(full)
@@ -54,10 +72,16 @@ function processPng({ file, key, tolerance = DEFAULT_TOLERANCE, label }) {
         let keyed = 0;
         const data = this.data;
         for (let i = 0; i < data.length; i += 4) {
-          const dr = Math.abs(data[i] - key[0]);
-          const dg = Math.abs(data[i + 1] - key[1]);
-          const db = Math.abs(data[i + 2] - key[2]);
-          if (dr + dg + db <= tolerance) {
+          if (data[i + 3] === 0) continue; // already keyed (idempotent)
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const dr = Math.abs(r - key[0]);
+          const dg = Math.abs(g - key[1]);
+          const db = Math.abs(b - key[2]);
+          const bySentinel = dr + dg + db <= tolerance;
+          const byPredicate = predicate ? predicate(r, g, b) : false;
+          if (bySentinel || byPredicate) {
             data[i + 3] = 0;
             keyed++;
           }

@@ -41,12 +41,12 @@ const ORIGIN_Y = 498;
 const ORB_X = ORIGIN_X;
 const ORB_Y = ORIGIN_Y;
 
-// Origin proximity glow — when the avatar is near the stand the marker pulses
-// brighter; falls off linearly with distance until barely visible at the
-// far edge of the playable range. GRAPH_MAX_VALUE is reused as the max
-// meaningful distance because that's exactly the range the displacement orb
-// can plot.
-const ORIGIN_BASE_ALPHA = 0.35;
+// Origin proximity glow — when the avatar is near the stand the marker
+// blooms brighter; the GLOW falls off linearly with distance until it's
+// gone at the far edge of the playable range. The stand sprite itself
+// stays fully opaque the whole time. GRAPH_MAX_VALUE is reused as the max
+// meaningful distance because that's exactly the range the displacement
+// orb can plot.
 const ORIGIN_MAX_GLOW_STRENGTH = 4;
 
 const GAME_KEYS = [
@@ -89,15 +89,13 @@ async function main(): Promise<void> {
 
   const assets = new AssetLoader();
 
-  const [bgTex, groundTex, orbTex, orbFxTex, originTex, graphBgTex] =
-    await Promise.all([
-      assets.image('bgWorld1_1'),
-      assets.image('leveld1_collision'),
-      assets.image('disOrb'),
-      assets.image('disEffect'),
-      assets.image('displaceOrigin'),
-      assets.image('graphBGD'),
-    ]);
+  const [bgTex, groundTex, orbTex, originTex, graphBgTex] = await Promise.all([
+    assets.image('bgWorld1_1'),
+    assets.image('leveld1_collision'),
+    assets.image('disOrb'),
+    assets.image('displaceOrigin'),
+    assets.image('graphBGD'),
+  ]);
 
   const bgSprite = new Sprite(bgTex);
   app.stage.addChild(bgSprite);
@@ -127,8 +125,11 @@ async function main(): Promise<void> {
   originSprite.anchor.set(0.5, 1);
   originSprite.x = ORIGIN_X;
   originSprite.y = ORIGIN_Y;
-  // The `npm run colorkey` step keyed the dark-blue halo to alpha 0 already,
-  // so default blend mode is fine here.
+  // The `npm run colorkey` step keyed the dark-blue halo (and the blue-ramp
+  // antialiased edges) to alpha 0 already, so default blend is correct.
+  // The stand stays fully opaque always — only the GLOW strength fades with
+  // distance. Modulating the sprite's alpha as well made the stand itself
+  // disappear when the avatar walked away, which read as a bug.
   const originGlow = new GlowFilter({
     color: 0xffffaa,
     distance: 20,
@@ -137,14 +138,12 @@ async function main(): Promise<void> {
     quality: 0.3,
   });
   originSprite.filters = [originGlow];
-  originSprite.alpha = ORIGIN_BASE_ALPHA;
   app.stage.addChild(originSprite);
 
   const orb = new Orb({
     initialX: ORB_X,
     initialY: ORB_Y,
     texture: orbTex,
-    effectTexture: orbFxTex,
     pairedGraph: graph,
     // Displacement: |avatar.x - origin.x|. Original game line 384 of game.mxml.
     valueProvider: (avatarX) => Math.abs(avatarX - ORIGIN_X),
@@ -240,13 +239,13 @@ async function main(): Promise<void> {
 
       orb.update(body.state.x, body.state.y, ground);
 
-      // Origin proximity glow: linear in |avatar.x - origin.x|, full at the
-      // origin and minimum at GRAPH_MAX_VALUE away. Mirrors the original
-      // game's "the stand glows when you carry the orb back home" feedback.
+      // Origin proximity glow: glow strength is linear in |avatar.x - origin.x|,
+      // max at the origin and zero at GRAPH_MAX_VALUE away. The stand sprite
+      // itself stays fully opaque — fading its alpha looked like a bug
+      // (the stand disappeared when the avatar walked away).
       const distToOrigin = Math.abs(body.state.x - ORIGIN_X);
       const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / GRAPH_MAX_VALUE));
       originGlow.outerStrength = proximity * ORIGIN_MAX_GLOW_STRENGTH;
-      originSprite.alpha = ORIGIN_BASE_ALPHA + proximity * (1 - ORIGIN_BASE_ALPHA);
 
       input.endTick();
     }
