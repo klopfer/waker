@@ -26,11 +26,17 @@ const GRAPH_X = 308;
 const GRAPH_Y = 200;
 const GRAPH_W = 300;
 const GRAPH_H = 300;
-const GRAPH_MAX_VALUE = 400;
+// The avatar can travel at most ~600 px from the origin at x=200 before hitting
+// the level edge clamps; 600 maps that full traversable range onto the graph
+// height. Original game used 400 here but the current test playground rewards
+// the larger range.
+const GRAPH_MAX_VALUE = 600;
 const ORB_X = 200;
 const ORB_Y = 430;
 const ORIGIN_X = 200;
-const ORIGIN_Y = 438;
+// Anchor (0.5, 1) means y is the sprite's BOTTOM. Place the origin marker's
+// bottom on the painted floor so it reads as a "stand" sitting on the ground.
+const ORIGIN_Y = 498;
 
 const GAME_KEYS = [
   'ArrowLeft',
@@ -72,18 +78,22 @@ async function main(): Promise<void> {
 
   const assets = new AssetLoader();
 
-  const [bgTex, orbTex, orbFxTex, originTex, graphBgTex, graphSparkTex] =
+  const [bgTex, groundTex, orbTex, orbFxTex, originTex, graphBgTex] =
     await Promise.all([
       assets.image('bgWorld1_1'),
+      assets.image('leveld1_collision'),
       assets.image('disOrb'),
       assets.image('disEffect'),
       assets.image('displaceOrigin'),
       assets.image('graphBGD'),
-      assets.image('graphSpark'),
     ]);
 
   const bgSprite = new Sprite(bgTex);
   app.stage.addChild(bgSprite);
+  // The collision PNG IS the painted-ground silhouette in the original
+  // game's compositing — without it the bg is just sky.
+  const groundSprite = new Sprite(groundTex);
+  app.stage.addChild(groundSprite);
 
   const pixelGround = await loadPixelGround(assets.url('leveld1_collision'));
   const ground = new CompositeGround();
@@ -99,7 +109,6 @@ async function main(): Promise<void> {
     height: GRAPH_H,
     maxValue: GRAPH_MAX_VALUE,
     background: graphBgTex,
-    spark: graphSparkTex,
   });
   graphLayer.addChild(graph.container);
 
@@ -107,6 +116,11 @@ async function main(): Promise<void> {
   originSprite.anchor.set(0.5, 1);
   originSprite.x = ORIGIN_X;
   originSprite.y = ORIGIN_Y;
+  // 'add' blend turns the texture's dark-blue background into invisible (it
+  // adds nothing to the underlying scene) while the brighter ring pixels
+  // show through as a glow. Same trick is used on the orb sprites — the
+  // original SWFs were composited with this blend in the Flash timeline.
+  originSprite.blendMode = 'add';
   app.stage.addChild(originSprite);
 
   const orb = new Orb({

@@ -62,11 +62,16 @@ export class Orb {
     // pinned at the visual center of the orb (half a sprite-height above the
     // anchor) and uses center-anchor so it can rotate around its middle
     // without precessing across the orb body.
+    // 'add' blend mode on both sprites makes the dark-green halos in the
+    // extracted PNG act like the original SWF's composited glows — the
+    // bright orb / triangles add light to the bg while the dark surround
+    // adds nothing visible.
     if (opts.effectTexture) {
       const fx = new Sprite(opts.effectTexture);
       fx.anchor.set(0.5, 0.5);
       fx.x = 0;
       fx.y = -ORB_SPRITE_SIZE / 2;
+      fx.blendMode = 'add';
       this.container.addChild(fx);
       this.effectSprite = fx;
     } else {
@@ -74,6 +79,7 @@ export class Orb {
     }
     const core = new Sprite(opts.texture);
     core.anchor.set(0.5, 1);
+    core.blendMode = 'add';
     this.container.addChild(core);
 
     this.container.x = Math.round(this.x);

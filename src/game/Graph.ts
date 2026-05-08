@@ -16,8 +16,6 @@ export interface GraphOptions {
   maxValue: number;
   yOffset?: number;
   background?: Texture;
-  /** Glowing dot drawn at the head of the live curve. Hidden when not drawing. */
-  spark?: Texture;
   /** RGB hex (e.g. 0x009804) — color of the live curve while drawing. */
   drawColor?: number;
   /** RGB hex of the curve once the player drops the orb and the graph solidifies. */
@@ -28,6 +26,10 @@ export interface GraphOptions {
   /** Pixels of x advance per simulation tick. Original game uses 1.5. */
   speedPerTick?: number;
 }
+
+const SPARK_BASE_RADIUS = 8;
+const SPARK_PULSE_AMPLITUDE = 3;
+const SPARK_PULSE_RATE = 0.25; // radians per tick
 
 interface GraphConfig {
   graphX: number;
@@ -46,12 +48,13 @@ interface GraphConfig {
 export class Graph {
   readonly container: Container;
   private readonly path: Graphics;
-  private readonly spark: Sprite | null;
+  private readonly spark: Graphics;
   state: GraphState = 'idle';
 
   private timer = 0;
   private points: CurvePoint[] = [];
   private solidGround: CurveGround | null = null;
+  private pulsePhase = 0;
   private readonly cfg: GraphConfig;
 
   constructor(opts: GraphOptions) {
@@ -84,14 +87,13 @@ export class Graph {
     this.path = new Graphics();
     this.container.addChild(this.path);
 
-    if (opts.spark) {
-      this.spark = new Sprite(opts.spark);
-      this.spark.anchor.set(0.5, 0.5);
-      this.spark.visible = false;
-      this.container.addChild(this.spark);
-    } else {
-      this.spark = null;
-    }
+    // Procedurally-drawn glowing dot at the head of the live curve. Two
+    // concentric circles + 'add' blend gives a soft bloom that reads as
+    // a glow on top of the graph background.
+    this.spark = new Graphics();
+    this.spark.blendMode = 'add';
+    this.spark.visible = false;
+    this.container.addChild(this.spark);
 
     // Mask the graph contents to its rect. Without this, drawing past the
     // graph's logical width or beyond the y-range bleeds into the rest of
@@ -107,7 +109,8 @@ export class Graph {
     this.points = [];
     this.solidGround = null;
     this.path.clear();
-    if (this.spark) this.spark.visible = true;
+    this.spark.visible = true;
+    this.pulsePhase = 0;
   }
 
   /** Append the next point to the curve while drawing. No-op outside `drawing` state. */
@@ -126,10 +129,13 @@ export class Graph {
     }
     this.path.stroke({ color: this.cfg.drawColor, width: this.cfg.drawWidth });
 
-    if (this.spark) {
-      this.spark.x = localX;
-      this.spark.y = localY;
-    }
+    // Redraw the spark each tick so it pulses (radius oscillates) at the
+    // current head position.
+    this.pulsePhase += SPARK_PULSE_RATE;
+    const r = SPARK_BASE_RADIUS + Math.sin(this.pulsePhase) * SPARK_PULSE_AMPLITUDE;
+    this.spark.clear();
+    this.spark.circle(localX, localY, r * 1.6).fill({ color: this.cfg.drawColor, alpha: 0.25 });
+    this.spark.circle(localX, localY, r).fill({ color: 0xffffff, alpha: 0.95 });
 
     this.timer += this.cfg.speedPerTick;
   }
@@ -146,7 +152,8 @@ export class Graph {
       return null;
     }
     this.state = 'solid';
-    if (this.spark) this.spark.visible = false;
+    this.spark.visible = false;
+    this.spark.clear();
 
     this.path.clear();
     const first = this.points[0]!;
@@ -171,7 +178,8 @@ export class Graph {
     this.points = [];
     this.path.clear();
     this.solidGround = null;
-    if (this.spark) this.spark.visible = false;
+    this.spark.visible = false;
+    this.spark.clear();
   }
 
   get ground(): CurveGround | null {
