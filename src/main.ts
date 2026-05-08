@@ -72,23 +72,18 @@ async function main(): Promise<void> {
 
   const assets = new AssetLoader();
 
-  const [bgTex, groundTex, orbTex, orbFxTex, originTex, graphBgTex] = await Promise.all([
-    assets.image('bgWorld1_1'),
-    assets.image('leveld1_collision'),
-    assets.image('disOrb'),
-    assets.image('disEffect'),
-    assets.image('displaceOrigin'),
-    assets.image('graphBGD'),
-  ]);
+  const [bgTex, orbTex, orbFxTex, originTex, graphBgTex, graphSparkTex] =
+    await Promise.all([
+      assets.image('bgWorld1_1'),
+      assets.image('disOrb'),
+      assets.image('disEffect'),
+      assets.image('displaceOrigin'),
+      assets.image('graphBGD'),
+      assets.image('graphSpark'),
+    ]);
 
   const bgSprite = new Sprite(bgTex);
   app.stage.addChild(bgSprite);
-  // The collision PNG is overlaid lightly so you can see the painted ground
-  // shapes the avatar is colliding against — full alpha would obscure the
-  // actual level art.
-  const groundSprite = new Sprite(groundTex);
-  groundSprite.alpha = 0.25;
-  app.stage.addChild(groundSprite);
 
   const pixelGround = await loadPixelGround(assets.url('leveld1_collision'));
   const ground = new CompositeGround();
@@ -104,6 +99,7 @@ async function main(): Promise<void> {
     height: GRAPH_H,
     maxValue: GRAPH_MAX_VALUE,
     background: graphBgTex,
+    spark: graphSparkTex,
   });
   graphLayer.addChild(graph.container);
 

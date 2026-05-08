@@ -16,6 +16,8 @@ export interface GraphOptions {
   maxValue: number;
   yOffset?: number;
   background?: Texture;
+  /** Glowing dot drawn at the head of the live curve. Hidden when not drawing. */
+  spark?: Texture;
   /** RGB hex (e.g. 0x009804) — color of the live curve while drawing. */
   drawColor?: number;
   /** RGB hex of the curve once the player drops the orb and the graph solidifies. */
@@ -44,6 +46,7 @@ interface GraphConfig {
 export class Graph {
   readonly container: Container;
   private readonly path: Graphics;
+  private readonly spark: Sprite | null;
   state: GraphState = 'idle';
 
   private timer = 0;
@@ -80,6 +83,22 @@ export class Graph {
 
     this.path = new Graphics();
     this.container.addChild(this.path);
+
+    if (opts.spark) {
+      this.spark = new Sprite(opts.spark);
+      this.spark.anchor.set(0.5, 0.5);
+      this.spark.visible = false;
+      this.container.addChild(this.spark);
+    } else {
+      this.spark = null;
+    }
+
+    // Mask the graph contents to its rect. Without this, drawing past the
+    // graph's logical width or beyond the y-range bleeds into the rest of
+    // the level (the original Flex Canvas auto-clipped its children).
+    const mask = new Graphics().rect(0, 0, opts.width, opts.height).fill(0xffffff);
+    this.container.addChild(mask);
+    this.container.mask = mask;
   }
 
   startDrawing(): void {
@@ -88,6 +107,7 @@ export class Graph {
     this.points = [];
     this.solidGround = null;
     this.path.clear();
+    if (this.spark) this.spark.visible = true;
   }
 
   /** Append the next point to the curve while drawing. No-op outside `drawing` state. */
@@ -106,6 +126,11 @@ export class Graph {
     }
     this.path.stroke({ color: this.cfg.drawColor, width: this.cfg.drawWidth });
 
+    if (this.spark) {
+      this.spark.x = localX;
+      this.spark.y = localY;
+    }
+
     this.timer += this.cfg.speedPerTick;
   }
 
@@ -121,6 +146,7 @@ export class Graph {
       return null;
     }
     this.state = 'solid';
+    if (this.spark) this.spark.visible = false;
 
     this.path.clear();
     const first = this.points[0]!;
@@ -145,6 +171,7 @@ export class Graph {
     this.points = [];
     this.path.clear();
     this.solidGround = null;
+    if (this.spark) this.spark.visible = false;
   }
 
   get ground(): CurveGround | null {

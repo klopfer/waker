@@ -32,6 +32,11 @@ const ORB_HELD_OFFSET_Y = -55;
 const ORB_GRAVITY = 2;
 const ORB_MAX_FALL = 12;
 
+// Native size of the curated orb assets — used to position the rotating
+// effect at the visual center of the orb.
+const ORB_SPRITE_SIZE = 60;
+const EFFECT_ROTATION_PER_TICK = 0.06;
+
 export class Orb {
   state: OrbState = 'in_world';
   x: number;
@@ -42,6 +47,7 @@ export class Orb {
 
   private vy = 0;
   private readonly valueProvider: OrbValueProvider;
+  private readonly effectSprite: Sprite | null;
 
   constructor(opts: OrbOptions) {
     this.x = opts.initialX;
@@ -51,12 +57,20 @@ export class Orb {
 
     this.container = new Container();
 
-    // Bottom-center anchor matches the avatar's. orb.y = ground.y then means
-    // the orb's BOTTOM rests on the floor, not its center buried in it.
+    // The core orb is bottom-anchored so orb.y = ground means the orb's
+    // BOTTOM rests on the floor (matching the avatar). The effect sprite is
+    // pinned at the visual center of the orb (half a sprite-height above the
+    // anchor) and uses center-anchor so it can rotate around its middle
+    // without precessing across the orb body.
     if (opts.effectTexture) {
       const fx = new Sprite(opts.effectTexture);
-      fx.anchor.set(0.5, 1);
+      fx.anchor.set(0.5, 0.5);
+      fx.x = 0;
+      fx.y = -ORB_SPRITE_SIZE / 2;
       this.container.addChild(fx);
+      this.effectSprite = fx;
+    } else {
+      this.effectSprite = null;
     }
     const core = new Sprite(opts.texture);
     core.anchor.set(0.5, 1);
@@ -67,6 +81,8 @@ export class Orb {
   }
 
   update(avatarX: number, avatarY: number, ground: GroundProvider): void {
+    if (this.effectSprite) this.effectSprite.rotation += EFFECT_ROTATION_PER_TICK;
+
     if (this.state === 'held') {
       this.x = avatarX;
       this.y = avatarY + ORB_HELD_OFFSET_Y;
@@ -91,7 +107,6 @@ export class Orb {
   pickup(): void {
     if (this.state !== 'in_world') return;
     this.state = 'held';
-    this.container.visible = false;
     this.pairedGraph.startDrawing();
   }
 
@@ -103,7 +118,6 @@ export class Orb {
     this.vy = 0;
     this.container.x = Math.round(x);
     this.container.y = Math.round(y);
-    this.container.visible = true;
     this.pairedGraph.solidify();
   }
 
