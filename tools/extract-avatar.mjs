@@ -27,25 +27,38 @@ import { dirname, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SOURCE_DIR = join(REPO_ROOT, 'legacy', 'avatar-states');
+const PER_STATE_DIR = join(REPO_ROOT, 'legacy', 'avatar-states');
+const AVATAR_SHEET = join(REPO_ROOT, 'legacy', 'src', 'story', 'sprite', 'avatarSheet.swf');
 const OUT_DIR = join(REPO_ROOT, 'src', 'assets', 'sprites', 'avatar');
 const EXTRACT_ROOT = join(REPO_ROOT, 'src', 'assets', '_extracted', 'avatar-states');
 
 const FFDEC_PATH = process.env.FFDEC_PATH ?? 'C:\\Program Files (x86)\\FFDec\\ffdec-cli.exe';
 const FFMPEG_PATH = process.env.FFMPEG_PATH ?? 'C:\\ffmpeg\\bin\\ffmpeg.exe';
 
+// Right-facing base states. Left-facing variants are produced as flipHorizontal
+// aliases (no separate file; engine sets PIXI.Sprite.scale.x = -1 at render).
+//
+// idle/walk/run share avatarSheet.swf because its DefineSprites have the
+// tightest character bounds with transparent backgrounds. The audit showed:
+//   DefineSprite_153  208 frames  236x157  -> idle
+//   DefineSprite_38    44 frames  302x115  -> walk
+//   DefineSprite_176   10 frames  333x268  -> run
+//
+// jumpup/jumpdown stay on the per-state SWFs (avatarSheet doesn't have
+// dedicated jump sprites — it composes them from the multi-pose static
+// frames).
 const STATES = {
-  'idle-left':      { swf: 'idle-left.swf',      mode: 'sprite' },
-  'idle-right':     { swf: 'idle-right.swf',     mode: 'sprite' },
-  'run-right':      { swf: 'run-right.swf',      mode: 'frame'  },
-  'walk-right':     { swf: 'walk-right.swf',     mode: 'frame'  },
-  'jumpup-right':   { swf: 'jumpup-right.swf',   mode: 'sprite' },
-  'jumpdown-right': { swf: 'jumpdown-right.swf', mode: 'sprite' },
+  'idle-right':     { swf: AVATAR_SHEET, spriteName: 'DefineSprite_153' },
+  'walk-right':     { swf: AVATAR_SHEET, spriteName: 'DefineSprite_38'  },
+  'run-right':      { swf: AVATAR_SHEET, spriteName: 'DefineSprite_176' },
+  'jumpup-right':   { swf: join(PER_STATE_DIR, 'jumpup-right.swf'),   spriteName: null },
+  'jumpdown-right': { swf: join(PER_STATE_DIR, 'jumpdown-right.swf'), spriteName: null },
 };
 
 const FLIPS = {
-  'run-left':      'run-right',
+  'idle-left':     'idle-right',
   'walk-left':     'walk-right',
+  'run-left':      'run-right',
   'jumpup-left':   'jumpup-right',
   'jumpdown-left': 'jumpdown-right',
 };
@@ -70,49 +83,48 @@ function readPngDims(path) {
 }
 
 function extractFrames(state, cfg) {
-  const swfFull = join(SOURCE_DIR, cfg.swf);
-  if (!existsSync(swfFull)) {
-    console.warn(`  ! source not found: ${swfFull}`);
+  if (!existsSync(cfg.swf)) {
+    console.warn(`  ! source not found: ${cfg.swf}`);
     return null;
   }
   const stateExtractDir = join(EXTRACT_ROOT, state);
   if (existsSync(stateExtractDir)) rmSync(stateExtractDir, { recursive: true, force: true });
   mkdirSync(stateExtractDir, { recursive: true });
 
-  if (cfg.mode === 'frame') {
-    const r = runJpexs(['-format', 'frame:png', '-export', 'frame', stateExtractDir, swfFull]);
-    if (r.status !== 0 && r.status !== null) {
-      console.warn(`  ! JPEXS frame export exit ${r.status}: ${r.stderr.slice(0, 300)}`);
-      return null;
-    }
-    const frames = listPngs(stateExtractDir).sort((a, b) => parseInt(a) - parseInt(b));
-    if (frames.length === 0) {
-      console.warn('  ! no frames produced');
-      return null;
-    }
-    return { dir: stateExtractDir, frames };
-  }
-
-  // sprite mode: pick the largest non-empty sprite folder
-  const r = runJpexs(['-format', 'sprite:png', '-export', 'sprite', stateExtractDir, swfFull]);
+  // Always sprite mode: tight bounds, transparent backgrounds.
+  const r = runJpexs(['-format', 'sprite:png', '-export', 'sprite', stateExtractDir, cfg.swf]);
   if (r.status !== 0 && r.status !== null) {
     console.warn(`  ! JPEXS sprite export exit ${r.status}: ${r.stderr.slice(0, 300)}`);
     return null;
   }
+
   const dirs = readdirSync(stateExtractDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => {
       const path = join(stateExtractDir, d.name);
       return { name: d.name, path, count: listPngs(path).length };
     })
-    .filter((d) => d.count > 0)
-    .sort((a, b) => b.count - a.count);
+    .filter((d) => d.count > 0);
   if (dirs.length === 0) {
     console.warn('  ! no non-empty sprite folders');
     return null;
   }
-  const chosen = dirs[0];
-  console.log(`  picked sprite ${chosen.name} (${chosen.count} frames)`);
+
+  let chosen;
+  if (cfg.spriteName) {
+    chosen = dirs.find((d) => d.name === cfg.spriteName || d.name.startsWith(cfg.spriteName));
+    if (!chosen) {
+      console.warn(
+        `  ! sprite "${cfg.spriteName}" not found. Available: ${dirs.map((d) => d.name).join(', ')}`,
+      );
+      return null;
+    }
+    console.log(`  picked sprite ${chosen.name} (${chosen.count} frames)`);
+  } else {
+    chosen = dirs.sort((a, b) => b.count - a.count)[0];
+    console.log(`  auto-picked largest sprite ${chosen.name} (${chosen.count} frames)`);
+  }
+
   const frames = listPngs(chosen.path).sort((a, b) => parseInt(a) - parseInt(b));
   return { dir: chosen.path, frames };
 }
@@ -158,7 +170,8 @@ function packSheet(state, framesDir, frames) {
 function ensureBins() {
   if (!existsSync(FFDEC_PATH)) throw new Error(`JPEXS not found at ${FFDEC_PATH}`);
   if (!existsSync(FFMPEG_PATH)) throw new Error(`ffmpeg not found at ${FFMPEG_PATH}`);
-  if (!existsSync(SOURCE_DIR)) throw new Error(`Source dir not found: ${SOURCE_DIR}`);
+  if (!existsSync(AVATAR_SHEET)) throw new Error(`avatarSheet.swf not found at ${AVATAR_SHEET}`);
+  if (!existsSync(PER_STATE_DIR)) throw new Error(`per-state dir not found at ${PER_STATE_DIR}`);
 }
 
 function main() {
@@ -166,7 +179,8 @@ function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   mkdirSync(EXTRACT_ROOT, { recursive: true });
 
-  console.log(`Source:  ${toPosix(relative(REPO_ROOT, SOURCE_DIR))}`);
+  console.log(`Sheet:   ${toPosix(relative(REPO_ROOT, AVATAR_SHEET))}`);
+  console.log(`Per-state SWFs: ${toPosix(relative(REPO_ROOT, PER_STATE_DIR))}`);
   console.log(`Output:  ${toPosix(relative(REPO_ROOT, OUT_DIR))}\n`);
 
   const manifest = {
@@ -178,7 +192,8 @@ function main() {
   for (let i = 0; i < stateNames.length; i++) {
     const name = stateNames[i];
     const cfg = STATES[name];
-    console.log(`[${i + 1}/${stateNames.length}] ${name}  (${cfg.mode} mode)`);
+    const tag = cfg.spriteName ? `pin=${cfg.spriteName}` : 'auto-pick';
+    console.log(`[${i + 1}/${stateNames.length}] ${name}  ${tag}`);
 
     const extracted = extractFrames(name, cfg);
     if (!extracted) continue;

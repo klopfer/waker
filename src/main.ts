@@ -7,7 +7,12 @@ import type { AvatarStateName } from './assets/sprites/avatar/manifest.types.js'
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
 const SIM_HZ = 24;
-const AVATAR_DISPLAY_WIDTH = 80;
+// Uniform scale for all avatar states. Each state's source frame has a
+// different native bounding box (idle 236x157, walk 302x115, run 333x268,
+// jumpup 237x348, jumpdown 249x314) — applying a single scale keeps the
+// art's proportional intent rather than forcing every state to the same
+// width or height.
+const AVATAR_SCALE = 0.3;
 const GROUND_Y = STAGE_HEIGHT - 60;
 
 const GAME_KEYS = [
@@ -92,9 +97,8 @@ async function main(): Promise<void> {
     const next = states.get(name);
     if (!next) throw new Error(`state not preloaded: ${name}`);
     next.sprite.anchor.set(0.5, 1);
-    next.sprite.width = AVATAR_DISPLAY_WIDTH;
-    const aspect = next.meta.frameHeight / next.meta.frameWidth;
-    next.sprite.height = AVATAR_DISPLAY_WIDTH * aspect;
+    const flipX = next.meta.flipHorizontal ? -1 : 1;
+    next.sprite.scale.set(AVATAR_SCALE * flipX, AVATAR_SCALE);
     next.sprite.x = avatarX;
     next.sprite.y = GROUND_Y;
     next.clip.gotoAndPlay(0);
@@ -120,11 +124,12 @@ async function main(): Promise<void> {
       const right = input.isDown('ArrowRight');
 
       let nextState: AvatarStateName = currentName;
+      const padX = 40;
       if (right && !left) {
-        avatarX = Math.min(STAGE_WIDTH - AVATAR_DISPLAY_WIDTH / 2, avatarX + moveSpeed);
+        avatarX = Math.min(STAGE_WIDTH - padX, avatarX + moveSpeed);
         nextState = 'run-right';
       } else if (left && !right) {
-        avatarX = Math.max(AVATAR_DISPLAY_WIDTH / 2, avatarX - moveSpeed);
+        avatarX = Math.max(padX, avatarX - moveSpeed);
         nextState = 'run-left';
       } else {
         nextState = currentName.endsWith('-left') ? 'idle-left' : 'idle-right';
