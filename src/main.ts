@@ -2,17 +2,13 @@ import { Application, Graphics, Text } from 'pixi.js';
 import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
+import { Body, FlatGround, type MovementInputs } from './game/Movements.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
 const SIM_HZ = 24;
 const AVATAR_SCALE = 0.3;
 const GROUND_Y = STAGE_HEIGHT - 60;
-
-// Speed constants ported from legacy/src/movements.mxml. Kept verbatim because
-// they were tuned against a 24 Hz simulation tick (which we preserve).
-const WALK_SPEED = 6; // matches WALKINGSPEED = 4 * 1.5 gameSpeed
-const RUN_SPEED = 12; // matches MAXRUNSPEED = 8 * 1.5
 
 const GAME_KEYS = [
   'ArrowLeft',
@@ -57,8 +53,8 @@ async function main(): Promise<void> {
 
   const label = new Text({
     text:
-      'Waker — Phase 4 step 1\n' +
-      'arrows: walk + face   |   S or shift: sprint   |   click: beep\n' +
+      'Waker — Phase 4 step 2\n' +
+      'arrows: walk + face   |   S/shift: sprint   |   space/up: jump\n' +
       'simulation: 24 Hz fixed step',
     style: { fill: 0xaaaaaa, fontFamily: 'monospace', fontSize: 14, align: 'center' },
   });
@@ -77,41 +73,44 @@ async function main(): Promise<void> {
   app.stage.addChild(tickReadout);
 
   const avatar = await Avatar.preload(AVATAR_SCALE);
-  avatar.setPosition(STAGE_WIDTH / 2, GROUND_Y);
+  const body = new Body({ x: STAGE_WIDTH / 2, y: GROUND_Y });
+  const groundProvider = new FlatGround(GROUND_Y);
+  avatar.setPosition(body.state.x, body.state.y);
   app.stage.addChild(avatar.container);
 
   const input = new Input(window, { preventDefaultFor: GAME_KEYS });
   const sim = new FixedStep({ hz: SIM_HZ });
 
   let tickCount = 0;
-  let facingRight = true;
 
   app.ticker.add(({ deltaMS }) => {
     const { steps } = sim.advance(deltaMS);
     for (let i = 0; i < steps; i++) {
       tickCount++;
 
-      const left = input.isDown('ArrowLeft');
-      const right = input.isDown('ArrowRight');
-      const sprint =
-        input.isDown('KeyS') || input.isDown('ShiftLeft') || input.isDown('ShiftRight');
+      const moveInputs: MovementInputs = {
+        moveLeft: input.isDown('ArrowLeft'),
+        moveRight: input.isDown('ArrowRight'),
+        sprint:
+          input.isDown('KeyS') || input.isDown('ShiftLeft') || input.isDown('ShiftRight'),
+        jumpPressed: input.wasPressed('Space') || input.wasPressed('ArrowUp'),
+      };
 
-      let vx = 0;
-      const speed = sprint ? RUN_SPEED : WALK_SPEED;
-      if (right && !left) {
-        vx = speed;
-        facingRight = true;
-      } else if (left && !right) {
-        vx = -speed;
-        facingRight = false;
+      const s = body.step(moveInputs, groundProvider);
+
+      const clampedX = Math.max(40, Math.min(STAGE_WIDTH - 40, s.x));
+      if (clampedX !== s.x) {
+        body.state.x = clampedX;
+        body.state.vx = 0;
       }
 
-      avatar.setPosition(
-        Math.max(40, Math.min(STAGE_WIDTH - 40, avatar.x + vx)),
-        GROUND_Y,
-      );
-
-      avatar.update({ vx, vy: 0, onGround: true, facingRight });
+      avatar.setPosition(body.state.x, body.state.y);
+      avatar.update({
+        vx: body.state.vx,
+        vy: body.state.vy,
+        onGround: body.state.onGround,
+        facingRight: body.state.facingRight,
+      });
 
       input.endTick();
     }
@@ -132,7 +131,7 @@ async function main(): Promise<void> {
     osc.stop(audioCtx.currentTime + 0.13);
   });
 
-  console.log('Waker Phase 4 step 1 ready: Avatar state machine wired up.');
+  console.log('Waker Phase 4 step 2 ready: gravity, jump, walk/run wired up.');
 }
 
 void main();
