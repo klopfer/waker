@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /* eslint-disable */
-// Extracts the avatar's per-state animations from the SWFs in legacy/avatar-states/,
-// composites each into a sprite-sheet PNG under src/assets/sprites/avatar/, and
-// writes a manifest.json so the engine can load them.
+// Extracts the avatar's per-state animations from SWFs into sprite-sheet PNGs
+// under src/assets/sprites/avatar/, plus a manifest.json the engine can load.
 //
-// State strategy (verified against the SWFs by audit):
-//   idle-left/right   : sprite mode  (animation lives inside a DefineSprite)
-//   run-right         : frame mode   (10-frame composited main timeline)
-//   walk-right        : frame mode   (44-frame composited main timeline)
-//   jumpup-right      : sprite mode  (short loop in DefineSprite)
-//   jumpdown-right    : sprite mode  (short loop in DefineSprite)
+// idle / walk / run all come from avatarSheet.swf — we pin one DefineSprite
+// each by ID. jumpup / jumpdown come from per-state SWFs in
+// legacy/avatar-states/ and auto-pick the largest sprite. Left-facing variants
+// are flipHorizontal aliases of the right-facing sheets — no duplicate files;
+// the engine renders them with PIXI.Sprite.scale.x = -1 + anchor compensation.
 //
-// Left-facing variants of run/walk/jump are produced as flipHorizontal references
-// (no extra files; the engine flips with PIXI.Sprite.scale.x = -1).
+// See "Lessons learned from the avatar extraction" in
+// flash-to-html5-conversion-plan.md §15 for the rationale behind every choice
+// here (why sprite mode beats frame mode, why we pin by sprite name, how to
+// audit a new animation SWF, why uniform scale beats fixed width/height).
 
 import { spawnSync } from 'node:child_process';
 import {

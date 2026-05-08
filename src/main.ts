@@ -1,19 +1,18 @@
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Application, Graphics, Text } from 'pixi.js';
 import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
-import { preloadAvatarStates, type LoadedAvatarState } from './game/AvatarSprites.js';
-import type { AvatarStateName } from './assets/sprites/avatar/manifest.types.js';
+import { Avatar } from './game/Avatar.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
 const SIM_HZ = 24;
-// Uniform scale for all avatar states. Each state's source frame has a
-// different native bounding box (idle 236x157, walk 302x115, run 333x268,
-// jumpup 237x348, jumpdown 249x314) — applying a single scale keeps the
-// art's proportional intent rather than forcing every state to the same
-// width or height.
 const AVATAR_SCALE = 0.3;
 const GROUND_Y = STAGE_HEIGHT - 60;
+
+// Speed constants ported from legacy/src/movements.mxml. Kept verbatim because
+// they were tuned against a 24 Hz simulation tick (which we preserve).
+const WALK_SPEED = 6; // matches WALKINGSPEED = 4 * 1.5 gameSpeed
+const RUN_SPEED = 12; // matches MAXRUNSPEED = 8 * 1.5
 
 const GAME_KEYS = [
   'ArrowLeft',
@@ -23,15 +22,10 @@ const GAME_KEYS = [
   'Space',
   'KeyD',
   'KeyS',
+  'ShiftLeft',
+  'ShiftRight',
   'Escape',
 ] as const;
-
-const PRELOAD_STATES: readonly AvatarStateName[] = [
-  'idle-left',
-  'idle-right',
-  'run-left',
-  'run-right',
-];
 
 function fitStageToViewport(): void {
   const stage = document.getElementById('stage');
@@ -63,8 +57,8 @@ async function main(): Promise<void> {
 
   const label = new Text({
     text:
-      'Waker — Phase 3 milestone\n' +
-      'arrows: walk + face   |   click: beep\n' +
+      'Waker — Phase 4 step 1\n' +
+      'arrows: walk + face   |   S or shift: sprint   |   click: beep\n' +
       'simulation: 24 Hz fixed step',
     style: { fill: 0xaaaaaa, fontFamily: 'monospace', fontSize: 14, align: 'center' },
   });
@@ -82,38 +76,15 @@ async function main(): Promise<void> {
   tickReadout.y = STAGE_HEIGHT - 16;
   app.stage.addChild(tickReadout);
 
-  const avatarLayer = new Container();
-  app.stage.addChild(avatarLayer);
-
-  const states = await preloadAvatarStates(PRELOAD_STATES);
-
-  let currentName: AvatarStateName = 'idle-right';
-  let current: LoadedAvatarState | null = null;
-  let avatarX = STAGE_WIDTH / 2;
-
-  const setState = (name: AvatarStateName): void => {
-    if (current && currentName === name) return;
-    if (current) avatarLayer.removeChild(current.sprite);
-    const next = states.get(name);
-    if (!next) throw new Error(`state not preloaded: ${name}`);
-    next.sprite.anchor.set(0.5, 1);
-    const flipX = next.meta.flipHorizontal ? -1 : 1;
-    next.sprite.scale.set(AVATAR_SCALE * flipX, AVATAR_SCALE);
-    next.sprite.x = avatarX;
-    next.sprite.y = GROUND_Y;
-    next.clip.gotoAndPlay(0);
-    avatarLayer.addChild(next.sprite);
-    current = next;
-    currentName = name;
-  };
-
-  setState('idle-right');
+  const avatar = await Avatar.preload(AVATAR_SCALE);
+  avatar.setPosition(STAGE_WIDTH / 2, GROUND_Y);
+  app.stage.addChild(avatar.container);
 
   const input = new Input(window, { preventDefaultFor: GAME_KEYS });
   const sim = new FixedStep({ hz: SIM_HZ });
 
   let tickCount = 0;
-  const moveSpeed = 4;
+  let facingRight = true;
 
   app.ticker.add(({ deltaMS }) => {
     const { steps } = sim.advance(deltaMS);
@@ -122,28 +93,29 @@ async function main(): Promise<void> {
 
       const left = input.isDown('ArrowLeft');
       const right = input.isDown('ArrowRight');
+      const sprint =
+        input.isDown('KeyS') || input.isDown('ShiftLeft') || input.isDown('ShiftRight');
 
-      let nextState: AvatarStateName = currentName;
-      const padX = 40;
+      let vx = 0;
+      const speed = sprint ? RUN_SPEED : WALK_SPEED;
       if (right && !left) {
-        avatarX = Math.min(STAGE_WIDTH - padX, avatarX + moveSpeed);
-        nextState = 'run-right';
+        vx = speed;
+        facingRight = true;
       } else if (left && !right) {
-        avatarX = Math.max(padX, avatarX - moveSpeed);
-        nextState = 'run-left';
-      } else {
-        nextState = currentName.endsWith('-left') ? 'idle-left' : 'idle-right';
+        vx = -speed;
+        facingRight = false;
       }
 
-      if (nextState !== currentName) setState(nextState);
-      if (current) {
-        current.sprite.x = avatarX;
-        current.clip.update();
-      }
+      avatar.setPosition(
+        Math.max(40, Math.min(STAGE_WIDTH - 40, avatar.x + vx)),
+        GROUND_Y,
+      );
+
+      avatar.update({ vx, vy: 0, onGround: true, facingRight });
 
       input.endTick();
     }
-    tickReadout.text = `tick ${tickCount}   state ${currentName}`;
+    tickReadout.text = `tick ${tickCount}   state ${avatar.state}`;
   });
 
   let audioCtx: AudioContext | null = null;
@@ -160,7 +132,7 @@ async function main(): Promise<void> {
     osc.stop(audioCtx.currentTime + 0.13);
   });
 
-  console.log('Waker Phase 3 milestone ready: avatar wired up.');
+  console.log('Waker Phase 4 step 1 ready: Avatar state machine wired up.');
 }
 
 void main();

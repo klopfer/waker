@@ -785,6 +785,26 @@ User does not have Adobe Animate installed, so **`.fla` files cannot be re-expor
 2. **Per-state SWF substitution** for the avatar specifically (see above).
 3. **`character walk sizes.fla` and similar exploration FLAs** are skipped — they were sizing/iteration files, not production sources.
 
+### Lessons learned from the avatar extraction (apply to any future animation pull)
+
+These bit us during the first Phase 3 milestone and burned ~30 minutes diagnosing each one. Future animation work — the wisp, the orb effects, switch art, the levelcomplete cutscene rerun, anything else with a frame-based MovieClip — should start from this checklist.
+
+1. **Default to `-export sprite -format sprite:png`, not `-export frame`.** Frame mode composites the main timeline onto the SWF's stage background — which is *not* transparent in most of these SWFs (often a default grey). Sprite mode renders each `DefineSprite` onto a transparent canvas at its own tight bounding box, which is almost always what we want.
+
+2. **Audit the SWF's sprites before extracting.** Run JPEXS sprite mode once and look at frame counts + dimensions per `DefineSprite_<id>` (or `DefineSprite_<id>_<class>` if the SWF was built with named symbols). The right one is usually obvious from the frame count alone — for the avatar, 44 frames was walk, 10 was run, 208 was idle, all in the consolidated `avatarSheet.swf`.
+
+3. **Pin the chosen sprite by name, don't just take the largest.** "Largest by frame count" is right for single-purpose SWFs (per-state idle/run/jump) but wrong for consolidated sheets that pack several animations. The script supports `spriteName` to pick by class or `DefineSprite_<id>` directly.
+
+4. **Compiled "stub" SWFs aren't self-contained.** SWFs in `For programmers/Art Sprite/` are 200-500 byte stubs that load external bitmaps at runtime — JPEXS extraction returns near-empty PNGs from them. The real self-contained SWFs are typically in the authoring folders (`Characters/Character animation/{Idle,Run,Jump,Walk}/`). Sanity-check by file size: < 1 KB is suspicious; the working ones are 5-50 KB.
+
+5. **Same MD5 = same sprite, alias as `flipHorizontal`.** When the LEFT and RIGHT variants of a state extract to byte-identical PNGs, the artist authored one direction and intended a runtime flip. Drop the duplicate and represent the L variant as a `flipHorizontal: true` reference; the engine sets `PIXI.Sprite.scale.x = -1` at render time and adjusts anchor.x to keep position stable.
+
+6. **Don't try to force every state to the same width or height.** Frame bounding boxes vary across states because the character pose varies (idle compact, walk wider, run widest, jump tallest). Use a single uniform `sprite.scale.set(s, s)` value and anchor the sprite at bottom-center (`anchor.set(0.5, 1)`) so feet stay grounded across state changes. Width/height clamping looks worse — it makes the run pose tiny and the idle huge.
+
+7. **`libx264 + yuv420p` requires even dimensions.** When you're piping JPEXS PNG frames into ffmpeg for an MP4 (cutscenes), pad to even with `-vf "pad=ceil(iw/2)*2:ceil(ih/2)*2:0:0:black"`. JPEXS sprite renders are very often odd-dimensioned (intro was 822×623, ending 855×983) and ffmpeg silently produces a 0-byte file otherwise.
+
+8. **Pick the LAST frame for "static" extraction of multi-frame splash logos.** `gambitlogo.swf` produces a 200-frame fade-in sequence; the canonical static still is the fully-faded-in last frame, not the empty first frame. The curate script already does this.
+
 ---
 
 ## 16. References
