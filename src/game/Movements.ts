@@ -35,8 +35,16 @@ export const PHYSICS = {
 // original game used 80x80 with the actual figure occupying maybe 35x70
 // inside that — we approximate with a fixed 30x60 since our display scale
 // is 0.3.
+//
+// HEAD_HALF_WIDTH is intentionally much narrower than HALF_WIDTH. The
+// legacy game's head-collision "aura" was a 3 px-wide image at the very
+// top-center of the avatar canvas; using the full body width here makes
+// jumping next to a platform edge bonk the body's far corner into the
+// platform's underside while the avatar's center would still clear the
+// edge cleanly. Side and floor checks keep the full body width.
 export const BODY = {
   HALF_WIDTH: 15,
+  HEAD_HALF_WIDTH: 4,
   HEIGHT: 60,
   // Vertical sample step for side-wall scans: every N px down the body.
   // 4 px catches sub-tile features without being too slow (24 Hz × ~15 samples
@@ -113,10 +121,10 @@ function anySolidAlongTopEdge(
   ground: GroundProvider,
 ): boolean {
   const topY = bottomY - BODY.HEIGHT;
-  for (let dx = -BODY.HALF_WIDTH; dx <= BODY.HALF_WIDTH; dx += BODY.SAMPLE_STEP) {
+  for (let dx = -BODY.HEAD_HALF_WIDTH; dx <= BODY.HEAD_HALF_WIDTH; dx += BODY.SAMPLE_STEP) {
     if (ground.solidAt(centerX + dx, topY)) return true;
   }
-  return ground.solidAt(centerX + BODY.HALF_WIDTH, topY);
+  return ground.solidAt(centerX + BODY.HEAD_HALF_WIDTH, topY);
 }
 
 function pushOutFromWallRight(x: number, bottomY: number, ground: GroundProvider): number {

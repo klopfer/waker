@@ -155,6 +155,37 @@ describe('Movements.step', () => {
     expect(s.x - BODY.HALF_WIDTH).toBeGreaterThanOrEqual(100);
   });
 
+  it('a thin platform overhead does not bump the avatar if their center is clear', () => {
+    // Platform at y in [80, 100], x in [200, 400]. Floor at y=300.
+    // Avatar at x=180 — body right edge x=195 (inside the platform's x range
+    // because 195 < 200 is false, actually x=195 < 200, *outside*), but more
+    // importantly the head check (HEAD_HALF_WIDTH=4) only samples x in
+    // [176, 184] which is well clear of the platform.
+    const platformAndFloor: GroundProvider = {
+      groundYBelow: (_x: number, y: number) =>
+        y <= 300 ? 300 : Number.POSITIVE_INFINITY,
+      solidAt: (x: number, y: number) => {
+        const ix = Math.floor(x);
+        const iy = Math.floor(y);
+        if (iy >= 300) return true;                  // floor
+        if (ix >= 200 && ix <= 400 && iy >= 80 && iy <= 100) return true; // platform
+        return false;
+      },
+    };
+    let s: MovementState = { x: 180, y: 300, vx: 0, vy: 0, facingRight: true, onGround: true };
+    s = step(s, { ...NEUTRAL, jumpPressed: true }, platformAndFloor);
+    // Rise for several ticks; head check at x=180 should never see the
+    // platform (even though body right edge x=195 would).
+    for (let i = 0; i < 8; i++) {
+      const before = s.vy;
+      s = step(s, NEUTRAL, platformAndFloor);
+      // vy should evolve smoothly under gravity, not snap to 0 from a head bump.
+      expect(s.vy).toBeGreaterThanOrEqual(before);
+    }
+    // After the apex, the avatar should still be above the floor.
+    expect(s.y).toBeLessThan(300);
+  });
+
   it('jumping into a ceiling zeroes vy and stops the climb', () => {
     // Floor at y=200, ceiling solid at y <= 100. A single jump rises about
     // JUMP_IMPULSE^2/(2*GRAVITY) ≈ 52 px, so an avatar starting at y=200
