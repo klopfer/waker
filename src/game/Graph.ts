@@ -1,7 +1,12 @@
 import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { CurveGround, type CurvePoint } from './CurveGround.js';
 
-export type GraphState = 'idle' | 'drawing' | 'solid';
+export type GraphState = 'idle' | 'drawing' | 'paused' | 'solid';
+
+// Matches the legacy `delay = 96` in genericGraph.mxml — the live curve
+// pauses for this many timer units (≈4 sec at 1.5/tick, 24 fps) at the
+// right edge of the graph before auto-resetting and redrawing from x=0.
+const PAUSE_DELAY = 96;
 
 export interface GraphOptions {
   /** World-space x/y of the graph's top-left. */
@@ -52,6 +57,7 @@ export class Graph {
   state: GraphState = 'idle';
 
   private timer = 0;
+  private pauseTimer = 0;
   private points: CurvePoint[] = [];
   private solidGround: CurveGround | null = null;
   private pulsePhase = 0;
@@ -106,6 +112,7 @@ export class Graph {
   startDrawing(): void {
     this.state = 'drawing';
     this.timer = 0;
+    this.pauseTimer = 0;
     this.points = [];
     this.solidGround = null;
     this.path.clear();
@@ -113,10 +120,38 @@ export class Graph {
     this.pulsePhase = 0;
   }
 
-  /** Append the next point to the curve while drawing. No-op outside `drawing` state. */
+  /**
+   * Advance one simulation tick of the live graph. While drawing, appends
+   * the next point. When the timer reaches the graph width, transitions to
+   * `paused`; after PAUSE_DELAY units of pause-time the graph clears and
+   * restarts drawing from x=0 (mirrors the original game's "draw → flash →
+   * reset" cycle while the orb is still held).
+   */
   tick(value: number): void {
-    if (this.state !== 'drawing') return;
-    if (this.timer >= this.cfg.width) return;
+    if (this.state === 'idle' || this.state === 'solid') return;
+
+    if (this.state === 'paused') {
+      this.pauseTimer += this.cfg.speedPerTick;
+      if (this.pauseTimer >= PAUSE_DELAY) {
+        // Restart from scratch, replotting the current value at x=0.
+        this.timer = 0;
+        this.pauseTimer = 0;
+        this.points = [];
+        this.path.clear();
+        this.state = 'drawing';
+        this.spark.visible = true;
+      }
+      return;
+    }
+
+    // state === 'drawing'
+    if (this.timer >= this.cfg.width) {
+      this.state = 'paused';
+      this.pauseTimer = 0;
+      this.spark.visible = false;
+      this.spark.clear();
+      return;
+    }
 
     const localY = this.relativeValue(value) + this.cfg.yOffset;
     const localX = this.timer;
@@ -129,8 +164,6 @@ export class Graph {
     }
     this.path.stroke({ color: this.cfg.drawColor, width: this.cfg.drawWidth });
 
-    // Redraw the spark each tick so it pulses (radius oscillates) at the
-    // current head position.
     this.pulsePhase += SPARK_PULSE_RATE;
     const r = SPARK_BASE_RADIUS + Math.sin(this.pulsePhase) * SPARK_PULSE_AMPLITUDE;
     this.spark.clear();
@@ -147,11 +180,12 @@ export class Graph {
    * accumulating enough points to be useful as a platform.
    */
   solidify(): CurveGround | null {
-    if (this.state !== 'drawing' || this.points.length < 2) {
+    if ((this.state !== 'drawing' && this.state !== 'paused') || this.points.length < 2) {
       this.reset();
       return null;
     }
     this.state = 'solid';
+    this.pauseTimer = 0;
     this.spark.visible = false;
     this.spark.clear();
 
@@ -175,6 +209,7 @@ export class Graph {
   reset(): void {
     this.state = 'idle';
     this.timer = 0;
+    this.pauseTimer = 0;
     this.points = [];
     this.path.clear();
     this.solidGround = null;

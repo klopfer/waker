@@ -36,6 +36,11 @@ const ORB_MAX_FALL = 12;
 // effect at the visual center of the orb.
 const ORB_SPRITE_SIZE = 60;
 const EFFECT_ROTATION_PER_TICK = 0.06;
+// Slow alpha pulse on the orb's core that reads as a "glow" without needing
+// a separate animated bitmap. ~one full breath per 1.5 seconds at 24 Hz.
+const CORE_PULSE_RATE = 0.18;
+const CORE_PULSE_BASE = 0.85;
+const CORE_PULSE_AMPLITUDE = 0.15;
 
 export class Orb {
   state: OrbState = 'in_world';
@@ -46,8 +51,10 @@ export class Orb {
   readonly pairedGraph: Graph;
 
   private vy = 0;
+  private pulsePhase = 0;
   private readonly valueProvider: OrbValueProvider;
   private readonly effectSprite: Sprite | null;
+  private readonly coreSprite: Sprite;
 
   constructor(opts: OrbOptions) {
     this.x = opts.initialX;
@@ -62,25 +69,24 @@ export class Orb {
     // pinned at the visual center of the orb (half a sprite-height above the
     // anchor) and uses center-anchor so it can rotate around its middle
     // without precessing across the orb body.
-    // 'add' blend mode on both sprites makes the dark-green halos in the
-    // extracted PNG act like the original SWF's composited glows — the
-    // bright orb / triangles add light to the bg while the dark surround
-    // adds nothing visible.
+    // The `npm run colorkey` build step has already turned each texture's
+    // sentinel-color halo transparent, so default ('normal') blending is
+    // correct here. Effect anchored at the orb's visual center so it spins
+    // around the middle of the body. Core anchored bottom-center so orb.y
+    // is the bottom of the visible orb (matches avatar / origin).
     if (opts.effectTexture) {
       const fx = new Sprite(opts.effectTexture);
       fx.anchor.set(0.5, 0.5);
       fx.x = 0;
       fx.y = -ORB_SPRITE_SIZE / 2;
-      fx.blendMode = 'add';
       this.container.addChild(fx);
       this.effectSprite = fx;
     } else {
       this.effectSprite = null;
     }
-    const core = new Sprite(opts.texture);
-    core.anchor.set(0.5, 1);
-    core.blendMode = 'add';
-    this.container.addChild(core);
+    this.coreSprite = new Sprite(opts.texture);
+    this.coreSprite.anchor.set(0.5, 1);
+    this.container.addChild(this.coreSprite);
 
     this.container.x = Math.round(this.x);
     this.container.y = Math.round(this.y);
@@ -88,6 +94,8 @@ export class Orb {
 
   update(avatarX: number, avatarY: number, ground: GroundProvider): void {
     if (this.effectSprite) this.effectSprite.rotation += EFFECT_ROTATION_PER_TICK;
+    this.pulsePhase += CORE_PULSE_RATE;
+    this.coreSprite.alpha = CORE_PULSE_BASE + Math.sin(this.pulsePhase) * CORE_PULSE_AMPLITUDE;
 
     if (this.state === 'held') {
       this.x = avatarX;

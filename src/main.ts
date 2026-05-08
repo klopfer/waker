@@ -116,11 +116,8 @@ async function main(): Promise<void> {
   originSprite.anchor.set(0.5, 1);
   originSprite.x = ORIGIN_X;
   originSprite.y = ORIGIN_Y;
-  // 'add' blend turns the texture's dark-blue background into invisible (it
-  // adds nothing to the underlying scene) while the brighter ring pixels
-  // show through as a glow. Same trick is used on the orb sprites — the
-  // original SWFs were composited with this blend in the Flash timeline.
-  originSprite.blendMode = 'add';
+  // The `npm run colorkey` step keyed the dark-blue halo to alpha 0 already,
+  // so default blend mode is fine here.
   app.stage.addChild(originSprite);
 
   const orb = new Orb({
@@ -181,9 +178,10 @@ async function main(): Promise<void> {
       if (input.wasPressed('KeyD')) {
         if (orb.state === 'held') {
           // Drop at avatar's feet, slightly raised so it doesn't merge with the floor.
-          const droppedSolid = orb.pairedGraph.state === 'drawing';
+          const wasDrawingOrPaused =
+            orb.pairedGraph.state === 'drawing' || orb.pairedGraph.state === 'paused';
           orb.drop(body.state.x, body.state.y - 20);
-          if (droppedSolid) {
+          if (wasDrawingOrPaused) {
             const newGround = orb.pairedGraph.ground;
             if (newGround) ground.add(newGround);
           }
