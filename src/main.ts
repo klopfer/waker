@@ -5,6 +5,7 @@ import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
 import { CompositeGround } from './game/CompositeGround.js';
+import { CurveGround } from './game/CurveGround.js';
 import { Body, type MovementInputs } from './game/Movements.js';
 import { Graph } from './game/Graph.js';
 import { Orb } from './game/Orb.js';
@@ -36,10 +37,20 @@ const ORIGIN_X = 200;
 // Anchor (0.5, 1) means y is the sprite's BOTTOM. Place the origin marker's
 // bottom on the painted floor so it reads as a "stand" sitting on the ground.
 const ORIGIN_Y = 498;
-// Orb spawns sitting INSIDE the origin stand (same x, same bottom y). The
-// orb is bottom-anchored too, so equal y = visually overlapping anchors.
+// Lift in pixels at which the stand's cradle holds the orb above the floor.
+// ~½ to ⅔ of the visible orb glyph diameter (20 px), per the v6 review,
+// so the orb visibly nests inside the U-shape of the stand instead of
+// resting on the floor next to it.
+const STAND_CRADLE_LIFT = 12;
+// Half-width of the cradle "shelf" the orb lands on. Must be wide enough
+// that imperfect drop x's still land in the stand, but not so wide it
+// overlaps the avatar's footprint sample range.
+const STAND_CRADLE_HALF_WIDTH = 18;
+// Orb spawns sitting INSIDE the origin stand: same x, lifted to the cradle
+// height. Gravity will keep it there because the stand shelf is added to
+// the orb's ground stack (see `orbGround` below).
 const ORB_X = ORIGIN_X;
-const ORB_Y = ORIGIN_Y;
+const ORB_Y = ORIGIN_Y - STAND_CRADLE_LIFT;
 
 // Origin proximity glow — when the avatar is near the stand the marker
 // blooms brighter; the GLOW falls off linearly with distance until it's
@@ -105,8 +116,27 @@ async function main(): Promise<void> {
   app.stage.addChild(groundSprite);
 
   const pixelGround = await loadPixelGround(assets.url('leveld1_collision'));
+  // Avatar's ground: painted floor + (later) any solidified curves the
+  // player draws. Does NOT include the stand cradle — we don't want the
+  // avatar bumping up onto the stand when walking past it.
   const ground = new CompositeGround();
   ground.add(pixelGround);
+
+  // Orb's ground: same as the avatar's, plus a thin horizontal shelf at
+  // the stand's cradle height so the orb naturally rests in the stand
+  // instead of falling through it. Composing the avatar's `ground` here
+  // (rather than re-adding pixelGround) means solidified curves added to
+  // `ground` are visible to the orb too, automatically.
+  const standCradle = new CurveGround(
+    [
+      { x: ORIGIN_X - STAND_CRADLE_HALF_WIDTH, y: ORIGIN_Y - STAND_CRADLE_LIFT },
+      { x: ORIGIN_X + STAND_CRADLE_HALF_WIDTH, y: ORIGIN_Y - STAND_CRADLE_LIFT },
+    ],
+    2,
+  );
+  const orbGround = new CompositeGround();
+  orbGround.add(ground);
+  orbGround.add(standCradle);
 
   const graphLayer = new Container();
   app.stage.addChild(graphLayer);
@@ -237,7 +267,7 @@ async function main(): Promise<void> {
         facingRight: body.state.facingRight,
       });
 
-      orb.update(body.state.x, body.state.y, ground);
+      orb.update(body.state.x, body.state.y, orbGround);
 
       // Origin proximity glow: glow strength is linear in |avatar.x - origin.x|,
       // max at the origin and zero at GRAPH_MAX_VALUE away. The stand sprite
