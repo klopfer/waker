@@ -5,11 +5,20 @@ import type { CuratedAsset, CuratedManifest } from '../assets/manifest.types.js'
 
 const MANIFEST = manifestData as CuratedManifest;
 
-const ASSET_URLS = import.meta.glob<string>('../assets/**/*.{mp3,wav,ogg,png,jpg,jpeg,mp4,webm,webp}', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
+// Eager URL resolution for every committed asset. The negative pattern excludes
+// the JPEXS-dump intermediates under _extracted/ — those are gitignored
+// build-time outputs that the manifest never references.
+const ASSET_URLS = import.meta.glob<string>(
+  [
+    '../assets/**/*.{mp3,wav,ogg,png,jpg,jpeg,mp4,webm,webp}',
+    '!../assets/_extracted/**',
+  ],
+  {
+    eager: true,
+    query: '?url',
+    import: 'default',
+  },
+);
 
 function resolveUrl(relativeUrl: string): string {
   const key = `../assets/${relativeUrl}`;
