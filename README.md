@@ -114,12 +114,12 @@ The plan is in seven phases (full text in [`flash-to-html5-conversion-plan.md` �
 | 1 | Vite + PixiJS scaffold + smoke test | ✅ done |
 | 2 | JPEXS asset extraction + curation (181 entries, 13.8 MB committed) | ✅ done — `extract:swf`, `extract:cutscenes`, `extract:avatar`, `curate` |
 | 3 | Engine layer (FixedStep, Input, HitTest, Audio, GraphTone, AssetLoader, MovieClipShim) | ✅ done — 8/8 modules + avatar wired into smoke scene, all 10 states (idle / walk / run / jump-up / jump-down × L/R) load from the manifest, runtime flipHorizontal for L variants |
-| 4 | Game logic port — module by module in dependency order ([§14](flash-to-html5-conversion-plan.md)) | 🟡 in progress — `Avatar.ts` (state machine) and `Movements.ts` (gravity / jump / walk / run / brake / FlatGround) committed; level-data + pixel-collision next |
+| 4 | Game logic port — module by module in dependency order ([§14](flash-to-html5-conversion-plan.md)) | 🟡 in progress — `Avatar.ts`, `Movements.ts`, and `PixelGround.ts` (per-column floor lookup from a level's alpha-mask collision PNG) all committed and wired into the smoke scene against `leveld1`'s real terrain; full pixel-collision response (sides + ceilings, graph-drawn platforms, switches/spikes) next |
 | 5 | UI port — DOM overlay (menu, options, instructions, credits, HUD) | ⏳ |
 | 6 | Testing + polish (cross-browser, mobile, perf) | ⏳ |
 | 7 | Release prep | ⏳ |
 
-**Latest milestone:** `npm run dev` shows Waker on a ground line. Arrows walk him in either direction (state switches to walk-left / walk-right). Holding `S` or `Shift` makes him sprint (state switches to run-left / run-right). `Space` or `↑` jumps with gravity (state switches to jumpup / jumpdown by vertical velocity sign). All of that runs through the same 24 Hz fixed-step pipeline that the rest of the game will use. Bundle is 302 KB (96 KB gzipped) plus assets; 54/54 unit tests passing.
+**Latest milestone:** `npm run dev` boots into `leveld1` — the actual displacement-1 background renders as the level art, and Waker walks / runs / jumps on the painted ground geometry from the original collision PNG. Arrows walk; `S` or `Shift` sprints; `Space` or `↑` jumps. State switches follow the avatar's velocity (idle / walk / run / jumpup / jumpdown × L/R) at the original 24 Hz fixed-step cadence. Bundle is 308 KB (97 KB gzipped) plus assets; 60/60 unit tests passing.
 
 Conversion log entries land in `CONVERSION_LOG.md` (one per ported module) once Phase 4 starts.
 

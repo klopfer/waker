@@ -1,14 +1,21 @@
-import { Application, Graphics, Text } from 'pixi.js';
+import { Application, Sprite, Text } from 'pixi.js';
+import { AssetLoader } from './engine/AssetLoader.js';
 import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
-import { Body, FlatGround, type MovementInputs } from './game/Movements.js';
+import { Body, type MovementInputs } from './game/Movements.js';
+import { loadPixelGround } from './game/PixelGround.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
 const SIM_HZ = 24;
 const AVATAR_SCALE = 0.3;
-const GROUND_Y = STAGE_HEIGHT - 60;
+
+// Pre-port leveld1 entrance (from legacy/src/levels/displacement1.mxml line 27:
+// super.setEntrance(0, 390)). The level's collision PNG drives where the
+// avatar actually lands.
+const SPAWN_X = 80;
+const SPAWN_Y = 100; // start a bit above the painted ground so we can see the fall
 
 const GAME_KEYS = [
   'ArrowLeft',
@@ -48,33 +55,45 @@ async function main(): Promise<void> {
     antialias: true,
   });
 
-  const ground = new Graphics().rect(0, GROUND_Y + 1, STAGE_WIDTH, 4).fill(0x2a3140);
-  app.stage.addChild(ground);
+  const assets = new AssetLoader();
+
+  const [bgTex, groundTex] = await Promise.all([
+    assets.image('bgWorld1_1'),
+    assets.image('leveld1_collision'),
+  ]);
+  const bgSprite = new Sprite(bgTex);
+  bgSprite.x = 0;
+  bgSprite.y = 0;
+  app.stage.addChild(bgSprite);
+
+  const groundSprite = new Sprite(groundTex);
+  groundSprite.alpha = 1;
+  app.stage.addChild(groundSprite);
+
+  const ground = await loadPixelGround(assets.url('leveld1_collision'));
 
   const label = new Text({
     text:
-      'Waker — Phase 4 step 2\n' +
-      'arrows: walk + face   |   S/shift: sprint   |   space/up: jump\n' +
-      'simulation: 24 Hz fixed step',
-    style: { fill: 0xaaaaaa, fontFamily: 'monospace', fontSize: 14, align: 'center' },
+      'Waker — Phase 4 step 3: real terrain (leveld1)\n' +
+      'arrows: walk + face   |   S/shift: sprint   |   space/up: jump',
+    style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, align: 'center' },
   });
   label.anchor.set(0.5, 0);
   label.x = STAGE_WIDTH / 2;
-  label.y = 16;
+  label.y = 12;
   app.stage.addChild(label);
 
   const tickReadout = new Text({
     text: 'tick 0   state idle-right',
-    style: { fill: 0x66ccff, fontFamily: 'monospace', fontSize: 14 },
+    style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 12 },
   });
   tickReadout.anchor.set(0.5, 1);
   tickReadout.x = STAGE_WIDTH / 2;
-  tickReadout.y = STAGE_HEIGHT - 16;
+  tickReadout.y = STAGE_HEIGHT - 8;
   app.stage.addChild(tickReadout);
 
   const avatar = await Avatar.preload(AVATAR_SCALE);
-  const body = new Body({ x: STAGE_WIDTH / 2, y: GROUND_Y });
-  const groundProvider = new FlatGround(GROUND_Y);
+  const body = new Body({ x: SPAWN_X, y: SPAWN_Y, onGround: false });
   avatar.setPosition(body.state.x, body.state.y);
   app.stage.addChild(avatar.container);
 
@@ -96,12 +115,23 @@ async function main(): Promise<void> {
         jumpPressed: input.wasPressed('Space') || input.wasPressed('ArrowUp'),
       };
 
-      const s = body.step(moveInputs, groundProvider);
+      body.step(moveInputs, ground);
 
-      const clampedX = Math.max(40, Math.min(STAGE_WIDTH - 40, s.x));
-      if (clampedX !== s.x) {
-        body.state.x = clampedX;
+      // keep the avatar inside the stage horizontally; if it falls off the
+      // bottom (no ground in this column), respawn at the entrance.
+      if (body.state.x < 8) {
+        body.state.x = 8;
         body.state.vx = 0;
+      } else if (body.state.x > STAGE_WIDTH - 8) {
+        body.state.x = STAGE_WIDTH - 8;
+        body.state.vx = 0;
+      }
+      if (body.state.y > STAGE_HEIGHT + 200) {
+        body.state.x = SPAWN_X;
+        body.state.y = SPAWN_Y;
+        body.state.vx = 0;
+        body.state.vy = 0;
+        body.state.onGround = false;
       }
 
       avatar.setPosition(body.state.x, body.state.y);
@@ -114,24 +144,10 @@ async function main(): Promise<void> {
 
       input.endTick();
     }
-    tickReadout.text = `tick ${tickCount}   state ${avatar.state}`;
+    tickReadout.text = `tick ${tickCount}   state ${avatar.state}   y=${body.state.y.toFixed(0)}`;
   });
 
-  let audioCtx: AudioContext | null = null;
-  window.addEventListener('click', () => {
-    if (!audioCtx) audioCtx = new AudioContext();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.frequency.value = 440;
-    gain.gain.setValueAtTime(0, audioCtx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
-    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.12);
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.13);
-  });
-
-  console.log('Waker Phase 4 step 2 ready: gravity, jump, walk/run wired up.');
+  console.log('Waker Phase 4 step 3 ready: leveld1 background + pixel-mask ground.');
 }
 
 void main();

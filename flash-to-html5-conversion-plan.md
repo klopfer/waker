@@ -789,6 +789,8 @@ User does not have Adobe Animate installed, so **`.fla` files cannot be re-expor
 
 These bit us during the first Phase 3 milestone and burned ~30 minutes diagnosing each one. Future animation work — the wisp, the orb effects, switch art, the levelcomplete cutscene rerun, anything else with a frame-based MovieClip — should start from this checklist.
 
+> **Meta-rule (every bug we hit reduced to this one):** **default to JPEXS sprite mode for everything visual.** Frame mode and tile crops composite onto the SWF's stage background (often opaque white or grey) and pad the output with the full stage dimensions around a small character figure. Sprite mode renders each `DefineSprite` onto a transparent canvas at its own tight bounding box. Use frame/tile mode *only* when no `DefineSprite` exists for what you need.
+
 1. **Default to `-export sprite -format sprite:png`, not `-export frame`.** Frame mode composites the main timeline onto the SWF's stage background — which is *not* transparent in most of these SWFs (often a default grey). Sprite mode renders each `DefineSprite` onto a transparent canvas at its own tight bounding box, which is almost always what we want.
 
 2. **Audit the SWF's sprites before extracting.** Run JPEXS sprite mode once and look at frame counts + dimensions per `DefineSprite_<id>` (or `DefineSprite_<id>_<class>` if the SWF was built with named symbols). The right one is usually obvious from the frame count alone — for the avatar, 44 frames was walk, 10 was run, 208 was idle, all in the consolidated `avatarSheet.swf`.
