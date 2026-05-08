@@ -214,6 +214,50 @@ describe('Movements.step', () => {
     expect(s.y - BODY.HEIGHT).toBeGreaterThan(100);
   });
 
+  it('jumping sideways onto an adjacent platform lands on its top', () => {
+    // leveld1-shaped synthetic ground: low platform at x in [0, 70] with top
+    // at y=440 (and solid down through the bottom of the canvas), main floor
+    // at x in [70, 800] with top at y=498. The platform sits 58 px above the
+    // main floor — at the upper bound of the single-jump arc (60 px), so it
+    // takes a clean jump while moving left to land on it. Pre-fix this test
+    // failed because side-push at the new y kicked the avatar back as soon
+    // as their descending feet crossed the platform top y.
+    const leveld1ish: GroundProvider = {
+      groundYBelow: (x: number, searchFromY: number) => {
+        const ix = Math.floor(x);
+        if (ix < 0 || ix > 800) return Number.POSITIVE_INFINITY;
+        const platformZone = ix < 70;
+        const groundTop = platformZone ? 440 : 498;
+        if (Math.floor(searchFromY) > groundTop) {
+          // Inside or below the surface — return wherever the search starts.
+          return Math.max(groundTop, Math.floor(searchFromY));
+        }
+        return groundTop;
+      },
+      solidAt: (x: number, y: number) => {
+        const ix = Math.floor(x);
+        const iy = Math.floor(y);
+        if (ix < 0 || ix > 800 || iy < 0) return false;
+        if (ix < 70) return iy >= 440;
+        return iy >= 498;
+      },
+    };
+
+    let s: MovementState = {
+      x: 86, y: 498, vx: 0, vy: 0, facingRight: true, onGround: true,
+    };
+    s = step(s, { ...NEUTRAL, jumpPressed: true, moveLeft: true }, leveld1ish);
+    let landedOnPlatform = false;
+    for (let i = 0; i < 30; i++) {
+      s = step(s, { ...NEUTRAL, moveLeft: true }, leveld1ish);
+      if (s.onGround && s.y === 440) {
+        landedOnPlatform = true;
+        break;
+      }
+    }
+    expect(landedOnPlatform).toBe(true);
+  });
+
   it('full jump arc returns to ground after some ticks', () => {
     let s = start();
     s = step(s, { ...NEUTRAL, jumpPressed: true }, ground);

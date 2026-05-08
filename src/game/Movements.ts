@@ -191,27 +191,30 @@ export function step(
     vy = 0;
   }
 
+  // Resolve X first using the *current* y, then Y using the new x.
+  // This is the standard platformer "axis-separated" collision order: a
+  // body that's still airborne (current y above the platform top) doesn't
+  // see the platform's body as a wall, so descending sideways into a
+  // platform's airspace lands on its top instead of getting kicked out.
+  // Mixing the two — running side-push at the *new* y — fails the
+  // landing case because the new y has already crossed the platform top
+  // by the time the side check fires.
   let x = state.x + vx;
-  let y = state.y + vy;
-
-  // Side collision: if vx took us into a wall, push back to the wall edge
-  // and zero vx. Without this the avatar walks into walls until the floor
-  // lookup snaps them up onto the wall's top.
   if (vx > 0) {
-    const pushed = pushOutFromWallRight(x, y, ground);
+    const pushed = pushOutFromWallRight(x, state.y, ground);
     if (pushed !== x) {
       x = pushed;
       vx = 0;
     }
   } else if (vx < 0) {
-    const pushed = pushOutFromWallLeft(x, y, ground);
+    const pushed = pushOutFromWallLeft(x, state.y, ground);
     if (pushed !== x) {
       x = pushed;
       vx = 0;
     }
   }
 
-  // Head collision: a rising avatar that hits a ceiling stops climbing.
+  let y = state.y + vy;
   if (vy < 0) {
     const pushed = pushDownFromCeiling(x, y, ground);
     if (pushed !== y) {
@@ -220,7 +223,9 @@ export function step(
     }
   }
 
-  // Floor (existing logic, run last so side/ceiling pushes don't fight it)
+  // Floor lookup uses the new x AND the old y as the search start, so a
+  // descending avatar whose feet cross a platform top during this tick
+  // lands on the platform rather than passing through.
   const groundY = ground.groundYBelow(x, state.y);
   if (y >= groundY) {
     y = groundY;
