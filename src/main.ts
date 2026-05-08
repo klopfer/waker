@@ -1,4 +1,5 @@
 import { Application, Container, Sprite, Text } from 'pixi.js';
+import { GlowFilter } from 'pixi-filters';
 import { AssetLoader } from './engine/AssetLoader.js';
 import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
@@ -31,12 +32,22 @@ const GRAPH_H = 300;
 // height. Original game used 400 here but the current test playground rewards
 // the larger range.
 const GRAPH_MAX_VALUE = 600;
-const ORB_X = 200;
-const ORB_Y = 430;
 const ORIGIN_X = 200;
 // Anchor (0.5, 1) means y is the sprite's BOTTOM. Place the origin marker's
 // bottom on the painted floor so it reads as a "stand" sitting on the ground.
 const ORIGIN_Y = 498;
+// Orb spawns sitting INSIDE the origin stand (same x, same bottom y). The
+// orb is bottom-anchored too, so equal y = visually overlapping anchors.
+const ORB_X = ORIGIN_X;
+const ORB_Y = ORIGIN_Y;
+
+// Origin proximity glow — when the avatar is near the stand the marker pulses
+// brighter; falls off linearly with distance until barely visible at the
+// far edge of the playable range. GRAPH_MAX_VALUE is reused as the max
+// meaningful distance because that's exactly the range the displacement orb
+// can plot.
+const ORIGIN_BASE_ALPHA = 0.35;
+const ORIGIN_MAX_GLOW_STRENGTH = 4;
 
 const GAME_KEYS = [
   'ArrowLeft',
@@ -118,6 +129,15 @@ async function main(): Promise<void> {
   originSprite.y = ORIGIN_Y;
   // The `npm run colorkey` step keyed the dark-blue halo to alpha 0 already,
   // so default blend mode is fine here.
+  const originGlow = new GlowFilter({
+    color: 0xffffaa,
+    distance: 20,
+    outerStrength: 0,
+    innerStrength: 0,
+    quality: 0.3,
+  });
+  originSprite.filters = [originGlow];
+  originSprite.alpha = ORIGIN_BASE_ALPHA;
   app.stage.addChild(originSprite);
 
   const orb = new Orb({
@@ -219,6 +239,14 @@ async function main(): Promise<void> {
       });
 
       orb.update(body.state.x, body.state.y, ground);
+
+      // Origin proximity glow: linear in |avatar.x - origin.x|, full at the
+      // origin and minimum at GRAPH_MAX_VALUE away. Mirrors the original
+      // game's "the stand glows when you carry the orb back home" feedback.
+      const distToOrigin = Math.abs(body.state.x - ORIGIN_X);
+      const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / GRAPH_MAX_VALUE));
+      originGlow.outerStrength = proximity * ORIGIN_MAX_GLOW_STRENGTH;
+      originSprite.alpha = ORIGIN_BASE_ALPHA + proximity * (1 - ORIGIN_BASE_ALPHA);
 
       input.endTick();
     }

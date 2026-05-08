@@ -31,8 +31,14 @@ const TARGETS = [
     label: 'displacement orb effect (orbiting triangles)',
   },
   {
+    // Origin uses a wider tolerance because the antialiased edges of the
+    // (partial-ring) glyph leave a few px of intermediate dark-blue values
+    // that the strict-20 default left as a faint purple speckle.
+    // 35 still won't touch the pure-black glyph (#000000 is dist 51 from
+    // the sentinel).
     file: 'src/assets/graph/displacementOrb/origin.png',
     key: [0x00, 0x00, 0x33],
+    tolerance: 35,
     label: 'displacement origin (stand)',
   },
 ];
