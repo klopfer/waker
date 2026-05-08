@@ -21,9 +21,14 @@ export interface OrbOptions {
   valueProvider: OrbValueProvider;
 }
 
-const ORB_PICKUP_RADIUS = 50;
-// Pixel offset above avatar.y (which is bottom-anchored) where the held orb floats.
-const ORB_HELD_OFFSET_Y = -90;
+// Larger than half the orb sprite (60 px) plus half the avatar body (15 px)
+// so that the avatar can pick up the orb the moment its body box visually
+// touches the orb, not when their center is on top of it.
+const ORB_PICKUP_RADIUS = 75;
+// Pixel offset above avatar.y where the held orb's BOTTOM sits. Negative =
+// above. With both orb and avatar anchored bottom-center, -55 puts the orb
+// just above the head of the displayed avatar (~50 px tall at scale 0.3).
+const ORB_HELD_OFFSET_Y = -55;
 const ORB_GRAVITY = 2;
 const ORB_MAX_FALL = 12;
 
@@ -46,13 +51,15 @@ export class Orb {
 
     this.container = new Container();
 
+    // Bottom-center anchor matches the avatar's. orb.y = ground.y then means
+    // the orb's BOTTOM rests on the floor, not its center buried in it.
     if (opts.effectTexture) {
       const fx = new Sprite(opts.effectTexture);
-      fx.anchor.set(0.5, 0.5);
+      fx.anchor.set(0.5, 1);
       this.container.addChild(fx);
     }
     const core = new Sprite(opts.texture);
-    core.anchor.set(0.5, 0.5);
+    core.anchor.set(0.5, 1);
     this.container.addChild(core);
 
     this.container.x = Math.round(this.x);
@@ -102,10 +109,12 @@ export class Orb {
 
   overlapsAvatar(avatarX: number, avatarY: number): boolean {
     if (this.state !== 'in_world') return false;
+    // Both avatar and orb are bottom-anchored, so their feet are roughly at
+    // the same y when the avatar walks up to a grounded orb. Check distance
+    // from the avatar's mid-body to the orb's mid-body (~30 px above each
+    // anchor) for a forgiving radius-based pickup.
     const dx = avatarX - this.x;
-    // Avatar y is bottom-anchored; check the orb against the avatar's middle
-    // (~30 px above feet) for a more natural pickup feel.
-    const dy = avatarY - 30 - this.y;
+    const dy = (avatarY - 30) - (this.y - 30);
     return dx * dx + dy * dy < ORB_PICKUP_RADIUS * ORB_PICKUP_RADIUS;
   }
 }

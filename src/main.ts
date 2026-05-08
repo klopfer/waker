@@ -83,7 +83,11 @@ async function main(): Promise<void> {
 
   const bgSprite = new Sprite(bgTex);
   app.stage.addChild(bgSprite);
+  // The collision PNG is overlaid lightly so you can see the painted ground
+  // shapes the avatar is colliding against — full alpha would obscure the
+  // actual level art.
   const groundSprite = new Sprite(groundTex);
+  groundSprite.alpha = 0.25;
   app.stage.addChild(groundSprite);
 
   const pixelGround = await loadPixelGround(assets.url('leveld1_collision'));
@@ -104,7 +108,7 @@ async function main(): Promise<void> {
   graphLayer.addChild(graph.container);
 
   const originSprite = new Sprite(originTex);
-  originSprite.anchor.set(0.5, 0.5);
+  originSprite.anchor.set(0.5, 1);
   originSprite.x = ORIGIN_X;
   originSprite.y = ORIGIN_Y;
   app.stage.addChild(originSprite);
@@ -210,9 +214,9 @@ async function main(): Promise<void> {
 
       input.endTick();
     }
-    const orbState = orb.state === 'held' ? 'orb=held' : 'orb=world';
+    const orbState = orb.state === 'held' ? 'orb=held' : `orb=world (${orb.x.toFixed(0)},${orb.y.toFixed(0)})`;
     const graphState = `graph=${orb.pairedGraph.state}`;
-    tickReadout.text = `tick ${tickCount}   ${orbState}   ${graphState}   y=${body.state.y.toFixed(0)}`;
+    tickReadout.text = `tick ${tickCount}   avatar=(${body.state.x.toFixed(0)},${body.state.y.toFixed(0)})   ${orbState}   ${graphState}`;
   });
 
   console.log('Waker Phase 4 step 5 ready: orb + graph mechanic wired up.');
