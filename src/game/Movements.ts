@@ -47,14 +47,23 @@ export interface MovementState {
 }
 
 export interface GroundProvider {
-  /** World-space y of the ground at horizontal position x. Lower number = higher. */
-  groundYAt(x: number): number;
+  /**
+   * World-space y of the next floor at column x, searching downward from
+   * y `searchFromY`. Returns +Infinity if no floor exists in that column at
+   * or below the search start (avatar would fall forever).
+   *
+   * Searching downward (rather than always returning the topmost pixel) is
+   * what lets the avatar walk *under* a high platform — the column has an
+   * opaque pixel at the platform's top y, but if the avatar is below that
+   * y we want the floor below, not the platform above.
+   */
+  groundYBelow(x: number, searchFromY: number): number;
 }
 
 export class FlatGround implements GroundProvider {
   constructor(private readonly y: number) {}
-  groundYAt(): number {
-    return this.y;
+  groundYBelow(_x: number, searchFromY: number): number {
+    return searchFromY <= this.y ? this.y : Number.POSITIVE_INFINITY;
   }
 }
 
@@ -98,7 +107,7 @@ export function step(
   const x = state.x + vx;
   let y = state.y + vy;
 
-  const groundY = ground.groundYAt(x);
+  const groundY = ground.groundYBelow(x, state.y);
   if (y >= groundY) {
     y = groundY;
     if (vy > 0) vy = 0;

@@ -113,6 +113,21 @@ describe('Movements.step', () => {
     expect(s.vx).toBe(8);
   });
 
+  it('walking under a platform consults groundYBelow with prevY, not topmost', () => {
+    // Two-floor ground: anything searching from y < 200 finds platform (200);
+    // anything searching from y >= 201 falls through to floor (500).
+    const twoFloor = {
+      groundYBelow(_x: number, y: number): number {
+        return y < 201 ? 200 : 500;
+      },
+    };
+    let s: MovementState = { x: 100, y: 500, vx: 0, vy: 0, facingRight: true, onGround: true };
+    // Walk right while on the floor: stays at y=500.
+    for (let i = 0; i < 20; i++) s = step(s, { ...NEUTRAL, moveRight: true }, twoFloor);
+    expect(s.y).toBe(500);
+    expect(s.onGround).toBe(true);
+  });
+
   it('full jump arc returns to ground after some ticks', () => {
     let s = start();
     s = step(s, { ...NEUTRAL, jumpPressed: true }, ground);

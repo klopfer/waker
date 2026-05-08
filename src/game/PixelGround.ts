@@ -3,42 +3,39 @@ import type { GroundProvider } from './Movements.js';
 const ALPHA_THRESHOLD = 128;
 
 /**
- * Reads the alpha channel of a level's collision PNG and exposes the topmost
- * opaque-pixel y-coordinate per column as the ground level. Mirrors how the
- * legacy AS3 game treated the collision PNGs added to `level.collisionObjects`,
- * but specialized to a per-column lookup for the platforming case where we
- * just want "what's the floor under the avatar" rather than full pixel overlap.
+ * Reads the alpha channel of a level's collision PNG and exposes a per-column
+ * "next opaque pixel y, at or below the search start y" lookup. Searching
+ * downward (rather than always returning the topmost pixel) means the avatar
+ * can walk *under* a higher platform — the column has an opaque pixel at the
+ * platform's top, but if the avatar is below that y we want the floor below,
+ * not the platform above.
  *
- * Out-of-bounds x columns and columns with no opaque pixel both return
- * +Infinity (no floor here — avatar would fall forever).
+ * Out-of-bounds x and columns with no opaque pixel at or below `searchFromY`
+ * both return +Infinity (no floor here — avatar would fall forever).
  */
 export class PixelGround implements GroundProvider {
   readonly width: number;
   readonly height: number;
-  private readonly columnTops: Float64Array;
+  private readonly alpha: Uint8ClampedArray;
 
   constructor(imageData: ImageData) {
     this.width = imageData.width;
     this.height = imageData.height;
-    this.columnTops = new Float64Array(this.width);
-    for (let x = 0; x < this.width; x++) this.columnTops[x] = Number.POSITIVE_INFINITY;
-
+    this.alpha = new Uint8ClampedArray(this.width * this.height);
     const data = imageData.data;
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        const alpha = data[(y * this.width + x) * 4 + 3] ?? 0;
-        if (alpha > ALPHA_THRESHOLD) {
-          this.columnTops[x] = y;
-          break;
-        }
-      }
+    for (let i = 0; i < this.alpha.length; i++) {
+      this.alpha[i] = data[i * 4 + 3] ?? 0;
     }
   }
 
-  groundYAt(x: number): number {
+  groundYBelow(x: number, searchFromY: number): number {
     const ix = Math.floor(x);
     if (ix < 0 || ix >= this.width) return Number.POSITIVE_INFINITY;
-    return this.columnTops[ix] ?? Number.POSITIVE_INFINITY;
+    const startY = Math.max(0, Math.floor(searchFromY));
+    for (let y = startY; y < this.height; y++) {
+      if ((this.alpha[y * this.width + ix] ?? 0) > ALPHA_THRESHOLD) return y;
+    }
+    return Number.POSITIVE_INFINITY;
   }
 }
 
