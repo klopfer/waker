@@ -91,6 +91,14 @@ export class MovieClipShim {
   }
 }
 
+// Inset every sliced frame by this many pixels on each side. Some sheets
+// (notably the avatar's idle and walk extracted from avatarSheet.swf) have
+// faint fringe pixels right at the cell edge — JPEXS renders each
+// DefineSprite at its tight bounding box, so antialiased outlines can touch
+// the boundary. Cropping 1 px per side removes the visible fringe with
+// negligible loss to the actual silhouette.
+const FRAME_INSET = 1;
+
 export function sliceSheet(sheet: Texture, grid: SpriteSheetGrid): Texture[] {
   const out: Texture[] = [];
   for (let i = 0; i < grid.frameCount; i++) {
@@ -99,10 +107,10 @@ export function sliceSheet(sheet: Texture, grid: SpriteSheetGrid): Texture[] {
     const sub = new Texture({
       source: sheet.source,
       frame: new Rectangle(
-        col * grid.frameWidth,
-        row * grid.frameHeight,
-        grid.frameWidth,
-        grid.frameHeight,
+        col * grid.frameWidth + FRAME_INSET,
+        row * grid.frameHeight + FRAME_INSET,
+        grid.frameWidth - 2 * FRAME_INSET,
+        grid.frameHeight - 2 * FRAME_INSET,
       ),
     });
     out.push(sub);
