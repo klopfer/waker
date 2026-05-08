@@ -27,7 +27,17 @@ const sheetCache = new Map<string, Promise<Texture>>();
 function loadSheetTexture(sheetName: string): Promise<Texture> {
   let p = sheetCache.get(sheetName);
   if (!p) {
-    p = Assets.load<Texture>(resolveSheetUrl(sheetName));
+    p = (async () => {
+      const tex = await Assets.load<Texture>(resolveSheetUrl(sheetName));
+      // Disable bilinear filtering on the sheet's source. Without this, the
+      // GPU samples the edges of adjacent frames when rendering a sub-texture,
+      // bleeding ~1 px of the neighbor pose into the current frame — which
+      // shows up as an occasional thin dark line at a frame's edge ("above
+      // the tail" on the right-facing avatar, etc). Nearest-neighbor sampling
+      // is also a better match for the original Flash bitmap-display look.
+      tex.source.scaleMode = 'nearest';
+      return tex;
+    })();
     sheetCache.set(sheetName, p);
   }
   return p;

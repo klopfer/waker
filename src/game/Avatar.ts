@@ -69,8 +69,12 @@ export class Avatar {
   }
 
   setPosition(x: number, y: number): void {
-    this.container.x = x;
-    this.container.y = y;
+    // Round to integer pixel positions to avoid bilinear-filter bleed at
+    // frame boundaries when the GPU samples sub-pixel-positioned sprites.
+    // Sub-pixel motion looks fine without filtering anyway because we render
+    // at 24 Hz fixed step.
+    this.container.x = Math.round(x);
+    this.container.y = Math.round(y);
   }
 
   /**
