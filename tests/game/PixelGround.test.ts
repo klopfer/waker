@@ -67,3 +67,40 @@ describe('PixelGround.groundYBelow', () => {
     expect(g.groundYBelow(1, 0)).toBe(1);
   });
 });
+
+describe('PixelGround.solidAt', () => {
+  it('reports opaque pixels as solid', () => {
+    const g = new PixelGround(makeImageData(8, 8, [[3, 5]]));
+    expect(g.solidAt(3, 5)).toBe(true);
+  });
+
+  it('reports transparent pixels as not solid', () => {
+    const g = new PixelGround(makeImageData(8, 8, [[3, 5]]));
+    expect(g.solidAt(0, 0)).toBe(false);
+    expect(g.solidAt(3, 4)).toBe(false);
+  });
+
+  it('reports out-of-bounds as not solid (open space)', () => {
+    const g = new PixelGround(makeImageData(8, 8, [[3, 5]]));
+    expect(g.solidAt(-1, 5)).toBe(false);
+    expect(g.solidAt(8, 5)).toBe(false);
+    expect(g.solidAt(3, -1)).toBe(false);
+    expect(g.solidAt(3, 8)).toBe(false);
+  });
+
+  it('floors fractional coordinates', () => {
+    const g = new PixelGround(makeImageData(8, 8, [[3, 5]]));
+    expect(g.solidAt(3.9, 5.9)).toBe(true);
+    expect(g.solidAt(3.0, 5.0)).toBe(true);
+  });
+
+  it('uses a >128 alpha threshold', () => {
+    const w = 4, h = 4;
+    const data = new Uint8ClampedArray(w * h * 4);
+    data[(0 * w + 0) * 4 + 3] = 100;
+    data[(0 * w + 1) * 4 + 3] = 200;
+    const g = new PixelGround({ data, width: w, height: h, colorSpace: 'srgb' } as ImageData);
+    expect(g.solidAt(0, 0)).toBe(false);
+    expect(g.solidAt(1, 0)).toBe(true);
+  });
+});

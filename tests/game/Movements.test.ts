@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
+  BODY,
   FlatGround,
   PHYSICS,
   step,
+  type GroundProvider,
   type MovementInputs,
   type MovementState,
 } from '../../src/game/Movements.js';
@@ -114,18 +116,71 @@ describe('Movements.step', () => {
   });
 
   it('walking under a platform consults groundYBelow with prevY, not topmost', () => {
-    // Two-floor ground: anything searching from y < 200 finds platform (200);
+    // Two-floor ground: anything searching from y < 201 finds platform (200);
     // anything searching from y >= 201 falls through to floor (500).
-    const twoFloor = {
-      groundYBelow(_x: number, y: number): number {
-        return y < 201 ? 200 : 500;
-      },
+    const twoFloor: GroundProvider = {
+      groundYBelow: (_x: number, y: number) => (y < 201 ? 200 : 500),
+      solidAt: () => false,
     };
     let s: MovementState = { x: 100, y: 500, vx: 0, vy: 0, facingRight: true, onGround: true };
-    // Walk right while on the floor: stays at y=500.
     for (let i = 0; i < 20; i++) s = step(s, { ...NEUTRAL, moveRight: true }, twoFloor);
     expect(s.y).toBe(500);
     expect(s.onGround).toBe(true);
+  });
+
+  it('walking right into a wall stops vx and clamps x at the wall edge', () => {
+    // Wall: every pixel with x >= 200 is solid.  Floor at y=500.
+    const wallAt200: GroundProvider = {
+      groundYBelow: (x: number, y: number) =>
+        Math.floor(x) >= 200 && y <= 500 ? Math.floor(y) : 500,
+      solidAt: (x: number, _y: number) => Math.floor(x) >= 200,
+    };
+    let s: MovementState = { x: 100, y: 500, vx: 0, vy: 0, facingRight: true, onGround: true };
+    for (let i = 0; i < 30; i++) s = step(s, { ...NEUTRAL, moveRight: true }, wallAt200);
+    expect(s.vx).toBe(0);
+    // Right edge of body should be at or before the wall (x = 200).
+    expect(s.x + BODY.HALF_WIDTH).toBeLessThanOrEqual(200);
+    expect(s.x + BODY.HALF_WIDTH).toBeGreaterThanOrEqual(200 - 1);
+  });
+
+  it('walking left into a wall stops vx and clamps x at the wall edge', () => {
+    const wallAt100: GroundProvider = {
+      groundYBelow: (x: number, y: number) =>
+        Math.floor(x) <= 100 && y <= 500 ? Math.floor(y) : 500,
+      solidAt: (x: number, _y: number) => Math.floor(x) <= 100,
+    };
+    let s: MovementState = { x: 200, y: 500, vx: 0, vy: 0, facingRight: false, onGround: true };
+    for (let i = 0; i < 30; i++) s = step(s, { ...NEUTRAL, moveLeft: true }, wallAt100);
+    expect(s.vx).toBe(0);
+    expect(s.x - BODY.HALF_WIDTH).toBeGreaterThanOrEqual(100);
+  });
+
+  it('jumping into a ceiling zeroes vy and stops the climb', () => {
+    // Floor at y=200, ceiling solid at y <= 100. A single jump rises about
+    // JUMP_IMPULSE^2/(2*GRAVITY) ≈ 52 px, so an avatar starting at y=200
+    // (body top 140) can reach body top 88 — well into the ceiling at 100.
+    const ceilingAndFloor: GroundProvider = {
+      groundYBelow: (_x: number, y: number) => (y <= 200 ? 200 : Number.POSITIVE_INFINITY),
+      solidAt: (_x: number, y: number) => {
+        const iy = Math.floor(y);
+        return iy <= 100 || iy >= 200;
+      },
+    };
+    let s: MovementState = { x: 100, y: 200, vx: 0, vy: 0, facingRight: true, onGround: true };
+    s = step(s, { ...NEUTRAL, jumpPressed: true }, ceilingAndFloor);
+    expect(s.vy).toBeLessThan(0);
+
+    let bumpedHead = false;
+    for (let i = 0; i < 30; i++) {
+      s = step(s, NEUTRAL, ceilingAndFloor);
+      if (s.vy === 0 && !s.onGround) {
+        bumpedHead = true;
+        break;
+      }
+    }
+    expect(bumpedHead).toBe(true);
+    // After bump: body top should be at or below the ceiling boundary.
+    expect(s.y - BODY.HEIGHT).toBeGreaterThan(100);
   });
 
   it('full jump arc returns to ground after some ticks', () => {

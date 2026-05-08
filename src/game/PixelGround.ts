@@ -37,6 +37,13 @@ export class PixelGround implements GroundProvider {
     }
     return Number.POSITIVE_INFINITY;
   }
+
+  solidAt(x: number, y: number): boolean {
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    if (ix < 0 || ix >= this.width || iy < 0 || iy >= this.height) return false;
+    return (this.alpha[iy * this.width + ix] ?? 0) > ALPHA_THRESHOLD;
+  }
 }
 
 export async function loadAlphaMask(url: string): Promise<ImageData> {
