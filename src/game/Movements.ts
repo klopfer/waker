@@ -327,8 +327,19 @@ export function step(
       const dx = Math.abs(x - state.x);
       const dy = state.y - newFloorY;
       const avgSlope = dx > 0 ? Math.abs(dy / dx) : 0;
-      const isSlopePath = avgSlope <= 2.0;
-      const continuityTolerance = isSlopePath ? 30 : 8;
+      // Threshold 3.0: reality has shown slopes to occasionally exceed
+      // the analytical max of 1.45, so we leave 2× headroom. The
+      // discriminator's job is to separate "in-curve walking" from
+      // "auto-grab overhead floor" — for the latter the smallest gap
+      // worth denying is HEIGHT=35, giving avgSlope = 35/12 = 2.92,
+      // so 3.0 still catches it.
+      const isSlopePath = avgSlope <= 3.0;
+      // Tolerance 50: covers max in-curve midpoint deviation (~9 px
+      // analytically, but reality shows higher) with very generous
+      // headroom. Flat tolerance 8 still rejects auto-grab boundaries
+      // where midpoint floor sits at newFloorY (deviation = gap/2,
+      // > 8 for any gap > 16 px).
+      const continuityTolerance = isSlopePath ? 50 : 8;
 
       const midX = (state.x + x) / 2;
       const midFloorY = ground.groundYBelow(midX, state.y - PHYSICS.STEP_UP);

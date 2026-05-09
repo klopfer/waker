@@ -138,8 +138,8 @@ path itself:
 
 ```
 avgSlope = |state.y - newFloorY| / (new_x - state.x)
-isSlopePath = avgSlope <= 2.0
-continuityTolerance = isSlopePath ? 30 : 8
+isSlopePath = avgSlope <= 3.0
+continuityTolerance = isSlopePath ? 50 : 8
 ```
 
 Why average slope (not a probe ahead): a probe-based detector ("is
