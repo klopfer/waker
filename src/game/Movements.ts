@@ -81,12 +81,18 @@ export const BODY = {
   // Top-of-body margin where SIDE collision is suppressed — gives the
   // head/upper torso clearance to brush past low overhead obstacles
   // (e.g., a player-drawn graph curve at the lowest reachable y) without
-  // the side-push tripping. Without this, a 1-2 px head clip into a
-  // curve overhead causes the avatar to be stuck even though their
-  // visual head is clearly below the curve. Matches the legacy game's
-  // behavior of having shorter "leftPt"/"rightPt" aura images than the
-  // full body (the side auras only covered torso, not head).
-  SIDE_TOP_MARGIN: 8,
+  // the side-push tripping. Matches the legacy game's behavior of having
+  // shorter "leftPt"/"rightPt" aura images than the full body (the side
+  // auras only covered torso, not head).
+  //
+  // Calibrated against the lowest-reachable curve overhead: line_y=304,
+  // curve solid band [297, 311]; avatar on orb-stand at y=333, body
+  // covers [298, 333] with HEIGHT=35. To fit body samples ABOVE the
+  // curve's solid band: side samples must start at y ≥ 312, i.e.,
+  // sideTopY = 333 - 35 + SIDE_TOP_MARGIN ≥ 312 → SIDE_TOP_MARGIN ≥ 14.
+  // Smaller margins (was 8 in calibration v2) leave a few-px overlap
+  // and the side-push trips intermittently.
+  SIDE_TOP_MARGIN: 14,
 } as const;
 
 export interface MovementInputs {

@@ -65,7 +65,7 @@ CALIBRATED to match the rendered avatar at AVATAR_SCALE = 0.25:
 | `BODY.HEIGHT` | 35 | Matches visible character head-top → foot-top at scale 0.25. |
 | `BODY.SAMPLE_STEP` | 4 | Vertical sample step for side-wall scans. |
 | `BODY.MAX_PUSH` | 30 | Cap on the iterative "push out of wall" loop. |
-| `BODY.SIDE_TOP_MARGIN` | 8 | Top of body where SIDE collision is suppressed (head/upper-torso clearance under low overhead obstacles). Ceiling collision still uses the full body top, so head-bumps work normally. |
+| `BODY.SIDE_TOP_MARGIN` | 14 | Top of body where SIDE collision is suppressed (head/upper-torso clearance under low overhead obstacles). Ceiling collision still uses the full body top, so head-bumps work normally. Calibrated against the lowest-reachable curve overhead (line_y=304, solid band [297, 311]) so an avatar on the orb-stand (y=333, body 298–333) has side samples in [313, 332], fully clear of the curve. |
 
 Previous values (HALF_WIDTH=15, HEIGHT=60) were tuned for an earlier
 AVATAR_SCALE=0.3 and were ~2× the visible character height, which caused
@@ -150,6 +150,23 @@ When step-up/down fires, `steppedToFloor` is set and the rest of the
 collision step (side-push, Y step, ground-snap) is bypassed for that
 tick. The avatar is already on a floor with `vy = 0` and
 `onGround = true`.
+
+## Curves as ground
+
+A solidified player-drawn curve becomes a `CurveGround` (a polyline
+with thickness=14 px). Two semantics matter:
+
+| Query | Behavior |
+| --- | --- |
+| `solidAt(x, y)` | true if `y` is within `thickness/2 = 7 px` of the polyline's interpolated y at column `x`. So the solid band is `[line_y - 7, line_y + 7]`. |
+| `groundYBelow(x, searchFromY)` | returns the **TOP of the solid band** (`line_y - thickness/2`), not the line center. An avatar landing on the curve has feet on the band's top edge, with body fully ABOVE the band. |
+
+Returning the line center (the pre-2026-05-09 behavior) put the
+avatar's feet at line_y, with body extending UP through the curve's
+upper half — partially inside the solid band. Side-collision samples
+then overlapped the curve and tripped intermittent side-pushes,
+producing the "slide-back / fall-through at slope discontinuities"
+bug.
 
 ## Graph drawing
 
