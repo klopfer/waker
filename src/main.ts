@@ -450,21 +450,27 @@ async function main(): Promise<void> {
         firstRunTick = tickCount;
       }
 
-      // Prompt-D: only visible when the orb is in_world AND the avatar is
-      // close to it AND the player has never dropped the orb. Once they've
-      // performed a drop, the prompt is permanently gone — the player
-      // understands the mechanic and doesn't need a recurring nag. Held
-      // state also hides D (no "press D to drop" hint over the avatar's
-      // head — that read as the prompt chasing them around).
+      // Prompt-D: visible from spawn through the player's first DROP,
+      // then permanently hidden. While in_world, requires the avatar to
+      // be within PROMPT_D_RADIUS so the prompt doesn't shout from
+      // across the level; while held, distance is irrelevant (the
+      // player knows where the orb is — they're carrying it). Always
+      // anchored to the orb itself, NOT separately to the avatar — the
+      // bitmap version looked bad partly because the held-state prompt
+      // was offset to a custom over-the-head position; the smaller
+      // procedural prompt riding directly on the orb reads as a hint
+      // about the orb instead of a UI badge stuck to the avatar.
       let promptDTargetAlpha = 0;
-      if (orb.state === 'in_world' && !firstDropped) {
-        const dxOrb = body.state.x - orb.x;
-        const dyOrb = body.state.y - orb.y;
-        const distOrb = Math.sqrt(dxOrb * dxOrb + dyOrb * dyOrb);
-        if (distOrb < PROMPT_D_RADIUS) promptDTargetAlpha = 1;
+      if (!firstDropped) {
+        if (orb.state === 'held') {
+          promptDTargetAlpha = 1;
+        } else {
+          const dxOrb = body.state.x - orb.x;
+          const dyOrb = body.state.y - orb.y;
+          const distOrb = Math.sqrt(dxOrb * dxOrb + dyOrb * dyOrb);
+          if (distOrb < PROMPT_D_RADIUS) promptDTargetAlpha = 1;
+        }
       }
-      // Always keep promptD positioned above the orb so the alpha lerp
-      // animates a fade in/out at the right spot rather than sliding.
       promptD.x = orb.x;
       promptD.y = orb.y - 28 + promptBob;
 
