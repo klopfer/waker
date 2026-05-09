@@ -79,10 +79,13 @@ const PROMPT_BOB_RATE = 0.12;
 // pickup prompt to appear. Slightly larger than ORB_PICKUP_RADIUS so the
 // player gets a hint BEFORE they're already close enough to grab it.
 const PROMPT_D_RADIUS = 110;
-// Spacebar prompt fades out after the player has been on the ground long
-// enough to read it AND has not jumped. The original game just showed
-// onscreen hints; we just guard against showing it forever.
-const PROMPT_SPACEBAR_HIDE_AFTER_TICKS = 24 * 6; // ~6 sec at 24 Hz
+// Spacebar prompt is gated on the player first STARTING TO RUN (not on
+// spawn) — showing it during the spawn-fall looked like the prompt was
+// chasing the avatar down. After they start moving on the ground, the
+// hint shows for ~3 sec then permanently hides. Pressing jump also
+// hides it immediately.
+const PROMPT_SPACEBAR_VISIBLE_TICKS = 24 * 3; // ~3 sec at 24 Hz
+const PROMPT_RUN_VX_THRESHOLD = 4; // px/tick — past walking, into running
 
 // Animated background. The painted sun's bright-white centroid in
 // leveld1_bg.png is at (123, 97) (measured by the color-key tool). A
@@ -146,17 +149,14 @@ async function main(): Promise<void> {
 
   const assets = new AssetLoader();
 
-  const [bgTex, groundTex, orbTex, originTex, graphBgTex, exitTex, helpDTex, helpSpaceTex] =
-    await Promise.all([
-      assets.image('bgWorld1_1'),
-      assets.image('leveld1_collision'),
-      assets.image('disOrb'),
-      assets.image('displaceOrigin'),
-      assets.image('graphBGD'),
-      assets.image('exit'),
-      assets.image('help_image_D'),
-      assets.image('help_image_spacebar'),
-    ]);
+  const [bgTex, groundTex, orbTex, originTex, graphBgTex, exitTex] = await Promise.all([
+    assets.image('bgWorld1_1'),
+    assets.image('leveld1_collision'),
+    assets.image('disOrb'),
+    assets.image('displaceOrigin'),
+    assets.image('graphBGD'),
+    assets.image('exit'),
+  ]);
 
   const bgSprite = new Sprite(bgTex);
   app.stage.addChild(bgSprite);
@@ -259,19 +259,41 @@ async function main(): Promise<void> {
   exitSprite.filters = [exitGlow];
   app.stage.addChild(exitSprite);
 
-  // Key prompts — small floating help glyphs that appear contextually.
-  // The "D" prompt orbits the orb when it's pickupable (avatar nearby +
-  // not yet held) and re-appears above the avatar's head when held to
-  // remind the player they can drop it. Spacebar prompt shows above the
-  // avatar's head at level start until it auto-hides.
-  const promptD = new Sprite(helpDTex);
-  promptD.anchor.set(0.5, 1);
-  promptD.alpha = 0;
+  // Key prompts — small floating help glyphs we draw procedurally instead
+  // of the curated `help_image_D` / `help_image_spacebar` PNGs (which read
+  // as too prominent at this scale). A rounded dark-cream rectangle with
+  // a black letter inside matches the original game's palette while
+  // staying smaller and quieter than the bitmap versions.
+  const PROMPT_BG_COLOR = 0xfff2c2; // warm cream, same family as the orb halo
+  const PROMPT_TEXT_COLOR = 0x1a1a1a;
+  const PROMPT_BORDER_COLOR = 0x1a1a1a;
+  const makeKeyPrompt = (label: string, width: number, height: number): Container => {
+    const c = new Container();
+    const radius = Math.min(width, height) / 4;
+    const bg = new Graphics()
+      .roundRect(-width / 2, -height, width, height, radius)
+      .fill(PROMPT_BG_COLOR)
+      .stroke({ color: PROMPT_BORDER_COLOR, width: 1.5 });
+    c.addChild(bg);
+    const text = new Text({
+      text: label,
+      style: {
+        fill: PROMPT_TEXT_COLOR,
+        fontFamily: 'sans-serif',
+        fontSize: Math.round(height * 0.62),
+        fontWeight: '700',
+      },
+    });
+    text.anchor.set(0.5, 0.5);
+    text.x = 0;
+    text.y = -height / 2;
+    c.addChild(text);
+    c.alpha = 0;
+    return c;
+  };
+  const promptD = makeKeyPrompt('D', 22, 22);
   app.stage.addChild(promptD);
-
-  const promptSpacebar = new Sprite(helpSpaceTex);
-  promptSpacebar.anchor.set(0.5, 1);
-  promptSpacebar.alpha = 0;
+  const promptSpacebar = makeKeyPrompt('SPACE', 50, 20);
   app.stage.addChild(promptSpacebar);
 
   const label = new Text({
@@ -303,10 +325,19 @@ async function main(): Promise<void> {
   const sim = new FixedStep({ hz: SIM_HZ });
 
   let tickCount = 0;
-  // Latches the first time the player presses jump so the spacebar prompt
-  // can hide. Also serves as a cheap "tutorial complete" signal we can
-  // reuse later if more prompts are added.
+  // Latch state for the contextual prompts. Both prompts are designed to
+  // appear at most once and stay gone afterward — the original game does
+  // not nag the player past the first interaction.
+  //   firstRunTick: tick when the player first hits running speed AND is
+  //     on the ground. Spacebar prompt is anchored here, NOT to spawn,
+  //     so it doesn't chase the avatar through the entrance fall.
+  //   firstJumped: hides the spacebar prompt immediately on first jump,
+  //     even if the 3-sec window hasn't elapsed.
+  //   firstDropped: once the player has dropped the orb once, the D
+  //     prompt is permanently gone — they understand the mechanic.
+  let firstRunTick: number | null = null;
   let firstJumped = false;
+  let firstDropped = false;
   // Phase accumulator drives prompt bobbing AND exit-portal glow pulse —
   // sharing one phase keeps everything visually in sync without tracking
   // separate timers.
@@ -338,6 +369,7 @@ async function main(): Promise<void> {
           const wasDrawingOrPaused =
             orb.pairedGraph.state === 'drawing' || orb.pairedGraph.state === 'paused';
           orb.drop(body.state.x, body.state.y - 20);
+          firstDropped = true;
           if (wasDrawingOrPaused) {
             const newGround = orb.pairedGraph.ground;
             if (newGround) ground.add(newGround);
@@ -408,38 +440,49 @@ async function main(): Promise<void> {
       bgSprite.x = bgOffset;
       groundSprite.x = bgOffset;
 
-      // Latch first-jump so the spacebar prompt knows when to fade.
+      // Latch state for the contextual prompts.
       if (moveInputs.jumpPressed) firstJumped = true;
+      if (
+        firstRunTick === null &&
+        body.state.onGround &&
+        Math.abs(body.state.vx) >= PROMPT_RUN_VX_THRESHOLD
+      ) {
+        firstRunTick = tickCount;
+      }
 
-      // Prompt-D visibility:
-      //   in-world + avatar within PROMPT_D_RADIUS  → "press D to pick up"
-      //   held                                       → "press D to drop"
+      // Prompt-D: only visible when the orb is in_world AND the avatar is
+      // close to it AND the player has never dropped the orb. Once they've
+      // performed a drop, the prompt is permanently gone — the player
+      // understands the mechanic and doesn't need a recurring nag. Held
+      // state also hides D (no "press D to drop" hint over the avatar's
+      // head — that read as the prompt chasing them around).
       let promptDTargetAlpha = 0;
-      if (orb.state === 'held') {
-        promptDTargetAlpha = 1;
-        // Place above avatar's head, slightly to the right of the held orb
-        // so the two glyphs don't stack on each other.
-        promptD.x = body.state.x + 18;
-        promptD.y = body.state.y - 88 + promptBob;
-      } else {
+      if (orb.state === 'in_world' && !firstDropped) {
         const dxOrb = body.state.x - orb.x;
         const dyOrb = body.state.y - orb.y;
         const distOrb = Math.sqrt(dxOrb * dxOrb + dyOrb * dyOrb);
         if (distOrb < PROMPT_D_RADIUS) promptDTargetAlpha = 1;
-        // Position above the orb regardless of avatar distance — when the
-        // alpha lerp ramps up, the prompt is already in place.
-        promptD.x = orb.x;
-        promptD.y = orb.y - 36 + promptBob;
       }
+      // Always keep promptD positioned above the orb so the alpha lerp
+      // animates a fade in/out at the right spot rather than sliding.
+      promptD.x = orb.x;
+      promptD.y = orb.y - 28 + promptBob;
 
-      // Prompt-spacebar visibility: only at the very start, fades when
-      // the player jumps OR the timer runs out. Anchors above avatar's
-      // head, bobbing on the OPPOSITE phase from the D prompt so the
-      // two never look glued together.
+      // Prompt-spacebar: stays at alpha 0 until the player first runs
+      // (i.e., starts moving on the ground past the running threshold —
+      // not at spawn while falling in). Then visible for ~3 sec or
+      // until they press jump, whichever first. Permanently hides
+      // afterward so it doesn't repeat each time they start running.
+      const ticksSinceRun = firstRunTick === null ? -1 : tickCount - firstRunTick;
       const spacebarTargetAlpha =
-        !firstJumped && tickCount < PROMPT_SPACEBAR_HIDE_AFTER_TICKS ? 1 : 0;
+        firstRunTick !== null &&
+        !firstJumped &&
+        ticksSinceRun >= 0 &&
+        ticksSinceRun < PROMPT_SPACEBAR_VISIBLE_TICKS
+          ? 1
+          : 0;
       promptSpacebar.x = body.state.x;
-      promptSpacebar.y = body.state.y - 78 - promptBob;
+      promptSpacebar.y = body.state.y - 70 - promptBob;
 
       // Smooth alpha fade — the lerp factor (0.15) is fast enough to
       // feel responsive but slow enough that brief proximity dips don't

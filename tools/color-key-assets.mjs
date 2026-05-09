@@ -34,6 +34,13 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
  *  sentinel ramp, never on the pure-black glyph (which has B=0). */
 const BLUE_RAMP = (r, g, b) => b > 20 && b > 2 * Math.max(r, g);
 
+/** Exit portal sits in a pure-white square frame. The actual portal
+ *  art is dark-black silhouette + saturated pink + saturated green —
+ *  none of which has all three channels bright. So "all channels >
+ *  180" reliably picks the white frame and the antialiased gray ramp
+ *  toward it without touching the portal interior. */
+const NEAR_WHITE = (r, g, b) => r > 180 && g > 180 && b > 180;
+
 /** @type {Array<{file: string, key: [number, number, number], tolerance?: number, predicate?: PixelPredicate, label: string}>} */
 const TARGETS = [
   {
@@ -58,6 +65,18 @@ const TARGETS = [
     tolerance: 35,
     predicate: BLUE_RAMP,
     label: 'displacement origin (stand)',
+  },
+  {
+    // Exit portal: comes out of JPEXS as a 40×40 PNG with a pure-white
+    // square frame around the portal silhouette. The actual portal art
+    // is dark-black + saturated pink + saturated green, so NEAR_WHITE
+    // (all three channels > 180) selects only the frame + its
+    // antialiased gray ramp, never the portal interior.
+    file: 'src/assets/props/exit.png',
+    key: [0xff, 0xff, 0xff],
+    tolerance: 30,
+    predicate: NEAR_WHITE,
+    label: 'exit portal',
   },
 ];
 
