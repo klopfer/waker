@@ -31,24 +31,31 @@ export const PHYSICS = {
 } as const;
 
 // Avatar collision box. Bottom-center is anchored at the body's (x, y).
-// Wider than the visible feet but narrower than the wide run pose; the
-// original game used 80x80 with the actual figure occupying maybe 35x70
-// inside that — we approximate with a fixed 30x60 since our display scale
-// is 0.3.
+// CALIBRATED to match the rendered avatar at AVATAR_SCALE = 0.25.
 //
-// HEAD_HALF_WIDTH is intentionally much narrower than HALF_WIDTH. The
-// legacy game's head-collision "aura" was a 3 px-wide image at the very
-// top-center of the avatar canvas; using the full body width here makes
-// jumping next to a platform edge bonk the body's far corner into the
-// platform's underside while the avatar's center would still clear the
-// edge cleanly. Side and floor checks keep the full body width.
+// Native avatar frame is 236×157 px; the standing character within that
+// is ~85 px wide at the head, narrowing to ~41 px at the waist, and ~136
+// px tall from head-top to foot-top (excluding the long backward tail
+// that pads out the frame's left side). At 0.25 scale: ~21 wide / ~10
+// waist / ~34 tall on the 800×600 stage. The original Flash game used
+// `init(80, 80)` for the avatar canvas with the visible figure
+// occupying maybe 60 of those 80 px — see docs/calibration.md.
+//
+// Previous values (HALF_WIDTH=15, HEIGHT=60) were tuned for an earlier
+// AVATAR_SCALE=0.3 and were ~2× the visible character height, which
+// caused phantom head-bumps where the player's visual head was clearly
+// below a platform's underside but the collision box wasn't.
+//
+// HEAD_HALF_WIDTH is intentionally much narrower than HALF_WIDTH so the
+// avatar's full body width doesn't bonk on platform underside corners
+// when its visual center would still clear the edge.
 export const BODY = {
-  HALF_WIDTH: 15,
+  HALF_WIDTH: 12,
   HEAD_HALF_WIDTH: 4,
-  HEIGHT: 60,
+  HEIGHT: 35,
   // Vertical sample step for side-wall scans: every N px down the body.
-  // 4 px catches sub-tile features without being too slow (24 Hz × ~15 samples
-  // × ~30 push iterations = a few hundred lookups per tick worst case).
+  // 4 px catches sub-tile features without being too slow (24 Hz × ~9
+  // samples now that HEIGHT=35 × ~30 push iterations = manageable).
   SAMPLE_STEP: 4,
   // Iteration cap on the iterative "push out of wall" loop, in pixels.
   MAX_PUSH: 30,

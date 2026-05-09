@@ -187,14 +187,18 @@ describe('Movements.step', () => {
   });
 
   it('jumping into a ceiling zeroes vy and stops the climb', () => {
-    // Floor at y=200, ceiling solid at y <= 100. A single jump rises about
-    // JUMP_IMPULSE^2/(2*GRAVITY) ≈ 52 px, so an avatar starting at y=200
-    // (body top 140) can reach body top 88 — well into the ceiling at 100.
+    // Floor at y=200, ceiling solid at y <= CEILING_Y. A single jump rises
+    // about JUMP_IMPULSE^2/(2*GRAVITY) ≈ 52 px, so an avatar at y=200
+    // (body top = 200 - BODY.HEIGHT) reaches body top = 200 - HEIGHT - 52
+    // at apex. Set the ceiling 8 px below that so the head-bump branch
+    // reliably triggers regardless of how BODY.HEIGHT is calibrated.
+    const APEX_BODY_TOP = 200 - BODY.HEIGHT - 52;
+    const CEILING_Y = APEX_BODY_TOP + 8;
     const ceilingAndFloor: GroundProvider = {
       groundYBelow: (_x: number, y: number) => (y <= 200 ? 200 : Number.POSITIVE_INFINITY),
       solidAt: (_x: number, y: number) => {
         const iy = Math.floor(y);
-        return iy <= 100 || iy >= 200;
+        return iy <= CEILING_Y || iy >= 200;
       },
     };
     let s: MovementState = { x: 100, y: 200, vx: 0, vy: 0, facingRight: true, onGround: true };
@@ -211,7 +215,7 @@ describe('Movements.step', () => {
     }
     expect(bumpedHead).toBe(true);
     // After bump: body top should be at or below the ceiling boundary.
-    expect(s.y - BODY.HEIGHT).toBeGreaterThan(100);
+    expect(s.y - BODY.HEIGHT).toBeGreaterThan(CEILING_Y);
   });
 
   it('jumping sideways onto an adjacent platform lands on its top', () => {

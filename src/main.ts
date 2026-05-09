@@ -24,12 +24,13 @@ const AVATAR_SCALE = 0.25;
 // sequence; what we previously had loaded as "leveld1" was displacement1, the
 // second level). Constants below come from legacy/src/levels/displacement0.mxml.
 //
-// Entrance: super.setEntrance(0, 467) — a marker, not a strict spawn location.
-// The avatar uses gravity onto the painted floor anyway, so we spawn slightly
-// inset from the left edge well above the floor and let it fall onto the
-// leftmost cloud platform (painted-floor topmost-solid y=389 at x=80..250).
-const SPAWN_X = 100;
-const SPAWN_Y = 100;
+// Entrance: the original spawns the avatar at the level's left edge above
+// the bottom floor, so the player drops in from the upper-left and lands on
+// the very-bottom cloud bank at x=0..50 (painted-floor topmost-solid y=520).
+// They then have to walk + jump up the staircase. Spawning ON a higher cloud
+// step skips the level's intended progression — see docs/calibration.md.
+const SPAWN_X = 30;
+const SPAWN_Y = 0;
 
 // Orb + graph layout from displacement0.mxml line 39:
 //   super.addGraph(0, 0, 800-110-200, 134, 550, 200, 200, 70, 300, 290, 0, 300, 273, 0, 0)
@@ -40,6 +41,14 @@ const GRAPH_Y = 134;
 const GRAPH_W = 200;
 const GRAPH_H = 200;
 const GRAPH_MAX_VALUE = 550;
+// `offset` (8th arg of legacy `addGraph`) — passed straight into
+// genericGraph.init() as `_yOffset`, then added to the curve's y-position
+// each draw. Without this the curve at value=0 sits at the CENTER of the
+// graph rect (world y=234 here), which is far above the avatar's head when
+// they pick up the orb. With offset=70 the value=0 line sits ~29 px above
+// the orb-stand platform top — close enough that a single jump lands on
+// the curve. See docs/calibration.md.
+const GRAPH_OFFSET = 70;
 const ORIGIN_X = 300;
 // The legacy origin Y (273) is a Flash top-left coordinate; we use a (0.5, 1)
 // bottom-anchor and place the origin's bottom on the painted floor at x=300.
@@ -80,6 +89,13 @@ const EXIT_Y = 174;
 // context. Each prompt bobs ~3 px on a slow sine for a "floating" feel.
 const PROMPT_BOB_AMPLITUDE = 3;
 const PROMPT_BOB_RATE = 0.12;
+// Some levels (the tutorial / displacement0) have the original D and
+// SPACEBAR help glyphs baked INTO the painted bg PNG. On those, our
+// runtime procedural prompts would just stack on top of the painted
+// ones. Set this true on those levels to skip the procedural prompts
+// entirely. Future non-tutorial levels can flip this to false.
+const BG_HAS_HELP_PROMPTS = true;
+
 // How close (in px) the avatar has to be to the orb for the "press D"
 // pickup prompt to appear. Slightly larger than ORB_PICKUP_RADIUS so the
 // player gets a hint BEFORE they're already close enough to grab it.
@@ -213,6 +229,7 @@ async function main(): Promise<void> {
     width: GRAPH_W,
     height: GRAPH_H,
     maxValue: GRAPH_MAX_VALUE,
+    yOffset: GRAPH_OFFSET,
     background: graphBgTex,
   });
   graphLayer.addChild(graph.container);
@@ -269,6 +286,12 @@ async function main(): Promise<void> {
   // as too prominent at this scale). A rounded dark-cream rectangle with
   // a black letter inside matches the original game's palette while
   // staying smaller and quieter than the bitmap versions.
+  //
+  // SKIPPED on tutorial levels (BG_HAS_HELP_PROMPTS=true): the painted bg
+  // already has D / ↑ / SPACEBAR glyphs baked in, so adding ours on top
+  // just stacks them. Both promptD and promptSpacebar are nullable so the
+  // tick block can branch on their presence rather than fading invisible
+  // sprites every frame.
   const PROMPT_BG_COLOR = 0xfff2c2; // warm cream, same family as the orb halo
   const PROMPT_TEXT_COLOR = 0x1a1a1a;
   const PROMPT_BORDER_COLOR = 0x1a1a1a;
@@ -296,10 +319,12 @@ async function main(): Promise<void> {
     c.alpha = 0;
     return c;
   };
-  const promptD = makeKeyPrompt('D', 22, 22);
-  app.stage.addChild(promptD);
-  const promptSpacebar = makeKeyPrompt('SPACE', 50, 20);
-  app.stage.addChild(promptSpacebar);
+  const promptD: Container | null = BG_HAS_HELP_PROMPTS ? null : makeKeyPrompt('D', 22, 22);
+  const promptSpacebar: Container | null = BG_HAS_HELP_PROMPTS
+    ? null
+    : makeKeyPrompt('SPACE', 50, 20);
+  if (promptD) app.stage.addChild(promptD);
+  if (promptSpacebar) app.stage.addChild(promptSpacebar);
 
   const label = new Text({
     text:
@@ -460,46 +485,49 @@ async function main(): Promise<void> {
       // be within PROMPT_D_RADIUS so the prompt doesn't shout from
       // across the level; while held, distance is irrelevant (the
       // player knows where the orb is — they're carrying it). Always
-      // anchored to the orb itself, NOT separately to the avatar — the
-      // bitmap version looked bad partly because the held-state prompt
-      // was offset to a custom over-the-head position; the smaller
-      // procedural prompt riding directly on the orb reads as a hint
-      // about the orb instead of a UI badge stuck to the avatar.
-      let promptDTargetAlpha = 0;
-      if (!firstDropped) {
-        if (orb.state === 'held') {
-          promptDTargetAlpha = 1;
-        } else {
-          const dxOrb = body.state.x - orb.x;
-          const dyOrb = body.state.y - orb.y;
-          const distOrb = Math.sqrt(dxOrb * dxOrb + dyOrb * dyOrb);
-          if (distOrb < PROMPT_D_RADIUS) promptDTargetAlpha = 1;
+      // anchored to the orb itself, NOT separately to the avatar.
+      //
+      // Subtle ±2° sway (so they read as hand-drawn floating signs, like
+      // the painted ones in the original game's bg). Skipped entirely
+      // when the bg has the help glyphs painted in (BG_HAS_HELP_PROMPTS).
+      if (promptD) {
+        let promptDTargetAlpha = 0;
+        if (!firstDropped) {
+          if (orb.state === 'held') {
+            promptDTargetAlpha = 1;
+          } else {
+            const dxOrb = body.state.x - orb.x;
+            const dyOrb = body.state.y - orb.y;
+            const distOrb = Math.sqrt(dxOrb * dxOrb + dyOrb * dyOrb);
+            if (distOrb < PROMPT_D_RADIUS) promptDTargetAlpha = 1;
+          }
         }
+        promptD.x = orb.x;
+        promptD.y = orb.y - 28 + promptBob;
+        promptD.rotation = Math.sin(promptPhase * 0.7) * 0.035; // ±2° sway
+        promptD.alpha += (promptDTargetAlpha - promptD.alpha) * 0.15;
       }
-      promptD.x = orb.x;
-      promptD.y = orb.y - 28 + promptBob;
 
       // Prompt-spacebar: stays at alpha 0 until the player first runs
       // (i.e., starts moving on the ground past the running threshold —
       // not at spawn while falling in). Then visible for ~3 sec or
       // until they press jump, whichever first. Permanently hides
       // afterward so it doesn't repeat each time they start running.
-      const ticksSinceRun = firstRunTick === null ? -1 : tickCount - firstRunTick;
-      const spacebarTargetAlpha =
-        firstRunTick !== null &&
-        !firstJumped &&
-        ticksSinceRun >= 0 &&
-        ticksSinceRun < PROMPT_SPACEBAR_VISIBLE_TICKS
-          ? 1
-          : 0;
-      promptSpacebar.x = body.state.x;
-      promptSpacebar.y = body.state.y - 70 - promptBob;
-
-      // Smooth alpha fade — the lerp factor (0.15) is fast enough to
-      // feel responsive but slow enough that brief proximity dips don't
-      // visibly flicker the prompt.
-      promptD.alpha += (promptDTargetAlpha - promptD.alpha) * 0.15;
-      promptSpacebar.alpha += (spacebarTargetAlpha - promptSpacebar.alpha) * 0.15;
+      // Counter-phase sway from promptD so they don't sway in lockstep.
+      if (promptSpacebar) {
+        const ticksSinceRun = firstRunTick === null ? -1 : tickCount - firstRunTick;
+        const spacebarTargetAlpha =
+          firstRunTick !== null &&
+          !firstJumped &&
+          ticksSinceRun >= 0 &&
+          ticksSinceRun < PROMPT_SPACEBAR_VISIBLE_TICKS
+            ? 1
+            : 0;
+        promptSpacebar.x = body.state.x;
+        promptSpacebar.y = body.state.y - 70 - promptBob;
+        promptSpacebar.rotation = Math.sin(promptPhase * 0.7 + Math.PI) * 0.035;
+        promptSpacebar.alpha += (spacebarTargetAlpha - promptSpacebar.alpha) * 0.15;
+      }
 
       input.endTick();
     }
