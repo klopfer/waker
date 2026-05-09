@@ -1,4 +1,4 @@
-import { Application, Container, Sprite, Text } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import { GlowFilter } from 'pixi-filters';
 import { AssetLoader } from './engine/AssetLoader.js';
 import { FixedStep } from './engine/FixedStep.js';
@@ -14,7 +14,11 @@ import { loadPixelGround } from './game/PixelGround.js';
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
 const SIM_HZ = 24;
-const AVATAR_SCALE = 0.3;
+// 0.30 was the initial Phase-3 placeholder; the original Flash game's
+// avatar reads visually smaller relative to the 800×600 stage. 0.25
+// matches the original screenshot more closely. Edit and reload to
+// A/B against the original — the value is captured at level load.
+const AVATAR_SCALE = 0.25;
 
 // leveld1 entrance from legacy/src/levels/displacement1.mxml line 27.
 const SPAWN_X = 80;
@@ -80,6 +84,28 @@ const PROMPT_D_RADIUS = 110;
 // onscreen hints; we just guard against showing it forever.
 const PROMPT_SPACEBAR_HIDE_AFTER_TICKS = 24 * 6; // ~6 sec at 24 Hz
 
+// Animated background. The painted sun's bright-white centroid in
+// leveld1_bg.png is at (123, 97) (measured by the color-key tool). A
+// procedural soft-glow disc layered on top of the bg in 'add' blend
+// reads as the painted sun "pulsing" without needing a separate
+// sun-mask asset. Cloud drift is intentionally NOT done procedurally —
+// no cloud PNG is curated, and procedural cloud sprites would visually
+// fight the painted cloud bank.
+const SUN_X = 123;
+const SUN_Y = 97;
+const SUN_PULSE_BASE_RADIUS = 36;
+const SUN_PULSE_AMPLITUDE = 8;
+const SUN_PULSE_BASE_ALPHA = 0.22;
+const SUN_PULSE_ALPHA_AMPLITUDE = 0.12;
+const SUN_PULSE_RATE = 0.04;
+const SUN_COLOR = 0xfff4c8;
+// Subtle horizontal sway on the bg+ground sprites for "alive" feel.
+// Slow rate (0.006 rad/tick → ~26 sec/cycle at 24 Hz) and tiny
+// amplitude so the player doesn't consciously notice the motion but
+// the scene stops feeling frozen.
+const BG_SWAY_RATE = 0.006;
+const BG_SWAY_AMPLITUDE = 2;
+
 const GAME_KEYS = [
   'ArrowLeft',
   'ArrowRight',
@@ -134,6 +160,17 @@ async function main(): Promise<void> {
 
   const bgSprite = new Sprite(bgTex);
   app.stage.addChild(bgSprite);
+  // Sun pulse sits between the bg and the ground silhouette. 'add' blend
+  // makes the warm gradient fill BRIGHTEN whatever's beneath without
+  // covering it, so the painted sun (which is a near-white disc) gets a
+  // glowing halo that reads as a slow breath. Drawing geometry once and
+  // animating only `scale` + `alpha` per tick is cheaper than redrawing
+  // the Graphics every frame.
+  const sunPulse = new Graphics().circle(0, 0, 1).fill(SUN_COLOR);
+  sunPulse.blendMode = 'add';
+  sunPulse.x = SUN_X;
+  sunPulse.y = SUN_Y;
+  app.stage.addChild(sunPulse);
   // The collision PNG IS the painted-ground silhouette in the original
   // game's compositing — without it the bg is just sky.
   const groundSprite = new Sprite(groundTex);
@@ -274,6 +311,12 @@ async function main(): Promise<void> {
   // sharing one phase keeps everything visually in sync without tracking
   // separate timers.
   let promptPhase = 0;
+  // Independent phase trackers for the bg animation. The sun pulse and
+  // bg sway run at much slower rates than the prompts (which need to
+  // feel "alive" / urgent), so giving them their own accumulators keeps
+  // the scene from feeling like everything's beating in lockstep.
+  let sunPhase = 0;
+  let bgSwayPhase = 0;
 
   app.ticker.add(({ deltaMS }) => {
     const { steps } = sim.advance(deltaMS);
@@ -347,6 +390,23 @@ async function main(): Promise<void> {
       promptPhase += PROMPT_BOB_RATE;
       exitGlow.outerStrength = 1.5 + Math.sin(promptPhase * 0.5) * 1.0;
       const promptBob = Math.sin(promptPhase) * PROMPT_BOB_AMPLITUDE;
+
+      // Sun pulse — animate scale and alpha on the pre-drawn 1-px disc.
+      // Painted clouds in the bg are baked into the same layer as the
+      // sun, so 'add' blend lets the halo read on top of them without
+      // creating an obvious stacking-order issue.
+      sunPhase += SUN_PULSE_RATE;
+      const sunSin = Math.sin(sunPhase);
+      sunPulse.scale.set(SUN_PULSE_BASE_RADIUS + sunSin * SUN_PULSE_AMPLITUDE);
+      sunPulse.alpha = SUN_PULSE_BASE_ALPHA + sunSin * SUN_PULSE_ALPHA_AMPLITUDE;
+
+      // Bg parallax sway — translate the bg + ground silhouette together
+      // so they remain registered to each other; foreground actors
+      // (avatar, orb, origin, exit) stay at world coords.
+      bgSwayPhase += BG_SWAY_RATE;
+      const bgOffset = Math.sin(bgSwayPhase) * BG_SWAY_AMPLITUDE;
+      bgSprite.x = bgOffset;
+      groundSprite.x = bgOffset;
 
       // Latch first-jump so the spacebar prompt knows when to fade.
       if (moveInputs.jumpPressed) firstJumped = true;
