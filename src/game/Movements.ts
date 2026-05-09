@@ -41,6 +41,12 @@ export const PHYSICS = {
   // smaller than the staircase gaps in the painted level so we don't
   // accidentally snap onto unrelated platforms.
   STEP_UP: 18,
+  // Vertical "step-down" allowance: when walking on ground, snap DOWN
+  // to floors that are this many px below current y (rather than going
+  // briefly airborne and letting gravity drift the avatar off the
+  // curve sideways during the fall). Larger drops fall through to the
+  // normal airborne path, so real cliffs still cause real falls.
+  STEP_DOWN: 18,
 } as const;
 
 // Avatar collision box. Bottom-center is anchored at the body's (x, y).
@@ -236,61 +242,85 @@ export function step(
   let x = state.x + vx;
   let y = state.y;
 
-  // STEP-UP: when moving horizontally, if there's a slightly higher floor
-  // at the new x within STEP_UP px above current y, snap UP to it instead
-  // of running side-push (which would phantom-bonk against the slope's
-  // "wall" and stop forward motion). Only applies when on the ground OR
-  // rising-and-near-apex (vy >= -RUN_BRAKE), so jumping into actual
-  // walls still gets blocked normally.
+  // STEP-UP / STEP-DOWN: when moving horizontally and "tracking" a floor,
+  // snap onto the floor at the new x rather than running side-push +
+  // ground-snap. This unifies three effects:
   //
-  // This unifies two effects:
-  //   - walking up sloped player-drawn curves (rise per tick can reach
-  //     ~17 px at run speed; STEP_UP=18 covers it)
-  //   - landing on a platform whose top is 1-2 px above the avatar's
-  //     near-apex feet during a long-jump (without this, the avatar
-  //     "near-misses" the ledge by a couple pixels and falls).
-  if (vx !== 0 && (state.onGround || vy >= -PHYSICS.RUN_BRAKE)) {
-    const upFloorY = ground.groundYBelow(x, state.y - PHYSICS.STEP_UP);
-    if (upFloorY < state.y && upFloorY >= state.y - PHYSICS.STEP_UP) {
-      y = upFloorY;
+  //   1. Walking UP a sloped curve. The slope at edgeX is even higher
+  //      than at center; without this, side-push trips on the slope's
+  //      continuation and the avatar oscillates ("slides backwards").
+  //   2. Walking DOWN a sloped curve / off a small step. Without this,
+  //      groundYBelow returns +∞ momentarily and the avatar becomes
+  //      airborne, drifting off the curve as gravity takes over.
+  //   3. Landing on a ledge near jump-apex when feet are 1-2 px below
+  //      the platform top (cliff-edge ledge grab).
+  //
+  // When this fires, we OWN the X/Y resolution for this tick — skip
+  // side-push (the "wall" was actually a slope) and ground-snap (we're
+  // already on the floor). steppedToFloor tracks this.
+  let steppedToFloor = false;
+  if (vx !== 0) {
+    const newFloorY = ground.groundYBelow(x, state.y - PHYSICS.STEP_UP);
+    if (newFloorY < state.y && newFloorY >= state.y - PHYSICS.STEP_UP) {
+      // Step UP — fires on ground OR rising-near-apex (cliff-edge grab).
+      // Falling avatars don't auto-grab ledges (would feel sticky).
+      const nearApex = vy <= 0 && vy >= -PHYSICS.RUN_BRAKE;
+      if (onGround || nearApex) {
+        y = newFloorY;
+        vy = 0;
+        onGround = true;
+        steppedToFloor = true;
+      }
+    } else if (
+      onGround &&
+      newFloorY > state.y &&
+      newFloorY <= state.y + PHYSICS.STEP_DOWN
+    ) {
+      // Step DOWN — only when on ground, only for small drops. Larger
+      // drops fall through to the normal Y step, so cliffs cause real
+      // airborne descent.
+      y = newFloorY;
       vy = 0;
       onGround = true;
+      steppedToFloor = true;
     }
   }
 
-  if (vx > 0) {
-    const pushed = pushOutFromWallRight(x, y, ground);
-    if (pushed !== x) {
-      x = pushed;
-      vx = 0;
+  if (!steppedToFloor) {
+    if (vx > 0) {
+      const pushed = pushOutFromWallRight(x, y, ground);
+      if (pushed !== x) {
+        x = pushed;
+        vx = 0;
+      }
+    } else if (vx < 0) {
+      const pushed = pushOutFromWallLeft(x, y, ground);
+      if (pushed !== x) {
+        x = pushed;
+        vx = 0;
+      }
     }
-  } else if (vx < 0) {
-    const pushed = pushOutFromWallLeft(x, y, ground);
-    if (pushed !== x) {
-      x = pushed;
-      vx = 0;
-    }
-  }
 
-  y = y + vy;
-  if (vy < 0) {
-    const pushed = pushDownFromCeiling(x, y, ground);
-    if (pushed !== y) {
-      y = pushed;
-      vy = 0;
+    y = y + vy;
+    if (vy < 0) {
+      const pushed = pushDownFromCeiling(x, y, ground);
+      if (pushed !== y) {
+        y = pushed;
+        vy = 0;
+      }
     }
-  }
 
-  // Floor lookup uses the new x AND the old y as the search start, so a
-  // descending avatar whose feet cross a platform top during this tick
-  // lands on the platform rather than passing through.
-  const groundY = ground.groundYBelow(x, state.y);
-  if (y >= groundY) {
-    y = groundY;
-    if (vy > 0) vy = 0;
-    onGround = true;
-  } else {
-    onGround = false;
+    // Floor lookup uses the new x AND the old y as the search start, so a
+    // descending avatar whose feet cross a platform top during this tick
+    // lands on the platform rather than passing through.
+    const groundY = ground.groundYBelow(x, state.y);
+    if (y >= groundY) {
+      y = groundY;
+      if (vy > 0) vy = 0;
+      onGround = true;
+    } else {
+      onGround = false;
+    }
   }
 
   return { x, y, vx, vy, facingRight, onGround };

@@ -99,6 +99,7 @@ v2 (see `git log src/game/Movements.ts`).
 | `RUN_ACCEL` | 0.3 | 0.2 × gameSpeed on line 450 |
 | `RUN_BRAKE` | 1.5 | 1 × gameSpeed on line 451 |
 | `STEP_UP` | **18** ⚠️ no legacy equivalent | see below |
+| `STEP_DOWN` | **18** ⚠️ no legacy equivalent | see below |
 
 **Theoretical max jump rise** under symplectic Euler at integer ticks:
 - Legacy `14.5`: `14.5 + 12.5 + 10.5 + 8.5 + 6.5 + 4.5 + 2.5 + 0.5 = 60 px`
@@ -116,28 +117,39 @@ or coyote-time mechanics that gave functional leeway with the same
 JUMP_IMPULSE; bumping the constant is a simpler shim than implementing
 those mechanics.
 
-### STEP_UP — auto-snap to slightly-higher floors
+### STEP_UP / STEP_DOWN — auto-track the floor while walking
 
-When the avatar moves horizontally, if there's a floor at the new x
-within `STEP_UP` px above current y, the avatar snaps UP to it instead
-of side-pushing against its "wall." Two effects unified:
+When the avatar moves horizontally and there's a walkable floor at the
+new x (within ±`STEP_UP`/`STEP_DOWN` of current y), the X-step OWNS
+the result for that tick — snap onto the floor and skip the side-push
++ ground-snap that would otherwise run. This unifies three effects:
 
-1. **Walking up player-drawn graph curves.** A curve drawn while the
-   player runs at MAX_RUN_SPEED=12 with graph speedPerTick=1.5 has a
-   max world-slope of `~17.5 px-rise per 12 px-run`. STEP_UP=18 covers
-   it; smaller values cause the avatar to "fall through" rising
-   slopes (gravity pulls them off the curve when the curve at the new
-   x is above their current y).
-2. **Landing on a ledge after a long jump.** When the avatar's
-   near-apex feet pass a platform's left edge by a few pixels at a y
-   slightly below the platform top, STEP_UP snaps them up onto the
-   platform instead of phantom-bonking against the platform's left
-   wall and stalling.
+1. **Walking up player-drawn slopes.** A curve drawn while the player
+   runs at MAX_RUN_SPEED=12 with graph speedPerTick=1.5 has a max
+   world-slope of `~17.5 px-rise per 12 px-run`. STEP_UP=18 covers it.
+   Without this, side-push trips on the slope's continuation at the
+   body's leading edge and the avatar oscillates ("slides backwards").
+2. **Walking down player-drawn slopes / off small steps.** Without
+   step-down, `groundYBelow` returns +∞ momentarily and the avatar
+   becomes airborne, drifting off the curve as gravity takes over.
+   STEP_DOWN=18 keeps the avatar glued to descending slopes within
+   reach. Larger drops (>STEP_DOWN) fall through to the normal
+   airborne path, so real cliffs still cause real falls.
+3. **Landing on a ledge near jump-apex** (cliff-edge ledge grab) when
+   the avatar's feet are 1-2 px below the platform top.
 
-STEP_UP only triggers when (a) the avatar is moving horizontally
-(vx ≠ 0) AND (b) they're on the ground OR rising-and-near-apex
-(`vy >= -RUN_BRAKE`). This prevents step-up from grabbing unrelated
-platforms during a hard upward jump.
+Trigger conditions:
+- **Step UP** fires when `vx ≠ 0` AND (`onGround` OR rising-near-apex,
+  i.e., `0 ≥ vy ≥ -RUN_BRAKE`). Falling avatars don't auto-grab
+  ledges (would feel sticky).
+- **Step DOWN** fires only when `vx ≠ 0` AND `onGround`. Mid-air
+  avatars descend via gravity normally; only ground-walks get the
+  glue-to-descending-slope behavior.
+
+When step-up/down fires, `steppedToFloor` is set and the rest of the
+collision step (side-push, Y step, ground-snap) is bypassed for that
+tick. The avatar is already on a floor with `vy = 0` and
+`onGround = true`.
 
 ## Graph drawing
 
