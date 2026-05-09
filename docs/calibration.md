@@ -99,7 +99,7 @@ v2 (see `git log src/game/Movements.ts`).
 | `RUN_ACCEL` | 0.3 | 0.2 × gameSpeed on line 450 |
 | `RUN_BRAKE` | 1.5 | 1 × gameSpeed on line 451 |
 | `STEP_UP` | **18** ⚠️ no legacy equivalent | see below |
-| `STEP_DOWN` | **18** ⚠️ no legacy equivalent | see below |
+| `STEP_DOWN` | **24** ⚠️ no legacy equivalent | see below |
 
 **Theoretical max jump rise** under symplectic Euler at integer ticks:
 - Legacy `14.5`: `14.5 + 12.5 + 10.5 + 8.5 + 6.5 + 4.5 + 2.5 + 0.5 = 60 px`
@@ -167,6 +167,17 @@ upper half — partially inside the solid band. Side-collision samples
 then overlapped the curve and tripped intermittent side-pushes,
 producing the "slide-back / fall-through at slope discontinuities"
 bug.
+
+### Stand cradle (orb-only ground)
+
+The stand cradle that holds the orb at level start is also a
+`CurveGround` (thickness=2). Because `groundYBelow` returns the band
+TOP (= `line_y - 1` for thickness=2), the cradle's polyline is placed
+at `line_y = ORIGIN_Y - STAND_CRADLE_LIFT + 1` so the returned floor
+top lands at `ORIGIN_Y - STAND_CRADLE_LIFT` — the actual surface the
+orb rests on. Without this `+ thickness/2` shift the cradle's top is
+1 px above the orb's spawn position, gravity overshoots the cradle on
+the first frame, and the orb falls through to the painted floor.
 
 ## Graph drawing
 

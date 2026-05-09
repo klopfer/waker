@@ -46,7 +46,19 @@ export const PHYSICS = {
   // briefly airborne and letting gravity drift the avatar off the
   // curve sideways during the fall). Larger drops fall through to the
   // normal airborne path, so real cliffs still cause real falls.
-  STEP_DOWN: 18,
+  //
+  // Calibrated as a comfort margin over the analytical max curve-y
+  // change per game tick of ~17.4 px (max draw-time slope 1.45 per
+  // graph-x × 12 graph-x crossed per game tick at MAX_RUN_SPEED=12).
+  // 18 was the v3 value, but playtests still showed sticky descents
+  // at slope discontinuities — bumping to 24 to give 6 px of headroom
+  // covers any rounding / corner-case I haven't accounted for.
+  // Larger values would let the avatar walk down progressively
+  // taller cliffs, which we want to keep distinct from "walking down
+  // a slope" — 24 leaves the leftmost-cloud → mid-step drop (42 px)
+  // still requiring a real fall, so the level's intended progression
+  // is preserved.
+  STEP_DOWN: 24,
 } as const;
 
 // Avatar collision box. Bottom-center is anchored at the body's (x, y).

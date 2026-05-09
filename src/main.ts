@@ -209,12 +209,25 @@ async function main(): Promise<void> {
   // instead of falling through it. Composing the avatar's `ground` here
   // (rather than re-adding pixelGround) means solidified curves added to
   // `ground` are visible to the orb too, automatically.
+  //
+  // CurveGround.groundYBelow returns line_y - thickness/2 (top of the
+  // solid band — see calibration v4). To make the cradle's TOP land at
+  // (ORIGIN_Y - STAND_CRADLE_LIFT), we set the polyline line at
+  // STAND_CRADLE_LIFT - thickness/2 below the origin. With thickness=2,
+  // that means the line is at y = ORIGIN_Y - STAND_CRADLE_LIFT + 1.
+  const STAND_CRADLE_THICKNESS = 2;
   const standCradle = new CurveGround(
     [
-      { x: ORIGIN_X - STAND_CRADLE_HALF_WIDTH, y: ORIGIN_Y - STAND_CRADLE_LIFT },
-      { x: ORIGIN_X + STAND_CRADLE_HALF_WIDTH, y: ORIGIN_Y - STAND_CRADLE_LIFT },
+      {
+        x: ORIGIN_X - STAND_CRADLE_HALF_WIDTH,
+        y: ORIGIN_Y - STAND_CRADLE_LIFT + STAND_CRADLE_THICKNESS / 2,
+      },
+      {
+        x: ORIGIN_X + STAND_CRADLE_HALF_WIDTH,
+        y: ORIGIN_Y - STAND_CRADLE_LIFT + STAND_CRADLE_THICKNESS / 2,
+      },
     ],
-    2,
+    STAND_CRADLE_THICKNESS,
   );
   const orbGround = new CompositeGround();
   orbGround.add(ground);
