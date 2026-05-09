@@ -259,9 +259,9 @@ export function step(
   let x = state.x + vx;
   let y = state.y;
 
-  // STEP-UP / STEP-DOWN: when moving horizontally and "tracking" a floor,
-  // snap onto the floor at the new x rather than running side-push +
-  // ground-snap. This unifies three effects:
+  // STEP-UP / STEP-DOWN: when moving horizontally on the ground, snap
+  // onto the floor at the new x rather than running side-push +
+  // ground-snap. This unifies two effects:
   //
   //   1. Walking UP a sloped curve. The slope at edgeX is even higher
   //      than at center; without this, side-push trips on the slope's
@@ -269,62 +269,68 @@ export function step(
   //   2. Walking DOWN a sloped curve / off a small step. Without this,
   //      groundYBelow returns +∞ momentarily and the avatar becomes
   //      airborne, drifting off the curve as gravity takes over.
-  //   3. Landing on a ledge near jump-apex when feet are 1-2 px below
-  //      the platform top (cliff-edge ledge grab).
   //
-  // For step UP while on the ground, we ALSO require path-continuity:
-  // the floor at the MIDPOINT between current and new x must be roughly
-  // the linear interpolation of state.y and newFloorY. This rejects
-  // "auto-grabbing" a separate higher floor (e.g., a curve overhead
-  // that dangles within STEP_UP range of the painted floor the avatar
-  // is walking on) — those have a sudden jump in floor y at the
-  // boundary, not a continuous slope.
+  // Mid-air step-up (the "cliff-edge ledge grab" we had through the
+  // earlier `nearApex` branch) is GONE: it was inadvertently letting
+  // the avatar grab platforms from BELOW during a jump (e.g., jumping
+  // straight up under a small platform and snapping onto its top).
+  // Cliff jumps in the level have enough margin that they don't need
+  // ledge-grab assistance — the avatar reaches above the platform at
+  // apex and falls onto it normally.
   //
-  // When this fires, we OWN the X/Y resolution for this tick — skip
-  // side-push (the "wall" was actually a slope) and ground-snap (we're
-  // already on the floor). steppedToFloor tracks this.
+  // For step UP, we ALSO require path-continuity at the MIDPOINT
+  // between (state.x, state.y) and (new_x, newFloorY): the floor at
+  // midX must be near the linear interpolation of state.y and
+  // newFloorY. The tolerance is CONTEXT-DEPENDENT, governed by
+  // whether the avatar is currently on a sloped surface or flat
+  // ground:
+  //
+  //   - On slope: loose tolerance (20). Slope discontinuities pass
+  //     freely; the avatar walks over kinks without getting stuck.
+  //   - On flat:  tight tolerance (8). Boundary cases (e.g., a curve
+  //     overhead dangling within STEP_UP range of the painted floor
+  //     the avatar is on) are denied — the avatar walks UNDER instead
+  //     of auto-grabbing the curve.
+  //
+  // The slope detector probes groundYBelow at state.x and at a 4-px
+  // probe ahead in the direction of motion, with a tight searchFromY
+  // (state.y - 1) so it only sees the surface the avatar is actually
+  // standing on (not separate higher surfaces). If those two y values
+  // differ at all, we're on a slope.
+  //
+  // When step-up/down fires, we OWN the X/Y resolution for this tick —
+  // skip side-push (the "wall" was actually a slope) and ground-snap
+  // (we're already on the floor). steppedToFloor tracks this.
   let steppedToFloor = false;
-  if (vx !== 0) {
+  if (vx !== 0 && onGround) {
     const newFloorY = ground.groundYBelow(x, state.y - PHYSICS.STEP_UP);
     if (newFloorY < state.y && newFloorY >= state.y - PHYSICS.STEP_UP) {
-      // Step UP candidate. Allow only if:
-      //   - mid-air near apex (cliff-edge ledge grab — can land on a
-      //     separate higher surface), OR
-      //   - on ground AND path is continuous (slope, not overhead).
-      const nearApex = vy <= 0 && vy >= -PHYSICS.RUN_BRAKE;
-      let canStepUp = false;
-      if (nearApex) {
-        canStepUp = true;
-      } else if (onGround) {
-        // Continuity check: midpoint floor should be near the linear
-        // interpolation of state.y and newFloorY. Tolerance 12 covers
-        // in-curve kinks (max ~9 px deviation from linearity at
-        // run-speed half-tick) but rejects overhead-floor cases where
-        // the floor at midpoint is at newFloorY (curve covers midpoint)
-        // not at the average — that gap is half (state.y - newFloorY)
-        // = at least 17 for the smallest curve→painted-floor gap that
-        // step-up could even reach.
-        const midX = (state.x + x) / 2;
-        const midFloorY = ground.groundYBelow(midX, state.y - PHYSICS.STEP_UP);
-        const expectedMid = (state.y + newFloorY) / 2;
-        canStepUp =
-          midFloorY !== Number.POSITIVE_INFINITY &&
-          Math.abs(midFloorY - expectedMid) <= 12;
-      }
-      if (canStepUp) {
+      // Slope detection at avatar's current position.
+      const probeOffset = vx > 0 ? 4 : -4;
+      const yHere = ground.groundYBelow(state.x, state.y - 1);
+      const yAhead = ground.groundYBelow(state.x + probeOffset, state.y - 1);
+      const isOnSlope =
+        yHere !== Number.POSITIVE_INFINITY &&
+        yAhead !== Number.POSITIVE_INFINITY &&
+        yHere !== yAhead;
+      const continuityTolerance = isOnSlope ? 20 : 8;
+
+      const midX = (state.x + x) / 2;
+      const midFloorY = ground.groundYBelow(midX, state.y - PHYSICS.STEP_UP);
+      const expectedMid = (state.y + newFloorY) / 2;
+      const isContinuous =
+        midFloorY !== Number.POSITIVE_INFINITY &&
+        Math.abs(midFloorY - expectedMid) <= continuityTolerance;
+
+      if (isContinuous) {
         y = newFloorY;
         vy = 0;
         onGround = true;
         steppedToFloor = true;
       }
-    } else if (
-      onGround &&
-      newFloorY > state.y &&
-      newFloorY <= state.y + PHYSICS.STEP_DOWN
-    ) {
-      // Step DOWN — only when on ground, only for small drops. Larger
-      // drops fall through to the normal Y step, so cliffs cause real
-      // airborne descent.
+    } else if (newFloorY > state.y && newFloorY <= state.y + PHYSICS.STEP_DOWN) {
+      // Step DOWN — only for small drops. Larger drops fall through to
+      // the normal Y step, so cliffs cause real airborne descent.
       y = newFloorY;
       vy = 0;
       onGround = true;

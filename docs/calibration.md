@@ -117,40 +117,44 @@ or coyote-time mechanics that gave functional leeway with the same
 JUMP_IMPULSE; bumping the constant is a simpler shim than implementing
 those mechanics.
 
-### STEP_UP path-continuity check
+### STEP_UP path-continuity check (slope-aware tolerance)
 
 `STEP_UP=40` is generous enough for player-drawn slope discontinuities,
 but it's also generous enough that a curve whose left endpoint dangles
 within 40 px of the painted floor below would be auto-grabbed by an
-avatar walking *under* it. (User playtest at v7: walking under the
-curve's left endpoint at the green-circled gap "automatically jumps
-the character onto the platform.")
+avatar walking *under* it. The two needs trade off in opposite
+directions on a single threshold.
 
-To distinguish "step up onto a slope continuation" from "auto-grab a
-separate higher floor," step-up runs a path-continuity check on the
-ground branch: the floor at the MIDPOINT between current and new x
-must be within 12 px of the linear interpolation of `state.y` and
-`newFloorY`. A continuous slope passes (midpoint floor sits roughly
-between current and new); a separate floor (curve overhead with an
-air gap below it) fails (midpoint either has the curve at `newFloorY`
-not the average, or has the painted floor much further below).
+Step-up runs a path-continuity check: the floor at the MIDPOINT
+between current and new x must be within `continuityTolerance` of
+the linear interpolation of `state.y` and `newFloorY`. A continuous
+slope passes (midpoint floor ≈ average of endpoints); a separate
+floor (curve overhead with an air gap below it) fails (midpoint
+floor is much further from the average than the slope's natural
+deviation).
 
-The mid-air ledge-grab branch (`nearApex`) skips the continuity check
-because cliff-edge ledge grabs are inherently discontinuous — the
-avatar is jumping from below a ledge, not walking onto it.
+The tolerance is **slope-aware**:
 
-Tolerance of 12 px:
-- Covers in-curve kinks (max ~9 px deviation from linearity at
-  run-speed half-tick).
-- Rejects auto-grab when gap > 24 px (gap/2 = deviation > 12). The
-  smallest "interesting" gap is bigger than this — the smallest
-  painted-floor cliff in displacement0 is 56 px, well above.
+- **On a slope** (current floor at `state.x` differs from the floor
+  4 px ahead in the direction of motion): tolerance = 20. Slope
+  discontinuities up to ~40 px-rise per tick pass. The avatar walks
+  over kinks without getting stuck.
+- **On flat ground** (current floor and 4-px-ahead floor are equal):
+  tolerance = 8. Boundary cases (curve overhead dangling above the
+  painted floor) fail when the gap is greater than ~16 px — the
+  smallest "auto-grab worthy" overhead gap is well above this in
+  displacement0, so the avatar walks under instead of auto-grabbing.
 
-Slope discontinuities exceeding ~24 px-rise per tick fail the
-continuity check and require a real jump. Per the analytical max
-(~17.4 px at run-speed) this should never happen in practice; if
-playtests show it does, the tolerance can be raised, but raising it
-re-opens auto-grab on smaller gaps.
+The slope detector uses a tight `searchFromY = state.y - 1` so it
+only sees the surface the avatar is actually standing on (not any
+separate higher surfaces overhead).
+
+Mid-air step-up (the previous `nearApex` branch) was REMOVED — it
+inadvertently let the avatar grab a platform from BELOW mid-jump
+(e.g., jumping vertically under a small platform and snapping onto
+its top). Cliff jumps in the level have enough margin that they
+reach above the destination platform at apex and fall onto it
+normally without needing ledge-grab assistance.
 
 ### STEP_UP / STEP_DOWN — auto-track the floor while walking
 
