@@ -272,6 +272,14 @@ export function step(
   //   3. Landing on a ledge near jump-apex when feet are 1-2 px below
   //      the platform top (cliff-edge ledge grab).
   //
+  // For step UP while on the ground, we ALSO require path-continuity:
+  // the floor at the MIDPOINT between current and new x must be roughly
+  // the linear interpolation of state.y and newFloorY. This rejects
+  // "auto-grabbing" a separate higher floor (e.g., a curve overhead
+  // that dangles within STEP_UP range of the painted floor the avatar
+  // is walking on) — those have a sudden jump in floor y at the
+  // boundary, not a continuous slope.
+  //
   // When this fires, we OWN the X/Y resolution for this tick — skip
   // side-push (the "wall" was actually a slope) and ground-snap (we're
   // already on the floor). steppedToFloor tracks this.
@@ -279,10 +287,31 @@ export function step(
   if (vx !== 0) {
     const newFloorY = ground.groundYBelow(x, state.y - PHYSICS.STEP_UP);
     if (newFloorY < state.y && newFloorY >= state.y - PHYSICS.STEP_UP) {
-      // Step UP — fires on ground OR rising-near-apex (cliff-edge grab).
-      // Falling avatars don't auto-grab ledges (would feel sticky).
+      // Step UP candidate. Allow only if:
+      //   - mid-air near apex (cliff-edge ledge grab — can land on a
+      //     separate higher surface), OR
+      //   - on ground AND path is continuous (slope, not overhead).
       const nearApex = vy <= 0 && vy >= -PHYSICS.RUN_BRAKE;
-      if (onGround || nearApex) {
+      let canStepUp = false;
+      if (nearApex) {
+        canStepUp = true;
+      } else if (onGround) {
+        // Continuity check: midpoint floor should be near the linear
+        // interpolation of state.y and newFloorY. Tolerance 12 covers
+        // in-curve kinks (max ~9 px deviation from linearity at
+        // run-speed half-tick) but rejects overhead-floor cases where
+        // the floor at midpoint is at newFloorY (curve covers midpoint)
+        // not at the average — that gap is half (state.y - newFloorY)
+        // = at least 17 for the smallest curve→painted-floor gap that
+        // step-up could even reach.
+        const midX = (state.x + x) / 2;
+        const midFloorY = ground.groundYBelow(midX, state.y - PHYSICS.STEP_UP);
+        const expectedMid = (state.y + newFloorY) / 2;
+        canStepUp =
+          midFloorY !== Number.POSITIVE_INFINITY &&
+          Math.abs(midFloorY - expectedMid) <= 12;
+      }
+      if (canStepUp) {
         y = newFloorY;
         vy = 0;
         onGround = true;
