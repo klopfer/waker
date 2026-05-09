@@ -98,8 +98,8 @@ v2 (see `git log src/game/Movements.ts`).
 | `MAX_RUN_SPEED` | 12 | 8 × gameSpeed on line 454 |
 | `RUN_ACCEL` | 0.3 | 0.2 × gameSpeed on line 450 |
 | `RUN_BRAKE` | 1.5 | 1 × gameSpeed on line 451 |
-| `STEP_UP` | **24** ⚠️ no legacy equivalent | see below |
-| `STEP_DOWN` | **24** ⚠️ no legacy equivalent | see below |
+| `STEP_UP` | **40** ⚠️ no legacy equivalent | see below |
+| `STEP_DOWN` | **40** ⚠️ no legacy equivalent | see below |
 
 **Theoretical max jump rise** under symplectic Euler at integer ticks:
 - Legacy `14.5`: `14.5 + 12.5 + 10.5 + 8.5 + 6.5 + 4.5 + 2.5 + 0.5 = 60 px`

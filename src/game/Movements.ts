@@ -33,36 +33,31 @@ export const PHYSICS = {
   MAX_RUN_SPEED: 12,
   RUN_ACCEL: 0.3,
   RUN_BRAKE: 1.5,
-  // Vertical "step-up" allowance: when walking horizontally, the avatar
-  // automatically snaps up to floors that are within this many px above
-  // current y. Lets sloped curves and small painted-ground steps be
-  // walkable without jumping. Calibrated symmetrically with STEP_DOWN —
-  // the analytical max curve-y change per game tick is ~17.4 px (max
-  // draw-time slope 1.45 per graph-x × 12 graph-x crossed at run speed).
-  // 24 gives 6 px of headroom over that, matching the descent margin so
-  // the avatar's experience walking up vs down a curve is symmetric.
-  // Still well below the smallest painted-floor staircase gap in
-  // displacement0 (56 px from leftmost cloud to orb-stand), so this
-  // can't accidentally let the avatar walk up an intended cliff.
-  STEP_UP: 24,
-  // Vertical "step-down" allowance: when walking on ground, snap DOWN
-  // to floors that are this many px below current y (rather than going
-  // briefly airborne and letting gravity drift the avatar off the
-  // curve sideways during the fall). Larger drops fall through to the
-  // normal airborne path, so real cliffs still cause real falls.
+  // Vertical "step-up" / "step-down" allowance: when walking horizontally,
+  // the avatar snaps onto floors within this many px of current y rather
+  // than running side-push or going airborne. Lets sloped curves and
+  // small painted-ground steps be walkable without jumping.
   //
-  // Calibrated as a comfort margin over the analytical max curve-y
-  // change per game tick of ~17.4 px (max draw-time slope 1.45 per
-  // graph-x × 12 graph-x crossed per game tick at MAX_RUN_SPEED=12).
-  // 18 was the v3 value, but playtests still showed sticky descents
-  // at slope discontinuities — bumping to 24 to give 6 px of headroom
-  // covers any rounding / corner-case I haven't accounted for.
-  // Larger values would let the avatar walk down progressively
-  // taller cliffs, which we want to keep distinct from "walking down
-  // a slope" — 24 leaves the leftmost-cloud → mid-step drop (42 px)
-  // still requiring a real fall, so the level's intended progression
-  // is preserved.
-  STEP_DOWN: 24,
+  // Symmetric so up/down on the same surface feels the same.
+  //
+  // Calibration history:
+  //   Analytical max curve-y change per game tick = ~17.4 px (max
+  //   draw-time slope 1.45 per graph-x × 12 graph-x crossed at run
+  //   speed). Started at 18, then 24 (v6), then bumped to 40 here —
+  //   playtests on jagged player-drawn curves consistently showed the
+  //   tighter values still freezing the avatar at slope changes. The
+  //   analytical math doesn't account for some interaction (rounding,
+  //   curve thickness halo, corner geometry, etc.) so we just give a
+  //   generous margin.
+  //
+  //   40 is calibrated against the SMALLEST painted-floor cliff in
+  //   displacement0 — leftmost cloud (y=389) → orb-stand (y=333) is
+  //   a 56 px rise. 40 < 56, so this can't accidentally let the avatar
+  //   walk up that cliff (still requires the proper jump). Same for
+  //   walking off ledges: smallest drop is the same 56 px, 40 < 56,
+  //   level progression preserved.
+  STEP_UP: 40,
+  STEP_DOWN: 40,
 } as const;
 
 // Avatar collision box. Bottom-center is anchored at the body's (x, y).
