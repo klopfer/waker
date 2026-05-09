@@ -23,11 +23,24 @@
 export const PHYSICS = {
   GRAVITY: 2,
   MAX_FALL_SPEED: 12,
-  JUMP_IMPULSE: 14.5,
+  // CALIBRATED: 14.5 in legacy `movements.mxml`. We bump to 15.5 because at
+  // legacy values the leftmost-cloud → orb-stand jump in displacement0
+  // requires a 56 px rise vs a 60 px max-rise — only 4 px of margin, which
+  // makes the jump "exact-timing only." 15.5 yields 68 px max rise (12 px
+  // margin), matching the playtest leeway the user reported in the original.
+  JUMP_IMPULSE: 15.5,
   WALK_SPEED: 6,
   MAX_RUN_SPEED: 12,
   RUN_ACCEL: 0.3,
   RUN_BRAKE: 1.5,
+  // Vertical "step-up" allowance: when walking horizontally, the avatar
+  // automatically snaps up to floors that are within this many px above
+  // current y. Lets sloped curves and small painted-ground steps be
+  // walkable without jumping. Larger than max curve-rise per tick at run
+  // speed (~17 px) so even steep player-drawn slopes are traversable;
+  // smaller than the staircase gaps in the painted level so we don't
+  // accidentally snap onto unrelated platforms.
+  STEP_UP: 18,
 } as const;
 
 // Avatar collision box. Bottom-center is anchored at the body's (x, y).
@@ -59,6 +72,15 @@ export const BODY = {
   SAMPLE_STEP: 4,
   // Iteration cap on the iterative "push out of wall" loop, in pixels.
   MAX_PUSH: 30,
+  // Top-of-body margin where SIDE collision is suppressed — gives the
+  // head/upper torso clearance to brush past low overhead obstacles
+  // (e.g., a player-drawn graph curve at the lowest reachable y) without
+  // the side-push tripping. Without this, a 1-2 px head clip into a
+  // curve overhead causes the avatar to be stuck even though their
+  // visual head is clearly below the curve. Matches the legacy game's
+  // behavior of having shorter "leftPt"/"rightPt" aura images than the
+  // full body (the side auras only covered torso, not head).
+  SIDE_TOP_MARGIN: 8,
 } as const;
 
 export interface MovementInputs {
@@ -113,13 +135,18 @@ function anySolidAlongVerticalEdge(
   bottomY: number,
   ground: GroundProvider,
 ): boolean {
-  // Sample from one pixel above the body bottom up to the head, then the
-  // very top edge — covers the body without checking every row.
-  const topY = bottomY - BODY.HEIGHT;
-  for (let y = bottomY - 1; y > topY; y -= BODY.SAMPLE_STEP) {
+  // Sample from one pixel above the body bottom up to the SIDE top —
+  // which is HEIGHT-SIDE_TOP_MARGIN px above feet, NOT the absolute body
+  // top. The top SIDE_TOP_MARGIN px of the body are excluded so the
+  // head/upper torso can brush past low overhead obstacles without
+  // tripping the side-push (see BODY.SIDE_TOP_MARGIN comment).
+  // Ceiling collision (anySolidAlongTopEdge) still uses the full body
+  // top, so head-bumps into actual ceilings work normally.
+  const sideTopY = bottomY - BODY.HEIGHT + BODY.SIDE_TOP_MARGIN;
+  for (let y = bottomY - 1; y > sideTopY; y -= BODY.SAMPLE_STEP) {
     if (ground.solidAt(edgeX, y)) return true;
   }
-  return ground.solidAt(edgeX, topY + 1);
+  return ground.solidAt(edgeX, sideTopY + 1);
 }
 
 function anySolidAlongTopEdge(
@@ -207,21 +234,45 @@ export function step(
   // landing case because the new y has already crossed the platform top
   // by the time the side check fires.
   let x = state.x + vx;
+  let y = state.y;
+
+  // STEP-UP: when moving horizontally, if there's a slightly higher floor
+  // at the new x within STEP_UP px above current y, snap UP to it instead
+  // of running side-push (which would phantom-bonk against the slope's
+  // "wall" and stop forward motion). Only applies when on the ground OR
+  // rising-and-near-apex (vy >= -RUN_BRAKE), so jumping into actual
+  // walls still gets blocked normally.
+  //
+  // This unifies two effects:
+  //   - walking up sloped player-drawn curves (rise per tick can reach
+  //     ~17 px at run speed; STEP_UP=18 covers it)
+  //   - landing on a platform whose top is 1-2 px above the avatar's
+  //     near-apex feet during a long-jump (without this, the avatar
+  //     "near-misses" the ledge by a couple pixels and falls).
+  if (vx !== 0 && (state.onGround || vy >= -PHYSICS.RUN_BRAKE)) {
+    const upFloorY = ground.groundYBelow(x, state.y - PHYSICS.STEP_UP);
+    if (upFloorY < state.y && upFloorY >= state.y - PHYSICS.STEP_UP) {
+      y = upFloorY;
+      vy = 0;
+      onGround = true;
+    }
+  }
+
   if (vx > 0) {
-    const pushed = pushOutFromWallRight(x, state.y, ground);
+    const pushed = pushOutFromWallRight(x, y, ground);
     if (pushed !== x) {
       x = pushed;
       vx = 0;
     }
   } else if (vx < 0) {
-    const pushed = pushOutFromWallLeft(x, state.y, ground);
+    const pushed = pushOutFromWallLeft(x, y, ground);
     if (pushed !== x) {
       x = pushed;
       vx = 0;
     }
   }
 
-  let y = state.y + vy;
+  y = y + vy;
   if (vy < 0) {
     const pushed = pushDownFromCeiling(x, y, ground);
     if (pushed !== y) {

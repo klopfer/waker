@@ -65,6 +65,7 @@ CALIBRATED to match the rendered avatar at AVATAR_SCALE = 0.25:
 | `BODY.HEIGHT` | 35 | Matches visible character head-top → foot-top at scale 0.25. |
 | `BODY.SAMPLE_STEP` | 4 | Vertical sample step for side-wall scans. |
 | `BODY.MAX_PUSH` | 30 | Cap on the iterative "push out of wall" loop. |
+| `BODY.SIDE_TOP_MARGIN` | 8 | Top of body where SIDE collision is suppressed (head/upper-torso clearance under low overhead obstacles). Ceiling collision still uses the full body top, so head-bumps work normally. |
 
 Previous values (HALF_WIDTH=15, HEIGHT=60) were tuned for an earlier
 AVATAR_SCALE=0.3 and were ~2× the visible character height, which caused
@@ -83,22 +84,60 @@ don't pixel-collide against the avatar's actual silhouette.
 
 ## Physics
 
-All values **match `legacy/src/movements.mxml`** verbatim (lines
-447–453) at the original 24 fps:
+Most values match `legacy/src/movements.mxml` verbatim (lines 447–453)
+at the original 24 fps. **Two intentional deviations** — `JUMP_IMPULSE`
+and the new `STEP_UP` — are flagged below and justified in calibration
+v2 (see `git log src/game/Movements.ts`).
 
 | Constant | Value | Source |
 | --- | --- | --- |
 | `GRAVITY` | 2 | line 448 |
 | `MAX_FALL_SPEED` | 12 | -MAXFALLINGSPEED on line 449 |
-| `JUMP_IMPULSE` | 14.5 | JUMPSPEED on line 453 |
+| `JUMP_IMPULSE` | **15.5** ⚠️ deviates from legacy 14.5 | see below |
 | `WALK_SPEED` | 6 | 4 × gameSpeed (1.5) on line 452 |
 | `MAX_RUN_SPEED` | 12 | 8 × gameSpeed on line 454 |
 | `RUN_ACCEL` | 0.3 | 0.2 × gameSpeed on line 450 |
 | `RUN_BRAKE` | 1.5 | 1 × gameSpeed on line 451 |
+| `STEP_UP` | **18** ⚠️ no legacy equivalent | see below |
 
 **Theoretical max jump rise** under symplectic Euler at integer ticks:
-`14.5 + 12.5 + 10.5 + 8.5 + 6.5 + 4.5 + 2.5 + 0.5 = 60 px` from feet
-(absolute, independent of avatar size).
+- Legacy `14.5`: `14.5 + 12.5 + 10.5 + 8.5 + 6.5 + 4.5 + 2.5 + 0.5 = 60 px`
+- Port `15.5`: `15.5 + 13.5 + 11.5 + 9.5 + 7.5 + 5.5 + 3.5 + 1.5 = 68 px`
+
+### Why JUMP_IMPULSE = 15.5 (not legacy 14.5)
+
+The displacement0 leftmost-cloud (y=389) → orb-stand (y=333) jump
+needs 56 px of vertical rise. At legacy 14.5, max rise is 60 px — only
+4 px of margin, which playtests as "exact-timing only" (the user
+flagged this as much harder than the original). 15.5 yields 68 px max
+rise (12 px margin), matching the leeway the user reports in the
+original. The original Flash game may have had additional ledge-grab
+or coyote-time mechanics that gave functional leeway with the same
+JUMP_IMPULSE; bumping the constant is a simpler shim than implementing
+those mechanics.
+
+### STEP_UP — auto-snap to slightly-higher floors
+
+When the avatar moves horizontally, if there's a floor at the new x
+within `STEP_UP` px above current y, the avatar snaps UP to it instead
+of side-pushing against its "wall." Two effects unified:
+
+1. **Walking up player-drawn graph curves.** A curve drawn while the
+   player runs at MAX_RUN_SPEED=12 with graph speedPerTick=1.5 has a
+   max world-slope of `~17.5 px-rise per 12 px-run`. STEP_UP=18 covers
+   it; smaller values cause the avatar to "fall through" rising
+   slopes (gravity pulls them off the curve when the curve at the new
+   x is above their current y).
+2. **Landing on a ledge after a long jump.** When the avatar's
+   near-apex feet pass a platform's left edge by a few pixels at a y
+   slightly below the platform top, STEP_UP snaps them up onto the
+   platform instead of phantom-bonking against the platform's left
+   wall and stalling.
+
+STEP_UP only triggers when (a) the avatar is moving horizontally
+(vx ≠ 0) AND (b) they're on the ground OR rising-and-near-apex
+(`vy >= -RUN_BRAKE`). This prevents step-up from grabbing unrelated
+platforms during a hard upward jump.
 
 ## Graph drawing
 
