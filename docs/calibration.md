@@ -136,9 +136,9 @@ deviation).
 The tolerance is **slope-aware**:
 
 - **On a slope** (current floor at `state.x` differs from the floor
-  4 px ahead in the direction of motion): tolerance = 20. Slope
-  discontinuities up to ~40 px-rise per tick pass. The avatar walks
-  over kinks without getting stuck.
+  4 px ahead in the direction of motion): tolerance = 30. Slope
+  discontinuities up to ~60 px-rise per tick pass. The avatar walks
+  over jagged kinks without getting stuck.
 - **On flat ground** (current floor and 4-px-ahead floor are equal):
   tolerance = 8. Boundary cases (curve overhead dangling above the
   painted floor) fail when the gap is greater than ~16 px — the
@@ -155,6 +155,22 @@ inadvertently let the avatar grab a platform from BELOW mid-jump
 its top). Cliff jumps in the level have enough margin that they
 reach above the destination platform at apex and fall onto it
 normally without needing ledge-grab assistance.
+
+### Ground catch in the ground snap
+
+If step-up/step-down both fail to fire on a tick (e.g., step-up's
+continuity check rejected a sharp slope kink, or `state.y ==
+newFloorY` exactly so neither branch qualifies), execution falls
+through to the regular ground-snap. Without help, the avatar can
+end up `onGround = false` on a tick where they were genuinely
+walking along a slope — they then drift off the curve laterally
+under gravity over the next few ticks.
+
+The "ground catch": if the avatar was `onGround` last tick, isn't
+rising (`vy >= 0`, so not mid-jump), and the floor is within
+`STEP_DOWN` of current y, snap to it anyway. Prevents drifting off
+bumpy slopes for one-tick fallthroughs. Real cliffs (`groundY - y >
+STEP_DOWN`) still fall through normally.
 
 ### STEP_UP / STEP_DOWN — auto-track the floor while walking
 

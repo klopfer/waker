@@ -313,7 +313,7 @@ export function step(
         yHere !== Number.POSITIVE_INFINITY &&
         yAhead !== Number.POSITIVE_INFINITY &&
         yHere !== yAhead;
-      const continuityTolerance = isOnSlope ? 20 : 8;
+      const continuityTolerance = isOnSlope ? 30 : 8;
 
       const midX = (state.x + x) / 2;
       const midFloorY = ground.groundYBelow(midX, state.y - PHYSICS.STEP_UP);
@@ -369,6 +369,17 @@ export function step(
     if (y >= groundY) {
       y = groundY;
       if (vy > 0) vy = 0;
+      onGround = true;
+    } else if (state.onGround && vy >= 0 && groundY - y <= PHYSICS.STEP_DOWN) {
+      // GROUND CATCH: avatar was on the ground last tick, isn't rising
+      // (vy >= 0, so not jumping), and the floor is within STEP_DOWN of
+      // their current y. Snap to it. Prevents the avatar from drifting
+      // off bumpy descending slopes when step-down/up didn't fire on
+      // a single tick (e.g., a tick where state.y == newFloorY exactly,
+      // or a tick where step-up's continuity check failed but the slope
+      // is genuinely walkable).
+      y = groundY;
+      vy = 0;
       onGround = true;
     } else {
       onGround = false;
