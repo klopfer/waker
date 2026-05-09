@@ -133,21 +133,35 @@ floor (curve overhead with an air gap below it) fails (midpoint
 floor is much further from the average than the slope's natural
 deviation).
 
-The tolerance is **slope-aware**:
+The tolerance is **slope-aware**, gated by the average slope of the
+path itself:
 
-- **On a slope** (current floor at `state.x` differs from the floor
-  4 px ahead in the direction of motion): tolerance = 30. Slope
-  discontinuities up to ~60 px-rise per tick pass. The avatar walks
-  over jagged kinks without getting stuck.
-- **On flat ground** (current floor and 4-px-ahead floor are equal):
-  tolerance = 8. Boundary cases (curve overhead dangling above the
-  painted floor) fail when the gap is greater than ~16 px — the
-  smallest "auto-grab worthy" overhead gap is well above this in
-  displacement0, so the avatar walks under instead of auto-grabbing.
+```
+avgSlope = |state.y - newFloorY| / (new_x - state.x)
+isSlopePath = avgSlope <= 2.0
+continuityTolerance = isSlopePath ? 30 : 8
+```
 
-The slope detector uses a tight `searchFromY = state.y - 1` so it
-only sees the surface the avatar is actually standing on (not any
-separate higher surfaces overhead).
+Why average slope (not a probe ahead): a probe-based detector ("is
+the floor at state.x equal to the floor 4 px ahead?") fails on
+flat-curve-segment-to-sloped-segment transitions — both probes land
+on the flat section and look identical to flat ground. The avatar
+then gets the tight tolerance and gets stuck at the slope start.
+
+The avgSlope discriminator measures the actual path's slope
+directly:
+
+- **Continuous slopes** are bounded by max draw-time slope (1.45
+  per x — derived from `MAX_RUN_SPEED=12 / maxValue=550 × height/2
+  / speedPerTick=1.5`). So `avgSlope ≤ 1.45 ≤ 2.0` always for
+  in-curve walking → loose tolerance 30, slope kinks pass.
+- **Auto-grab boundaries** (curve overhead, air gap below) produce
+  `avgSlope = gap/12` — > 2.0 for any gap big enough that the body
+  could fit under (i.e., the cases the user wants denied).
+
+The 30 px tolerance covers in-curve midpoint deviation (max ~9 px
+analytically) with plenty of headroom; the 8 px tolerance rejects
+overhead cases with `gap > 16 px`.
 
 Mid-air step-up (the previous `nearApex` branch) was REMOVED — it
 inadvertently let the avatar grab a platform from BELOW mid-jump

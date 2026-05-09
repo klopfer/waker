@@ -305,15 +305,30 @@ export function step(
   if (vx !== 0 && onGround) {
     const newFloorY = ground.groundYBelow(x, state.y - PHYSICS.STEP_UP);
     if (newFloorY < state.y && newFloorY >= state.y - PHYSICS.STEP_UP) {
-      // Slope detection at avatar's current position.
-      const probeOffset = vx > 0 ? 4 : -4;
-      const yHere = ground.groundYBelow(state.x, state.y - 1);
-      const yAhead = ground.groundYBelow(state.x + probeOffset, state.y - 1);
-      const isOnSlope =
-        yHere !== Number.POSITIVE_INFINITY &&
-        yAhead !== Number.POSITIVE_INFINITY &&
-        yHere !== yAhead;
-      const continuityTolerance = isOnSlope ? 30 : 8;
+      // Discriminate "step up onto a slope continuation" from "auto-grab
+      // a separate higher floor (curve overhead)" by the AVERAGE SLOPE
+      // of the path from (state.x, state.y) to (new_x, newFloorY):
+      //
+      //   - Continuous slopes are bounded by max draw-time slope:
+      //       max delta_y per draw-tick = 12 × 100 / 550 = 2.18 px
+      //       delta_x per draw-tick     = 1.5 (speedPerTick)
+      //       max segment slope         = 2.18 / 1.5 = 1.45 per x
+      //     So `avgSlope = dy/dx` ≤ 1.45 across any in-curve walk.
+      //
+      //   - Auto-grab cases (curve overhead with an air gap below it)
+      //     produce a sharp y jump from current to new floor: avgSlope
+      //     = gap / dx, often > 2 for the gaps we want to deny.
+      //
+      // The probe-based detector this replaced ("is yHere == yAhead 4 px
+      // ahead?") fails on flat-curve-segment-to-sloped-segment
+      // transitions because both probes land on the flat section and
+      // look identical to flat ground — incorrectly applying the
+      // tight tolerance and rejecting legitimate slope walks.
+      const dx = Math.abs(x - state.x);
+      const dy = state.y - newFloorY;
+      const avgSlope = dx > 0 ? Math.abs(dy / dx) : 0;
+      const isSlopePath = avgSlope <= 2.0;
+      const continuityTolerance = isSlopePath ? 30 : 8;
 
       const midX = (state.x + x) / 2;
       const midFloorY = ground.groundYBelow(midX, state.y - PHYSICS.STEP_UP);
