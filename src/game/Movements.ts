@@ -36,11 +36,15 @@ export const PHYSICS = {
   // Vertical "step-up" allowance: when walking horizontally, the avatar
   // automatically snaps up to floors that are within this many px above
   // current y. Lets sloped curves and small painted-ground steps be
-  // walkable without jumping. Larger than max curve-rise per tick at run
-  // speed (~17 px) so even steep player-drawn slopes are traversable;
-  // smaller than the staircase gaps in the painted level so we don't
-  // accidentally snap onto unrelated platforms.
-  STEP_UP: 18,
+  // walkable without jumping. Calibrated symmetrically with STEP_DOWN —
+  // the analytical max curve-y change per game tick is ~17.4 px (max
+  // draw-time slope 1.45 per graph-x × 12 graph-x crossed at run speed).
+  // 24 gives 6 px of headroom over that, matching the descent margin so
+  // the avatar's experience walking up vs down a curve is symmetric.
+  // Still well below the smallest painted-floor staircase gap in
+  // displacement0 (56 px from leftmost cloud to orb-stand), so this
+  // can't accidentally let the avatar walk up an intended cliff.
+  STEP_UP: 24,
   // Vertical "step-down" allowance: when walking on ground, snap DOWN
   // to floors that are this many px below current y (rather than going
   // briefly airborne and letting gravity drift the avatar off the
