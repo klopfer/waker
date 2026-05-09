@@ -60,6 +60,26 @@ const ORB_Y = ORIGIN_Y - STAND_CRADLE_LIFT;
 // orb can plot.
 const ORIGIN_MAX_GLOW_STRENGTH = 4;
 
+// Exit portal placement copied from displacement1.mxml line 26:
+//   super.setExit(740, 195)
+// Flash placed exit.png with its top-left at the given coords (Image
+// default anchor (0, 0)), so we mirror that with anchor (0, 0).
+const EXIT_X = 740;
+const EXIT_Y = 195;
+
+// Key-prompt floating sprites — visual hints that fade in/out based on
+// context. Each prompt bobs ~3 px on a slow sine for a "floating" feel.
+const PROMPT_BOB_AMPLITUDE = 3;
+const PROMPT_BOB_RATE = 0.12;
+// How close (in px) the avatar has to be to the orb for the "press D"
+// pickup prompt to appear. Slightly larger than ORB_PICKUP_RADIUS so the
+// player gets a hint BEFORE they're already close enough to grab it.
+const PROMPT_D_RADIUS = 110;
+// Spacebar prompt fades out after the player has been on the ground long
+// enough to read it AND has not jumped. The original game just showed
+// onscreen hints; we just guard against showing it forever.
+const PROMPT_SPACEBAR_HIDE_AFTER_TICKS = 24 * 6; // ~6 sec at 24 Hz
+
 const GAME_KEYS = [
   'ArrowLeft',
   'ArrowRight',
@@ -100,13 +120,17 @@ async function main(): Promise<void> {
 
   const assets = new AssetLoader();
 
-  const [bgTex, groundTex, orbTex, originTex, graphBgTex] = await Promise.all([
-    assets.image('bgWorld1_1'),
-    assets.image('leveld1_collision'),
-    assets.image('disOrb'),
-    assets.image('displaceOrigin'),
-    assets.image('graphBGD'),
-  ]);
+  const [bgTex, groundTex, orbTex, originTex, graphBgTex, exitTex, helpDTex, helpSpaceTex] =
+    await Promise.all([
+      assets.image('bgWorld1_1'),
+      assets.image('leveld1_collision'),
+      assets.image('disOrb'),
+      assets.image('displaceOrigin'),
+      assets.image('graphBGD'),
+      assets.image('exit'),
+      assets.image('help_image_D'),
+      assets.image('help_image_spacebar'),
+    ]);
 
   const bgSprite = new Sprite(bgTex);
   app.stage.addChild(bgSprite);
@@ -180,6 +204,39 @@ async function main(): Promise<void> {
   });
   app.stage.addChild(orb.container);
 
+  // Exit portal: same coords (740, 195) the legacy level uses, anchor
+  // (0, 0) to match Flash's default Image anchoring. The portal stays
+  // visually "alive" via a pulsing cyan GlowFilter — without it the
+  // 40×40 sprite would read as a static decoration.
+  const exitSprite = new Sprite(exitTex);
+  exitSprite.anchor.set(0, 0);
+  exitSprite.x = EXIT_X;
+  exitSprite.y = EXIT_Y;
+  const exitGlow = new GlowFilter({
+    color: 0x66ffff,
+    distance: 18,
+    outerStrength: 1.5,
+    innerStrength: 0,
+    quality: 0.3,
+  });
+  exitSprite.filters = [exitGlow];
+  app.stage.addChild(exitSprite);
+
+  // Key prompts — small floating help glyphs that appear contextually.
+  // The "D" prompt orbits the orb when it's pickupable (avatar nearby +
+  // not yet held) and re-appears above the avatar's head when held to
+  // remind the player they can drop it. Spacebar prompt shows above the
+  // avatar's head at level start until it auto-hides.
+  const promptD = new Sprite(helpDTex);
+  promptD.anchor.set(0.5, 1);
+  promptD.alpha = 0;
+  app.stage.addChild(promptD);
+
+  const promptSpacebar = new Sprite(helpSpaceTex);
+  promptSpacebar.anchor.set(0.5, 1);
+  promptSpacebar.alpha = 0;
+  app.stage.addChild(promptSpacebar);
+
   const label = new Text({
     text:
       'Waker — Phase 4 step 5: orb pickup + graph drawing\n' +
@@ -209,6 +266,14 @@ async function main(): Promise<void> {
   const sim = new FixedStep({ hz: SIM_HZ });
 
   let tickCount = 0;
+  // Latches the first time the player presses jump so the spacebar prompt
+  // can hide. Also serves as a cheap "tutorial complete" signal we can
+  // reuse later if more prompts are added.
+  let firstJumped = false;
+  // Phase accumulator drives prompt bobbing AND exit-portal glow pulse —
+  // sharing one phase keeps everything visually in sync without tracking
+  // separate timers.
+  let promptPhase = 0;
 
   app.ticker.add(({ deltaMS }) => {
     const { steps } = sim.advance(deltaMS);
@@ -276,6 +341,51 @@ async function main(): Promise<void> {
       const distToOrigin = Math.abs(body.state.x - ORIGIN_X);
       const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / GRAPH_MAX_VALUE));
       originGlow.outerStrength = proximity * ORIGIN_MAX_GLOW_STRENGTH;
+
+      // Exit portal pulse — half the prompt-bob rate so the portal feels
+      // calm/inviting rather than urgent.
+      promptPhase += PROMPT_BOB_RATE;
+      exitGlow.outerStrength = 1.5 + Math.sin(promptPhase * 0.5) * 1.0;
+      const promptBob = Math.sin(promptPhase) * PROMPT_BOB_AMPLITUDE;
+
+      // Latch first-jump so the spacebar prompt knows when to fade.
+      if (moveInputs.jumpPressed) firstJumped = true;
+
+      // Prompt-D visibility:
+      //   in-world + avatar within PROMPT_D_RADIUS  → "press D to pick up"
+      //   held                                       → "press D to drop"
+      let promptDTargetAlpha = 0;
+      if (orb.state === 'held') {
+        promptDTargetAlpha = 1;
+        // Place above avatar's head, slightly to the right of the held orb
+        // so the two glyphs don't stack on each other.
+        promptD.x = body.state.x + 18;
+        promptD.y = body.state.y - 88 + promptBob;
+      } else {
+        const dxOrb = body.state.x - orb.x;
+        const dyOrb = body.state.y - orb.y;
+        const distOrb = Math.sqrt(dxOrb * dxOrb + dyOrb * dyOrb);
+        if (distOrb < PROMPT_D_RADIUS) promptDTargetAlpha = 1;
+        // Position above the orb regardless of avatar distance — when the
+        // alpha lerp ramps up, the prompt is already in place.
+        promptD.x = orb.x;
+        promptD.y = orb.y - 36 + promptBob;
+      }
+
+      // Prompt-spacebar visibility: only at the very start, fades when
+      // the player jumps OR the timer runs out. Anchors above avatar's
+      // head, bobbing on the OPPOSITE phase from the D prompt so the
+      // two never look glued together.
+      const spacebarTargetAlpha =
+        !firstJumped && tickCount < PROMPT_SPACEBAR_HIDE_AFTER_TICKS ? 1 : 0;
+      promptSpacebar.x = body.state.x;
+      promptSpacebar.y = body.state.y - 78 - promptBob;
+
+      // Smooth alpha fade — the lerp factor (0.15) is fast enough to
+      // feel responsive but slow enough that brief proximity dips don't
+      // visibly flicker the prompt.
+      promptD.alpha += (promptDTargetAlpha - promptD.alpha) * 0.15;
+      promptSpacebar.alpha += (spacebarTargetAlpha - promptSpacebar.alpha) * 0.15;
 
       input.endTick();
     }
