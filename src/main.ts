@@ -20,27 +20,32 @@ const SIM_HZ = 24;
 // A/B against the original — the value is captured at level load.
 const AVATAR_SCALE = 0.25;
 
-// leveld1 entrance from legacy/src/levels/displacement1.mxml line 27.
-const SPAWN_X = 80;
+// displacement0 (tutorial — actually the FIRST playable level in the original
+// sequence; what we previously had loaded as "leveld1" was displacement1, the
+// second level). Constants below come from legacy/src/levels/displacement0.mxml.
+//
+// Entrance: super.setEntrance(0, 467) — a marker, not a strict spawn location.
+// The avatar uses gravity onto the painted floor anyway, so we spawn slightly
+// inset from the left edge well above the floor and let it fall onto the
+// leftmost cloud platform (painted-floor topmost-solid y=389 at x=80..250).
+const SPAWN_X = 100;
 const SPAWN_Y = 100;
 
-// Orb + graph layout copied from displacement1.mxml line 38:
-//   super.addGraph(0, 0, 308, 200, 400, 300, 300, 100, 200, 430, 0, 200, 438, …)
-// graphtype=0 (displacement), x=308, y=200, scale=400 (maxValue),
-// graph 300x300, orb at (200, 430), origin at (200, 438).
-const GRAPH_X = 308;
-const GRAPH_Y = 200;
-const GRAPH_W = 300;
-const GRAPH_H = 300;
-// The avatar can travel at most ~600 px from the origin at x=200 before hitting
-// the level edge clamps; 600 maps that full traversable range onto the graph
-// height. Original game used 400 here but the current test playground rewards
-// the larger range.
-const GRAPH_MAX_VALUE = 600;
-const ORIGIN_X = 200;
-// Anchor (0.5, 1) means y is the sprite's BOTTOM. Place the origin marker's
-// bottom on the painted floor so it reads as a "stand" sitting on the ground.
-const ORIGIN_Y = 498;
+// Orb + graph layout from displacement0.mxml line 39:
+//   super.addGraph(0, 0, 800-110-200, 134, 550, 200, 200, 70, 300, 290, 0, 300, 273, 0, 0)
+// graphtype=0 (displacement), graphratio=0 (square), x=490, y=134, scale=550,
+// width=200, height=200, offset=70, orbx=300, orby=290, originx=300, originy=273.
+const GRAPH_X = 490;
+const GRAPH_Y = 134;
+const GRAPH_W = 200;
+const GRAPH_H = 200;
+const GRAPH_MAX_VALUE = 550;
+const ORIGIN_X = 300;
+// The legacy origin Y (273) is a Flash top-left coordinate; we use a (0.5, 1)
+// bottom-anchor and place the origin's bottom on the painted floor at x=300.
+// Topmost-solid pixel in levelTD_ground.png at x=300 is y=333 (measured via
+// pngjs sweep), which is the second-step cloud platform.
+const ORIGIN_Y = 333;
 // Lift in pixels at which the stand's cradle holds the orb above the floor.
 // ~½ to ⅔ of the visible orb glyph diameter (20 px), per the v6 review,
 // so the orb visibly nests inside the U-shape of the stand instead of
@@ -64,12 +69,12 @@ const ORB_Y = ORIGIN_Y - STAND_CRADLE_LIFT;
 // orb can plot.
 const ORIGIN_MAX_GLOW_STRENGTH = 4;
 
-// Exit portal placement copied from displacement1.mxml line 26:
-//   super.setExit(740, 195)
+// Exit portal placement copied from displacement0.mxml line 27:
+//   super.setExit(750, 174)
 // Flash placed exit.png with its top-left at the given coords (Image
 // default anchor (0, 0)), so we mirror that with anchor (0, 0).
-const EXIT_X = 740;
-const EXIT_Y = 195;
+const EXIT_X = 750;
+const EXIT_Y = 174;
 
 // Key-prompt floating sprites — visual hints that fade in/out based on
 // context. Each prompt bobs ~3 px on a slow sine for a "floating" feel.
@@ -88,14 +93,14 @@ const PROMPT_SPACEBAR_VISIBLE_TICKS = 24 * 3; // ~3 sec at 24 Hz
 const PROMPT_RUN_VX_THRESHOLD = 4; // px/tick — past walking, into running
 
 // Animated background. The painted sun's bright-white centroid in
-// leveld1_bg.png is at (123, 97) (measured by the color-key tool). A
-// procedural soft-glow disc layered on top of the bg in 'add' blend
-// reads as the painted sun "pulsing" without needing a separate
-// sun-mask asset. Cloud drift is intentionally NOT done procedurally —
-// no cloud PNG is curated, and procedural cloud sprites would visually
-// fight the painted cloud bank.
-const SUN_X = 123;
-const SUN_Y = 97;
+// levelTD_bg.png (the tutorial bg) is at (207, 102) — measured by a
+// pngjs sweep. A procedural soft-glow disc layered on top of the bg
+// in 'add' blend reads as the painted sun "pulsing" without needing
+// a separate sun-mask asset. Cloud drift is intentionally NOT done
+// procedurally — no cloud PNG is curated, and procedural cloud
+// sprites would visually fight the painted cloud bank.
+const SUN_X = 207;
+const SUN_Y = 102;
 const SUN_PULSE_BASE_RADIUS = 36;
 const SUN_PULSE_AMPLITUDE = 8;
 const SUN_PULSE_BASE_ALPHA = 0.22;
@@ -150,8 +155,8 @@ async function main(): Promise<void> {
   const assets = new AssetLoader();
 
   const [bgTex, groundTex, orbTex, originTex, graphBgTex, exitTex] = await Promise.all([
-    assets.image('bgWorld1_1'),
-    assets.image('leveld1_collision'),
+    assets.image('bgWorld1_t'),
+    assets.image('levelTD_collision'),
     assets.image('disOrb'),
     assets.image('displaceOrigin'),
     assets.image('graphBGD'),
@@ -176,7 +181,7 @@ async function main(): Promise<void> {
   const groundSprite = new Sprite(groundTex);
   app.stage.addChild(groundSprite);
 
-  const pixelGround = await loadPixelGround(assets.url('leveld1_collision'));
+  const pixelGround = await loadPixelGround(assets.url('levelTD_collision'));
   // Avatar's ground: painted floor + (later) any solidified curves the
   // player draws. Does NOT include the stand cradle — we don't want the
   // avatar bumping up onto the stand when walking past it.
@@ -298,7 +303,7 @@ async function main(): Promise<void> {
 
   const label = new Text({
     text:
-      'Waker — Phase 4 step 5: orb pickup + graph drawing\n' +
+      'Waker — displacement0 (tutorial): orb pickup + graph drawing\n' +
       'arrows: walk   |   S/shift: sprint   |   space/up: jump   |   D: pick up / drop orb',
     style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, align: 'center' },
   });
@@ -503,7 +508,7 @@ async function main(): Promise<void> {
     tickReadout.text = `tick ${tickCount}   avatar=(${body.state.x.toFixed(0)},${body.state.y.toFixed(0)})   ${orbState}   ${graphState}`;
   });
 
-  console.log('Waker Phase 4 step 5 ready: orb + graph mechanic wired up.');
+  console.log('Waker displacement0 (tutorial) ready: orb + graph mechanic wired up.');
 }
 
 void main();
