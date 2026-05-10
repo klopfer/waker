@@ -184,10 +184,34 @@ function anySolidAlongTopEdge(
   return ground.solidAt(centerX + BODY.HEAD_HALF_WIDTH, topY);
 }
 
+// Distinguish a true wall from a slope/floor at the avatar's leading edge.
+// A wall has solid pixels extending BELOW the avatar's feet (continuous
+// vertical mass — platform side, painted-floor cliff, etc.). A slope or
+// curve-top sits ABOVE the feet at the edge: the curve's solid band is
+// entirely above feet, with empty space (or a different floor entirely)
+// below.
+//
+// Without this check, side-push trips on the LEADING EDGE of any uptick
+// in a curve the avatar is walking up — the body's lower-near-feet
+// samples are inside the rising curve's solid band at edgeX, even though
+// step-up would happily snap them onto that curve next tick. Result:
+// avatar oscillates against the slope's leading edge and the user has to
+// jump to break out. Checking solidAt(edgeX, feet+1) cheaply tells us
+// "is this a real wall or just a slope I'm about to step onto" — for a
+// slope, no solid below feet → don't push.
+function isWallAt(edgeX: number, bottomY: number, ground: GroundProvider): boolean {
+  return ground.solidAt(edgeX, bottomY + 1);
+}
+
 function pushOutFromWallRight(x: number, bottomY: number, ground: GroundProvider): number {
   let cur = x;
   for (let i = 0; i < BODY.MAX_PUSH; i++) {
-    if (!anySolidAlongVerticalEdge(cur + BODY.HALF_WIDTH, bottomY, ground)) return cur;
+    const edgeX = cur + BODY.HALF_WIDTH;
+    if (!anySolidAlongVerticalEdge(edgeX, bottomY, ground)) return cur;
+    // Solid edge found — but is it a WALL or just a slope/floor about to
+    // step up onto? If solid doesn't extend below feet, treat as slope
+    // and let the avatar pass (step-up will catch them next tick).
+    if (!isWallAt(edgeX, bottomY, ground)) return cur;
     cur -= 1;
   }
   return cur;
@@ -196,7 +220,9 @@ function pushOutFromWallRight(x: number, bottomY: number, ground: GroundProvider
 function pushOutFromWallLeft(x: number, bottomY: number, ground: GroundProvider): number {
   let cur = x;
   for (let i = 0; i < BODY.MAX_PUSH; i++) {
-    if (!anySolidAlongVerticalEdge(cur - BODY.HALF_WIDTH - 1, bottomY, ground)) return cur;
+    const edgeX = cur - BODY.HALF_WIDTH - 1;
+    if (!anySolidAlongVerticalEdge(edgeX, bottomY, ground)) return cur;
+    if (!isWallAt(edgeX, bottomY, ground)) return cur;
     cur += 1;
   }
   return cur;

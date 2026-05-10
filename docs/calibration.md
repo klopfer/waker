@@ -170,6 +170,32 @@ its top). Cliff jumps in the level have enough margin that they
 reach above the destination platform at apex and fall onto it
 normally without needing ledge-grab assistance.
 
+### Side-push wall vs slope discriminator
+
+A subtle but crucial check inside `pushOutFromWall{Right,Left}`: the
+avatar's body samples can overlap a curve's solid band at the LEADING
+EDGE (`edgeX = state.x + vx + HALF_WIDTH`) when the avatar is walking
+toward a rising slope but their new x doesn't yet reach the rise.
+Without help, side-push trips on the slope as if it were a wall and
+pushes the avatar back. The avatar oscillates and has to JUMP to
+break out — playtested on jagged-curve upticks the user couldn't
+walk over without jumping.
+
+Discriminator: a wall has solid extending BELOW the feet (continuous
+vertical mass — platform side, painted-floor cliff). A slope/floor
+at the edge has solid only ABOVE the feet (its band is entirely
+higher on screen than the avatar's feet level). Cheap test:
+`solidAt(edgeX, bottomY + 1)`:
+
+- **True**: solid 1 px below feet → wall → push.
+- **False**: no solid just below feet → slope/floor at the leading
+  edge → DON'T push, let the avatar continue (step-up snaps them
+  onto it next tick).
+
+Effect: walking up jagged curve sections no longer requires jumping
+over each uptick. Wall blocking against painted-floor cliffs still
+works because painted-floor bodies extend continuously below feet.
+
 ### Ground catch in the ground snap
 
 If step-up/step-down both fail to fire on a tick (e.g., step-up's
