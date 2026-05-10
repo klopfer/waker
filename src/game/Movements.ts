@@ -185,22 +185,26 @@ function anySolidAlongTopEdge(
 }
 
 // Distinguish a true wall from a slope/floor at the avatar's leading edge.
-// A wall has solid pixels extending BELOW the avatar's feet (continuous
-// vertical mass — platform side, painted-floor cliff, etc.). A slope or
-// curve-top sits ABOVE the feet at the edge: the curve's solid band is
-// entirely above feet, with empty space (or a different floor entirely)
-// below.
 //
-// Without this check, side-push trips on the LEADING EDGE of any uptick
-// in a curve the avatar is walking up — the body's lower-near-feet
-// samples are inside the rising curve's solid band at edgeX, even though
-// step-up would happily snap them onto that curve next tick. Result:
-// avatar oscillates against the slope's leading edge and the user has to
-// jump to break out. Checking solidAt(edgeX, feet+1) cheaply tells us
-// "is this a real wall or just a slope I'm about to step onto" — for a
-// slope, no solid below feet → don't push.
+// Semantic definition: a WALL is something the avatar can't step over (its
+// top is higher than STEP_UP above feet). A slope/floor's top is within
+// step-up range and the avatar would normally walk onto it.
+//
+// The earlier `solidAt(feet + 1)` heuristic worked for descents but failed
+// for gentle ascending slopes where the curve's solid band still includes
+// feet + 1 (band extends up to 7 px below feet for a curve whose line is
+// near feet level). For those cases the discriminator misclassified the
+// slope as a wall and side-push tripped, requiring the user to jump.
+//
+// New approach: query the topmost-solid at the edge (search from very
+// high). If that top is within STEP_UP of feet, it's reachable — treat
+// as slope/floor, don't push. If the top is higher than STEP_UP above
+// feet, it's a wall — push.
 function isWallAt(edgeX: number, bottomY: number, ground: GroundProvider): boolean {
-  return ground.solidAt(edgeX, bottomY + 1);
+  const topY = ground.groundYBelow(edgeX, bottomY - 1000);
+  if (topY === Number.POSITIVE_INFINITY) return false;
+  if (topY >= bottomY) return false; // Obstacle is at or below feet — not a side wall.
+  return topY < bottomY - PHYSICS.STEP_UP; // Top too high to step over → wall.
 }
 
 function pushOutFromWallRight(x: number, bottomY: number, ground: GroundProvider): number {

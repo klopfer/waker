@@ -178,23 +178,37 @@ EDGE (`edgeX = state.x + vx + HALF_WIDTH`) when the avatar is walking
 toward a rising slope but their new x doesn't yet reach the rise.
 Without help, side-push trips on the slope as if it were a wall and
 pushes the avatar back. The avatar oscillates and has to JUMP to
-break out — playtested on jagged-curve upticks the user couldn't
-walk over without jumping.
+break out.
 
-Discriminator: a wall has solid extending BELOW the feet (continuous
-vertical mass — platform side, painted-floor cliff). A slope/floor
-at the edge has solid only ABOVE the feet (its band is entirely
-higher on screen than the avatar's feet level). Cheap test:
-`solidAt(edgeX, bottomY + 1)`:
+The discriminator uses the **semantic** definition of wall vs slope:
+a wall is something the avatar CAN'T step over (its top is higher
+than `STEP_UP` above feet); a slope/floor's top is reachable.
 
-- **True**: solid 1 px below feet → wall → push.
-- **False**: no solid just below feet → slope/floor at the leading
-  edge → DON'T push, let the avatar continue (step-up snaps them
-  onto it next tick).
+```ts
+function isWallAt(edgeX, bottomY, ground) {
+  const topY = ground.groundYBelow(edgeX, bottomY - 1000); // search from very high
+  if (topY === Infinity)  return false;                    // no obstacle
+  if (topY >= bottomY)    return false;                    // obstacle at/below feet
+  return topY < bottomY - PHYSICS.STEP_UP;                 // top too high → wall
+}
+```
 
-Effect: walking up jagged curve sections no longer requires jumping
-over each uptick. Wall blocking against painted-floor cliffs still
-works because painted-floor bodies extend continuously below feet.
+Earlier discriminator iterations:
+
+- v13: `solidAt(edgeX, bottomY + 1)`. Worked for descents but failed
+  on gentle ascending slopes where the curve's solid band still
+  includes `feet + 1` (the band can extend up to 7 px below feet
+  when the line is near feet level). The slope was misclassified
+  as wall.
+- v14 (current): asks "is the obstacle's top within step-up range?"
+  This is the actual semantic question — handles all ascent slopes
+  (curve top is always within ~17 px of feet for in-curve walking,
+  well under STEP_UP=40) while still catching real walls (top far
+  above feet).
+
+Wall blocking against painted-floor cliffs still works because their
+tops are far above feet (e.g., orb-stand top at y=333 vs avatar on
+mid-step at y=431 → top 98 px above feet, well over STEP_UP=40).
 
 ### Ground catch in the ground snap
 
