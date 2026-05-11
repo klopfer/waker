@@ -2,7 +2,7 @@
 
 HTML5/TypeScript port of **Waker** (project codename *Woosh2*), an educational physics platformer originally built in Flash/Flex by [MIT Gambit Game Lab](https://gambit.mit.edu) circa 2008–2012. The player picks up "orbs" and *draws* velocity / displacement / mixed graphs whose curves solidify into platforms.
 
-> **Status: early port.** Discovery and planning are complete. The foundation (Vite + PixiJS + engine leaves), the full asset pipeline (JPEXS → MP4/PNG/MP3 + curation), and the first visual milestone (the avatar walks across the canvas with idle / walk / run / jump-up / jump-down × left + right state sheets) are committed. Phase 4 — porting the gameplay AS3/MXML to TypeScript — is up next. See [`flash-to-html5-conversion-plan.md`](flash-to-html5-conversion-plan.md) for the full plan and phase-by-phase status; §15 has lessons learned from the avatar extraction that apply to any future animation pull.
+> **Status: Phase 4 (gameplay port) in progress.** Foundation, asset pipeline, engine layer, avatar, physics + collision, and the orb/graph mechanic are all committed. The tutorial level (`displacement0`) plays end-to-end with calibrated physics — pick up the orb, draw a curve, drop it, walk on the solidified platform. **Current handoff doc:** [`STATUS.md`](STATUS.md) — read it first if you're picking up where the last session left off. Full plan and phase-by-phase status: [`flash-to-html5-conversion-plan.md`](flash-to-html5-conversion-plan.md). Physics + scaling reference: [`docs/calibration.md`](docs/calibration.md).
 
 ---
 
