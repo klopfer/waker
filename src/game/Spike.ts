@@ -45,20 +45,21 @@ export interface SpikeMotionState {
 }
 
 // ── Sizing ──
-// Bbox is the collision rectangle; the blob silhouette extends slightly
-// past it for visual feel (the irregular outline doesn't have to match
-// the collision box exactly). 30×30 is a touch larger than the legacy
-// 20×20 sprite — gives the spike enough visual weight to read as a
-// hazard at the avatar's 0.25 display scale.
-export const SPIKE_BBOX_W = 30;
-export const SPIKE_BBOX_H = 30;
-const BLOB_RADIUS = 15;
+// Match the legacy 20×20 sprite bbox exactly. Earlier 30×30 was too big
+// relative to the avatar (read as "challenging-by-accident" and visibly
+// lodged into platforms because the visible blob bottom extended below
+// posY + bboxHeight). With 20×20 and the blob+bumps tuned to fit just
+// inside the bbox, the visible bottom sits at ~posY+19 — touching the
+// platform top at legacy-authored coords without sinking into it.
+export const SPIKE_BBOX_W = 20;
+export const SPIKE_BBOX_H = 20;
+const BLOB_RADIUS = 7;
 const BLOB_BUMP_COUNT = 6;
-const BLOB_BUMP_RADIUS = 9;
-const BLOB_BUMP_DIST = 10;
-const SPIRAL_MAX_RADIUS = 7.5;
+const BLOB_BUMP_RADIUS = 4;
+const BLOB_BUMP_DIST = 5;
+const SPIRAL_MAX_RADIUS = 4.5;
 const SPIRAL_TURNS = 2.25;
-const SPIRAL_THICKNESS = 1.5;
+const SPIRAL_THICKNESS = 1.25;
 const SPIRAL_SEGMENTS = 48;
 const SPIRAL_ROTATION_PER_TICK = 0.06; // ~½ rotation/sec at 24 Hz
 
