@@ -1,7 +1,9 @@
 import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
 import { GlowFilter } from 'pixi-filters';
 import { AssetLoader } from './engine/AssetLoader.js';
+import { Audio } from './engine/Audio.js';
 import { FixedStep } from './engine/FixedStep.js';
+import { GraphTone } from './engine/GraphTone.js';
 import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
 import { CompositeGround } from './game/CompositeGround.js';
@@ -132,6 +134,20 @@ const SUN_COLOR = 0xfff4c8;
 // the scene stops feeling frozen.
 const BG_SWAY_RATE = 0.006;
 const BG_SWAY_AMPLITUDE = 2;
+
+// Audio: BGM + SFX volumes (50% / 60% feel about right on desktop
+// against the curated mp3 levels), plus the variant lists for jump
+// and land (the legacy game picks one at random per event so the
+// sound doesn't repeat too obviously).
+const BGM_VOLUME = 0.4;
+const SFX_VOLUME = 0.6;
+const JUMP_SFX_VARIANTS = ['sfxJump01', 'sfxJump02', 'sfxJump03', 'sfxJump04', 'sfxJump05'];
+const LAND_SFX_VARIANTS = ['sfxLand01', 'sfxLand02', 'sfxLand03', 'sfxLand04', 'sfxLand05'];
+// GraphTone settings: base 220 Hz (~A3) up to 2 octaves (A5) at max
+// curve value. Sine wave keeps it gentle, matching the original
+// game's sustained tone.
+const GRAPH_TONE_BASE_HZ = 220;
+const GRAPH_TONE_OCTAVES = 2;
 
 const GAME_KEYS = [
   'ArrowLeft',
@@ -432,6 +448,32 @@ async function main(): Promise<void> {
   const input = new Input(window, { preventDefaultFor: GAME_KEYS });
   const sim = new FixedStep({ hz: SIM_HZ });
 
+  // ───────────────────────────────────────────────────────────────────────
+  // Audio. Howler handles its own user-gesture unlock for SFX/BGM, but
+  // Web Audio (used by GraphTone) requires an explicit AudioContext
+  // created AFTER a user interaction. We lazy-init both BGM and the
+  // tone on the first key press inside the sim loop.
+  // ───────────────────────────────────────────────────────────────────────
+  const audio = new Audio({ bgmVolume: BGM_VOLUME, sfxVolume: SFX_VOLUME });
+  let audioCtx: AudioContext | null = null;
+  let graphTone: GraphTone | null = null;
+  let audioStarted = false;
+  const ensureAudioStarted = (): void => {
+    if (audioStarted) return;
+    audioStarted = true;
+    audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') void audioCtx.resume();
+    graphTone = new GraphTone(audioCtx, {
+      baseHz: GRAPH_TONE_BASE_HZ,
+      octaves: GRAPH_TONE_OCTAVES,
+    });
+    audio.playBgm('bgmWorld1', assets.url('bgmWorld1'));
+  };
+  const playSfxFrom = (variants: readonly string[]): void => {
+    const key = variants[Math.floor(Math.random() * variants.length)]!;
+    audio.playSfx(key, assets.url(key));
+  };
+
   let tickCount = 0;
   // Latch state for the contextual prompts. Both prompts are designed to
   // appear at most once and stay gone afterward — the original game does
@@ -498,6 +540,11 @@ async function main(): Promise<void> {
     firstDropped = false;
     levelComplete = false;
 
+    // Audio: stop the graph tone if it was still running, and play the
+    // graph-reset SFX as a sonic "level restarted" cue.
+    if (graphTone?.isPlaying) graphTone.stop();
+    audio.playSfx('sfxGraphReset', assets.url('sfxGraphReset'));
+
     // Hide overlay.
     winOverlay.visible = false;
   };
@@ -506,6 +553,24 @@ async function main(): Promise<void> {
     const { steps } = sim.advance(deltaMS);
     for (let i = 0; i < steps; i++) {
       tickCount++;
+
+      // First user gesture unlocks the AudioContext + starts BGM.
+      // Browsers won't let us create a usable AudioContext until after
+      // a real user interaction; this runs once on the first relevant
+      // key press, then early-returns forever after.
+      if (
+        !audioStarted &&
+        (input.wasPressed('Space') ||
+          input.wasPressed('ArrowUp') ||
+          input.wasPressed('ArrowLeft') ||
+          input.wasPressed('ArrowRight') ||
+          input.wasPressed('KeyD') ||
+          input.wasPressed('KeyS') ||
+          input.wasPressed('ShiftLeft') ||
+          input.wasPressed('ShiftRight'))
+      ) {
+        ensureAudioStarted();
+      }
 
       // While the win overlay is up, freeze the gameplay sim. Listen
       // only for the restart key. Keep visuals (orb pulse, sun pulse,
@@ -539,13 +604,20 @@ async function main(): Promise<void> {
             const newGround = orb.pairedGraph.ground;
             if (newGround) ground.add(newGround);
           }
+          audio.playSfx('sfxDrop', assets.url('sfxDrop'));
         } else if (orb.overlapsAvatar(body.state.x, body.state.y)) {
           // If a curve was previously solidified, remove its layer before redrawing.
           const old = orb.pairedGraph.ground;
           if (old && ground.has(old)) ground.remove(old);
           orb.pickup();
+          audio.playSfx('sfxPickup', assets.url('sfxPickup'));
         }
       }
+
+      // Pre-step state captured so we can detect jump-start (was onGround,
+      // jumped this tick) and landing (wasn't onGround, now is) for SFX.
+      const wasOnGround = body.state.onGround;
+      const willJump = moveInputs.jumpPressed && body.state.onGround;
 
       body.step(moveInputs, ground);
 
@@ -564,6 +636,15 @@ async function main(): Promise<void> {
         body.state.onGround = false;
       }
 
+      // Audio: jump on jumpPressed-while-onGround, landing on
+      // !wasOnGround && body.state.onGround. Random variant per event.
+      if (willJump) {
+        playSfxFrom(JUMP_SFX_VARIANTS);
+      }
+      if (!wasOnGround && body.state.onGround) {
+        playSfxFrom(LAND_SFX_VARIANTS);
+      }
+
       avatar.setPosition(body.state.x, body.state.y);
       avatar.update({
         vx: body.state.vx,
@@ -574,6 +655,22 @@ async function main(): Promise<void> {
 
       orb.update(body.state.x, body.state.y, orbGround);
 
+      // GraphTone — pitch tracks the current curve value while the
+      // graph is actively drawing (orb held + state drawing). Stops
+      // automatically when state transitions to paused/solid/idle.
+      if (graphTone) {
+        const shouldPlayTone = orb.state === 'held' && graph.state === 'drawing';
+        if (shouldPlayTone && !graphTone.isPlaying) {
+          graphTone.start();
+        } else if (!shouldPlayTone && graphTone.isPlaying) {
+          graphTone.stop();
+        }
+        if (shouldPlayTone) {
+          const value = Math.abs(body.state.x - ORIGIN_X);
+          graphTone.setNormalized(Math.min(1, value / GRAPH_MAX_VALUE));
+        }
+      }
+
       // Win check: avatar's body bbox overlaps the exit portal's bbox.
       // The visuals (orb/sun/exit pulse, bg sway) keep ticking below,
       // but the next iteration's `if (levelComplete)` branch short-
@@ -581,6 +678,8 @@ async function main(): Promise<void> {
       if (avatarOverlapsExit(body.state.x, body.state.y)) {
         levelComplete = true;
         winOverlay.visible = true;
+        audio.playSfx('sfxWin', assets.url('sfxWin'));
+        if (graphTone?.isPlaying) graphTone.stop();
       }
 
       // Origin proximity glow: glow strength is linear in |avatar.x - origin.x|,
