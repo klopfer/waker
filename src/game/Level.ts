@@ -19,9 +19,11 @@ import { CompositeGround } from './CompositeGround.js';
 import { CurveGround } from './CurveGround.js';
 import { Graph } from './Graph.js';
 import { BODY, Body, type MovementInputs } from './Movements.js';
+import { MovingPlatform, type MovingPlatformConfig } from './MovingPlatform.js';
 import { Orb } from './Orb.js';
 import { loadPixelGround, type PixelGround } from './PixelGround.js';
 import { Spike, type SpikeConfig } from './Spike.js';
+import { Switch, type SwitchConfig } from './Switch.js';
 
 // ─── Per-level data ────────────────────────────────────────────────────
 
@@ -77,6 +79,20 @@ export interface LevelConfig {
    * is moved). Empty / undefined = no spikes.
    */
   spikes?: readonly SpikeConfig[];
+
+  /**
+   * Optional list of switches and their attached moving platforms.
+   * Pressing D while overlapping a switch toggles it: flips the
+   * direction of all attached platforms and (re)starts their motion.
+   * Platforms act as solid ground (avatar can stand on top, blocked
+   * by sides). Empty / undefined = no switches.
+   */
+  switches?: readonly SwitchWithPlatformsConfig[];
+}
+
+export interface SwitchWithPlatformsConfig {
+  switch: SwitchConfig;
+  platforms: readonly MovingPlatformConfig[];
 }
 
 // ─── Engine singletons passed in ──────────────────────────────────────
@@ -160,6 +176,8 @@ export class Level {
   private readonly promptD: Container | null;
   private readonly promptSpacebar: Container | null;
   private readonly spikes: readonly Spike[];
+  private readonly switches: readonly Switch[];
+  private readonly platforms: readonly MovingPlatform[];
   private readonly winOverlay: Container;
   private readonly tickReadout: Text;
 
@@ -309,6 +327,28 @@ export class Level {
       return spike;
     });
 
+    // ── Moving platforms + switches ──
+    // Platforms add themselves to the avatar's ground stack so the avatar
+    // can stand on them (and also to the orb ground so the orb can rest
+    // on a stopped platform). Switches own a list of attached platforms;
+    // toggling flips direction on all of them.
+    const allPlatforms: MovingPlatform[] = [];
+    const switches: Switch[] = [];
+    for (const sw of cfg.switches ?? []) {
+      const switchObj = new Switch(sw.switch);
+      for (const pCfg of sw.platforms) {
+        const platform = new MovingPlatform(pCfg);
+        switchObj.attach(platform);
+        deps.app.stage.addChild(platform.container);
+        this.ground.add(platform.ground);
+        allPlatforms.push(platform);
+      }
+      deps.app.stage.addChild(switchObj.container);
+      switches.push(switchObj);
+    }
+    this.switches = switches;
+    this.platforms = allPlatforms;
+
     // ── Body (avatar physics state) ──
     this.body = new Body({ x: cfg.spawn.x, y: cfg.spawn.y, onGround: false });
     deps.avatar.setPosition(this.body.state.x, this.body.state.y);
@@ -399,6 +439,21 @@ export class Level {
       }
     }
 
+    // Moving platforms — each ticks itself, stopping on stage edge /
+    // avatar squish / other-platform collision. Avatar bbox passed in is
+    // the avatar's CURRENT position (post-body.step) so the platform sees
+    // where the player actually is, not where they were.
+    const avatarBox = {
+      x: this.body.state.x - BODY.HALF_WIDTH,
+      y: this.body.state.y - BODY.HEIGHT,
+      w: BODY.HALF_WIDTH * 2,
+      h: BODY.HEIGHT,
+    };
+    for (const p of this.platforms) p.tick(this.platforms, avatarBox, STAGE_WIDTH, STAGE_HEIGHT);
+
+    // Switch pulse animations.
+    for (const sw of this.switches) sw.tick();
+
     // Update avatar visuals + orb physics.
     this.deps.avatar.setPosition(this.body.state.x, this.body.state.y);
     this.deps.avatar.update({
@@ -479,6 +534,8 @@ export class Level {
     this.levelComplete = false;
 
     for (const spike of this.spikes) spike.reset();
+    for (const sw of this.switches) sw.reset();
+    for (const p of this.platforms) p.reset();
 
     if (this.graphTone?.isPlaying) this.graphTone.stop();
     this.deps.audio.playSfx('sfxGraphReset', this.deps.assets.url('sfxGraphReset'));
@@ -514,11 +571,22 @@ export class Level {
         if (newGround) this.ground.add(newGround);
       }
       this.deps.audio.playSfx('sfxDrop', this.deps.assets.url('sfxDrop'));
-    } else if (this.orb.overlapsAvatar(this.body.state.x, this.body.state.y)) {
+      return;
+    }
+    if (this.orb.overlapsAvatar(this.body.state.x, this.body.state.y)) {
       const old = this.orb.pairedGraph.ground;
       if (old && this.ground.has(old)) this.ground.remove(old);
       this.orb.pickup();
       this.deps.audio.playSfx('sfxPickup', this.deps.assets.url('sfxPickup'));
+      return;
+    }
+    // Falls through to switches if no orb action consumed the key.
+    for (const sw of this.switches) {
+      if (sw.overlapsBody(this.body.state.x, this.body.state.y)) {
+        const sfxKey = sw.toggle();
+        this.deps.audio.playSfx(sfxKey, this.deps.assets.url(sfxKey));
+        return;
+      }
     }
   }
 

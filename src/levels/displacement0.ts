@@ -61,4 +61,29 @@ export const DISPLACEMENT0: LevelConfig = {
   // No spikes on easy/medium difficulty in the legacy game. The hard-mode
   // addSpike(540, 440, ...) from displacement0.mxml will land back here
   // when the difficulty selector is wired up in Phase 5.
+
+  // TEMPORARY smoke test for D2 (Switch + MovingPlatform) — verifies the
+  // procedural art + interaction works end-to-end. REMOVE once the user
+  // has confirmed it looks/behaves right. displacement0 in the legacy
+  // game has no switches or platforms.
+  //
+  // Layout: switch sits on the bottom floor at the very left; pressing D
+  // while overlapping it starts a horizontal platform sweeping in the
+  // gap between the bottom-cloud bank and the staircase. The platform
+  // bumps back when it hits the stage edge or the avatar.
+  switches: [
+    {
+      switch: { x: 20, y: 492 },
+      platforms: [
+        {
+          x: 180,
+          y: 470,
+          width: 80,
+          height: 16,
+          horizontal: true,
+          upOrLeft: false,
+        },
+      ],
+    },
+  ],
 };
