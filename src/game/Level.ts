@@ -39,28 +39,14 @@ export interface LevelConfig {
   /** Exit portal (Flash top-left anchor). Sprite is 40×40 unless overridden. */
   exit: { x: number; y: number; w?: number; h?: number };
 
-  /** Origin marker (where the orb's displacement is measured from). */
-  origin: { x: number; y: number };
-
-  /** Initial orb position. */
-  orb: { x: number; y: number };
-
-  /** Graph rect + scale + yOffset, all from the legacy `addGraph(...)` call. */
-  graph: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    maxValue: number;
-    yOffset: number;
-  };
-
-  /** Stand cradle (an orb-only thin shelf the orb rests on at level start). */
-  cradle: {
-    lift: number; // px above origin Y
-    halfWidth: number;
-    thickness?: number; // default 2
-  };
+  /**
+   * One or more orb setups. displacement0/1 have a single orb;
+   * displacement2/3 use two each (the legacy `super.addGraph(...)` is
+   * called twice with different graph/origin/orb positions). Each
+   * setup is fully self-contained — origin marker, initial orb
+   * position, paired graph rect, and stand-cradle shelf.
+   */
+  orbs: readonly OrbSetupConfig[];
 
   /** Painted-sun centroid for the procedural sun-pulse halo overlay. */
   sunCentroid: { x: number; y: number };
@@ -103,6 +89,29 @@ export interface LevelConfig {
 export interface SwitchWithPlatformsConfig {
   switch: SwitchConfig;
   platforms: readonly MovingPlatformConfig[];
+}
+
+/** One orb + its paired graph + origin marker + stand-cradle. */
+export interface OrbSetupConfig {
+  /** Origin marker: where the orb's displacement is measured FROM. */
+  origin: { x: number; y: number };
+  /** Initial orb position (typically directly above origin in the cradle). */
+  orb: { x: number; y: number };
+  /** Graph rect on the stage where this orb's curve plots. */
+  graph: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    maxValue: number;
+    yOffset: number;
+  };
+  /** Thin orb-only shelf that holds the orb above the origin marker. */
+  cradle: {
+    lift: number;
+    halfWidth: number;
+    thickness?: number;
+  };
 }
 
 // ─── Engine singletons passed in ──────────────────────────────────────
@@ -176,25 +185,32 @@ const AVATAR_PLATFORM_DETECT_TOLERANCE = 2;
 
 // ─── The Level class ──────────────────────────────────────────────────
 
+/** Per-orb runtime bundle — keeps the parallel arrays cohesive. */
+interface OrbBundle {
+  readonly setup: OrbSetupConfig;
+  readonly orb: Orb;
+  readonly graph: Graph;
+  readonly cradle: CurveGround;
+  readonly originSprite: Sprite;
+  readonly originGlow: GlowFilter;
+}
+
 export class Level {
   // Public for the driver / debug.
   readonly body: Body;
-  readonly orb: Orb;
-  readonly graph: Graph;
+  readonly orbs: readonly Orb[];
 
   private readonly cfg: LevelConfig;
   private readonly deps: LevelDeps;
 
   private readonly ground: CompositeGround;
   private readonly orbGround: CompositeGround;
-  private readonly standCradle: CurveGround;
+  private readonly orbBundles: readonly OrbBundle[];
 
   private readonly bgSprite: Sprite;
   private readonly groundSprite: Sprite;
   private readonly sunPulse: Graphics;
   private readonly graphLayer: Container;
-  private readonly originSprite: Sprite;
-  private readonly originGlow: GlowFilter;
   private readonly exitSprite: Sprite;
   private readonly exitGlow: GlowFilter;
   private readonly promptD: Container | null;
@@ -271,63 +287,72 @@ export class Level {
     this.ground = new CompositeGround();
     this.ground.add(pixelGround);
 
-    // ── Orb ground (avatar ground + stand cradle shelf, orb-only) ──
-    const cradleThickness = cfg.cradle.thickness ?? 2;
-    this.standCradle = new CurveGround(
-      [
-        {
-          x: cfg.origin.x - cfg.cradle.halfWidth,
-          y: cfg.origin.y - cfg.cradle.lift + cradleThickness / 2,
-        },
-        {
-          x: cfg.origin.x + cfg.cradle.halfWidth,
-          y: cfg.origin.y - cfg.cradle.lift + cradleThickness / 2,
-        },
-      ],
-      cradleThickness,
-    );
+    // ── Orb ground (avatar ground + every stand cradle shelf, orb-only) ──
     this.orbGround = new CompositeGround();
     this.orbGround.add(this.ground);
-    this.orbGround.add(this.standCradle);
 
-    // ── Graph layer ──
+    // ── Graph layer (single Container; per-orb graphs are children) ──
     this.graphLayer = new Container();
     deps.app.stage.addChild(this.graphLayer);
-    this.graph = new Graph({
-      graphX: cfg.graph.x,
-      graphY: cfg.graph.y,
-      width: cfg.graph.width,
-      height: cfg.graph.height,
-      maxValue: cfg.graph.maxValue,
-      yOffset: cfg.graph.yOffset,
-      background: tex.graphBg,
-    });
-    this.graphLayer.addChild(this.graph.container);
 
-    // ── Origin marker (with proximity glow) ──
-    this.originSprite = new Sprite(tex.origin);
-    this.originSprite.anchor.set(0.5, 1);
-    this.originSprite.x = cfg.origin.x;
-    this.originSprite.y = cfg.origin.y;
-    this.originGlow = new GlowFilter({
-      color: 0xffffaa,
-      distance: 20,
-      outerStrength: 0,
-      innerStrength: 0,
-      quality: 0.3,
-    });
-    this.originSprite.filters = [this.originGlow];
-    deps.app.stage.addChild(this.originSprite);
+    // ── Build one bundle per orb setup ──
+    const bundles: OrbBundle[] = [];
+    for (const setup of cfg.orbs) {
+      const cradleThickness = setup.cradle.thickness ?? 2;
+      const cradle = new CurveGround(
+        [
+          {
+            x: setup.origin.x - setup.cradle.halfWidth,
+            y: setup.origin.y - setup.cradle.lift + cradleThickness / 2,
+          },
+          {
+            x: setup.origin.x + setup.cradle.halfWidth,
+            y: setup.origin.y - setup.cradle.lift + cradleThickness / 2,
+          },
+        ],
+        cradleThickness,
+      );
+      this.orbGround.add(cradle);
 
-    // ── Orb ──
-    this.orb = new Orb({
-      initialX: cfg.orb.x,
-      initialY: cfg.orb.y,
-      texture: tex.orb,
-      pairedGraph: this.graph,
-      valueProvider: (avatarX) => Math.abs(avatarX - cfg.origin.x),
-    });
-    deps.app.stage.addChild(this.orb.container);
+      const graph = new Graph({
+        graphX: setup.graph.x,
+        graphY: setup.graph.y,
+        width: setup.graph.width,
+        height: setup.graph.height,
+        maxValue: setup.graph.maxValue,
+        yOffset: setup.graph.yOffset,
+        background: tex.graphBg,
+      });
+      this.graphLayer.addChild(graph.container);
+
+      const originSprite = new Sprite(tex.origin);
+      originSprite.anchor.set(0.5, 1);
+      originSprite.x = setup.origin.x;
+      originSprite.y = setup.origin.y;
+      const originGlow = new GlowFilter({
+        color: 0xffffaa,
+        distance: 20,
+        outerStrength: 0,
+        innerStrength: 0,
+        quality: 0.3,
+      });
+      originSprite.filters = [originGlow];
+      deps.app.stage.addChild(originSprite);
+
+      const originX = setup.origin.x;
+      const orb = new Orb({
+        initialX: setup.orb.x,
+        initialY: setup.orb.y,
+        texture: tex.orb,
+        pairedGraph: graph,
+        valueProvider: (avatarX) => Math.abs(avatarX - originX),
+      });
+      deps.app.stage.addChild(orb.container);
+
+      bundles.push({ setup, orb, graph, cradle, originSprite, originGlow });
+    }
+    this.orbBundles = bundles;
+    this.orbs = bundles.map((b) => b.orb);
 
     // ── Exit portal ──
     this.exitSprite = new Sprite(tex.exit);
@@ -541,7 +566,9 @@ export class Level {
       facingRight: this.body.state.facingRight,
     });
 
-    this.orb.update(this.body.state.x, this.body.state.y, this.orbGround);
+    for (const orb of this.orbs) {
+      orb.update(this.body.state.x, this.body.state.y, this.orbGround);
+    }
 
     // GraphTone — state-driven, frequency tracks value during draw.
     this.tickGraphTone();
@@ -570,15 +597,15 @@ export class Level {
     // Prompt position + alpha (no-op if hasHelpPromptsInBg).
     this.tickPrompts();
 
-    // Debug readout.
-    const orbState =
-      this.orb.state === 'held'
-        ? 'orb=held'
-        : `orb=world (${this.orb.x.toFixed(0)},${this.orb.y.toFixed(0)})`;
-    const graphState = `graph=${this.orb.pairedGraph.state}`;
+    // Debug readout. Shows a compact summary across all orbs.
+    const orbsInfo = this.orbs
+      .map((o, i) =>
+        o.state === 'held' ? `orb${i + 1}=held` : `orb${i + 1}=(${o.x.toFixed(0)},${o.y.toFixed(0)})`,
+      )
+      .join('  ');
     this.tickReadout.text = `tick ${this.tickCount}   avatar=(${this.body.state.x.toFixed(
       0,
-    )},${this.body.state.y.toFixed(0)})   ${orbState}   ${graphState}`;
+    )},${this.body.state.y.toFixed(0)})   ${orbsInfo}`;
 
     this.deps.input.endTick();
   }
@@ -593,18 +620,19 @@ export class Level {
     this.body.state.onGround = false;
     this.deps.avatar.setPosition(this.body.state.x, this.body.state.y);
 
-    if (this.orb.state === 'held') {
-      this.orb.drop(this.cfg.orb.x, this.cfg.orb.y);
-    } else {
-      this.orb.x = this.cfg.orb.x;
-      this.orb.y = this.cfg.orb.y;
-      this.orb.container.x = Math.round(this.cfg.orb.x);
-      this.orb.container.y = Math.round(this.cfg.orb.y);
+    for (const b of this.orbBundles) {
+      if (b.orb.state === 'held') {
+        b.orb.drop(b.setup.orb.x, b.setup.orb.y);
+      } else {
+        b.orb.x = b.setup.orb.x;
+        b.orb.y = b.setup.orb.y;
+        b.orb.container.x = Math.round(b.setup.orb.x);
+        b.orb.container.y = Math.round(b.setup.orb.y);
+      }
+      const oldCurve = b.graph.ground;
+      if (oldCurve && this.ground.has(oldCurve)) this.ground.remove(oldCurve);
+      b.graph.reset();
     }
-
-    const oldCurve = this.graph.ground;
-    if (oldCurve && this.ground.has(oldCurve)) this.ground.remove(oldCurve);
-    this.graph.reset();
 
     this.firstRunTick = null;
     this.firstJumped = false;
@@ -639,26 +667,31 @@ export class Level {
   // ─── Per-tick helpers ────────────────────────────────────────────
 
   private handleDKey(): void {
-    if (this.orb.state === 'held') {
+    // 1) Any held orb takes priority — drop it.
+    const heldBundle = this.orbBundles.find((b) => b.orb.state === 'held');
+    if (heldBundle) {
       const wasDrawingOrPaused =
-        this.orb.pairedGraph.state === 'drawing' || this.orb.pairedGraph.state === 'paused';
-      this.orb.drop(this.body.state.x, this.body.state.y - 20);
+        heldBundle.graph.state === 'drawing' || heldBundle.graph.state === 'paused';
+      heldBundle.orb.drop(this.body.state.x, this.body.state.y - 20);
       this.firstDropped = true;
       if (wasDrawingOrPaused) {
-        const newGround = this.orb.pairedGraph.ground;
+        const newGround = heldBundle.graph.ground;
         if (newGround) this.ground.add(newGround);
       }
       this.deps.audio.playSfx('sfxDrop', this.deps.assets.url('sfxDrop'));
       return;
     }
-    if (this.orb.overlapsAvatar(this.body.state.x, this.body.state.y)) {
-      const old = this.orb.pairedGraph.ground;
-      if (old && this.ground.has(old)) this.ground.remove(old);
-      this.orb.pickup();
-      this.deps.audio.playSfx('sfxPickup', this.deps.assets.url('sfxPickup'));
-      return;
+    // 2) Otherwise, the first orb the avatar overlaps gets picked up.
+    for (const b of this.orbBundles) {
+      if (b.orb.overlapsAvatar(this.body.state.x, this.body.state.y)) {
+        const old = b.graph.ground;
+        if (old && this.ground.has(old)) this.ground.remove(old);
+        b.orb.pickup();
+        this.deps.audio.playSfx('sfxPickup', this.deps.assets.url('sfxPickup'));
+        return;
+      }
     }
-    // Falls through to switches if no orb action consumed the key.
+    // 3) Falls through to switches if no orb action consumed the key.
     for (const sw of this.switches) {
       if (sw.overlapsBody(this.body.state.x, this.body.state.y)) {
         const sfxKey = sw.toggle();
@@ -670,20 +703,26 @@ export class Level {
 
   private tickGraphTone(): void {
     if (!this.graphTone) return;
-    const shouldPlay = this.orb.state === 'held' && this.graph.state === 'drawing';
+    // GraphTone tracks the currently-held orb's graph. With multi-orb,
+    // at most one orb can be held; the rest are inactive for audio.
+    const heldBundle = this.orbBundles.find((b) => b.orb.state === 'held');
+    const shouldPlay = !!heldBundle && heldBundle.graph.state === 'drawing';
     if (shouldPlay && !this.graphTone.isPlaying) this.graphTone.start();
     else if (!shouldPlay && this.graphTone.isPlaying) this.graphTone.stop();
-    if (shouldPlay) {
-      const value = Math.abs(this.body.state.x - this.cfg.origin.x);
-      this.graphTone.setNormalized(Math.min(1, value / this.cfg.graph.maxValue));
+    if (shouldPlay && heldBundle) {
+      const value = Math.abs(this.body.state.x - heldBundle.setup.origin.x);
+      this.graphTone.setNormalized(Math.min(1, value / heldBundle.setup.graph.maxValue));
     }
   }
 
   private tickVisuals(): void {
-    // Origin proximity glow.
-    const distToOrigin = Math.abs(this.body.state.x - this.cfg.origin.x);
-    const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / this.cfg.graph.maxValue));
-    this.originGlow.outerStrength = proximity * ORIGIN_MAX_GLOW_STRENGTH;
+    // Origin proximity glow — each origin glows based on distance from
+    // the avatar, falling off across its own graph's maxValue range.
+    for (const b of this.orbBundles) {
+      const distToOrigin = Math.abs(this.body.state.x - b.setup.origin.x);
+      const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / b.setup.graph.maxValue));
+      b.originGlow.outerStrength = proximity * ORIGIN_MAX_GLOW_STRENGTH;
+    }
 
     // Exit portal pulse + shared phase.
     this.promptPhase += PROMPT_BOB_RATE;
@@ -706,19 +745,32 @@ export class Level {
     const promptBob = Math.sin(this.promptPhase) * PROMPT_BOB_AMPLITUDE;
 
     if (this.promptD) {
-      let targetAlpha = 0;
-      if (!this.firstDropped) {
-        if (this.orb.state === 'held') {
-          targetAlpha = 1;
-        } else {
-          const dx = this.body.state.x - this.orb.x;
-          const dy = this.body.state.y - this.orb.y;
-          if (Math.sqrt(dx * dx + dy * dy) < PROMPT_D_RADIUS) targetAlpha = 1;
+      // With multi-orb, pin the prompt to whichever orb is the most
+      // relevant: a held orb if any, else the nearest world-positioned
+      // orb. Fades in if the avatar is near (or holding).
+      const heldBundle = this.orbBundles.find((b) => b.orb.state === 'held');
+      let anchorOrb = heldBundle?.orb ?? null;
+      let nearestDist = Number.POSITIVE_INFINITY;
+      if (!anchorOrb) {
+        for (const b of this.orbBundles) {
+          const dx = this.body.state.x - b.orb.x;
+          const dy = this.body.state.y - b.orb.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            anchorOrb = b.orb;
+          }
         }
       }
-      this.promptD.x = this.orb.x;
-      this.promptD.y = this.orb.y - 28 + promptBob;
-      this.promptD.rotation = Math.sin(this.promptPhase * 0.7) * 0.035;
+      let targetAlpha = 0;
+      if (!this.firstDropped && anchorOrb) {
+        if (anchorOrb.state === 'held' || nearestDist < PROMPT_D_RADIUS) targetAlpha = 1;
+      }
+      if (anchorOrb) {
+        this.promptD.x = anchorOrb.x;
+        this.promptD.y = anchorOrb.y - 28 + promptBob;
+        this.promptD.rotation = Math.sin(this.promptPhase * 0.7) * 0.035;
+      }
       this.promptD.alpha += (targetAlpha - this.promptD.alpha) * 0.15;
     }
 
@@ -807,12 +859,13 @@ export class Level {
       this.sunPulse,
       this.groundSprite,
       this.graphLayer,
-      this.originSprite,
       this.exitSprite,
-      this.orb.container,
       this.winOverlay,
       this.tickReadout,
     ];
+    for (const b of this.orbBundles) {
+      owned.push(b.originSprite, b.orb.container);
+    }
     if (this.promptD) owned.push(this.promptD);
     if (this.promptSpacebar) owned.push(this.promptSpacebar);
     for (const s of this.spikes) owned.push(s.container);

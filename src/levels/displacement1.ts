@@ -19,6 +19,7 @@
 // that lands when the difficulty selector wires up in Phase 5.
 
 import type { LevelConfig } from '../game/Level.js';
+import { DISPLACEMENT2 } from './displacement2.js';
 
 export const DISPLACEMENT1: LevelConfig = {
   bgKey: 'bgWorld1_1',
@@ -42,23 +43,25 @@ export const DISPLACEMENT1: LevelConfig = {
   //
   // Origin Y in our port: bottom-anchor; the middle platform's
   // topmost-solid y at x=200 is 498 (measured via pngjs sweep).
-  origin: { x: 200, y: 498 },
-  // Orb sits in cradle: ORIGIN.y - cradle.lift = 498 - 12 = 486
-  orb: { x: 200, y: 486 },
-
-  graph: {
-    x: 308,
-    y: 200,
-    width: 300,
-    height: 300,
-    maxValue: 400,
-    yOffset: 100,
-  },
-
-  cradle: {
-    lift: 12,
-    halfWidth: 18,
-  },
+  orbs: [
+    {
+      origin: { x: 200, y: 498 },
+      // Orb sits in cradle: ORIGIN.y - cradle.lift = 498 - 12 = 486
+      orb: { x: 200, y: 486 },
+      graph: {
+        x: 308,
+        y: 200,
+        width: 300,
+        height: 300,
+        maxValue: 400,
+        yOffset: 100,
+      },
+      cradle: {
+        lift: 12,
+        halfWidth: 18,
+      },
+    },
+  ],
 
   // Sun centroid in `leveld1_bg.png`, measured by pngjs sweep of pure-white
   // pixels in the upper-left quadrant.
@@ -66,4 +69,7 @@ export const DISPLACEMENT1: LevelConfig = {
 
   // (omit showHelpPrompts → defaults false; the player has learned D
   // and SPACE in displacement0.)
+
+  // Legacy displacement1.mxml: `super.nextLvl = 'd2';`.
+  nextLevel: DISPLACEMENT2,
 };

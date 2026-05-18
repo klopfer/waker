@@ -32,24 +32,26 @@ export const DISPLACEMENT0: LevelConfig = {
   //
   // Orb Y in our port: ORIGIN.y - cradle.lift = 333 - 12 = 321 — the
   // top of the cradle shelf.
-  origin: { x: 300, y: 333 },
-  orb: { x: 300, y: 321 },
-
-  graph: {
-    x: 490,
-    y: 134,
-    width: 200,
-    height: 200,
-    maxValue: 550,
-    yOffset: 70,
-  },
-
-  // Cradle: a thin orb-only horizontal shelf that holds the orb 12 px
-  // above the painted floor at level start. See docs/calibration.md §6.1.
-  cradle: {
-    lift: 12,
-    halfWidth: 18,
-  },
+  orbs: [
+    {
+      origin: { x: 300, y: 333 },
+      orb: { x: 300, y: 321 },
+      graph: {
+        x: 490,
+        y: 134,
+        width: 200,
+        height: 200,
+        maxValue: 550,
+        yOffset: 70,
+      },
+      // Cradle: a thin orb-only horizontal shelf that holds the orb 12 px
+      // above the painted floor at level start. See docs/calibration.md §6.1.
+      cradle: {
+        lift: 12,
+        halfWidth: 18,
+      },
+    },
+  ],
 
   // Painted-sun centroid in `levelTD_bg.png`, measured by a pngjs sweep
   // of pure-white pixels in the upper-left region.
