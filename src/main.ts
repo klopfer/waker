@@ -15,6 +15,7 @@ import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
 import { Level } from './game/Level.js';
 import { DISPLACEMENT0 } from './levels/displacement0.js';
+import { makeMuteControls } from './ui/MuteControls.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
@@ -89,6 +90,14 @@ async function main(): Promise<void> {
 
   // ── Load + bind the level ──
   const level = await Level.load(DISPLACEMENT0, { app, assets, avatar, audio, input });
+
+  // ── Mute controls (TEMPORARY Pixi-side UI, see ui/MuteControls.ts) ──
+  // Bottom-right corner; clear of the centered debug tick readout below
+  // and the graph rect above.
+  const mute = makeMuteControls(audio);
+  mute.x = STAGE_WIDTH - mute.width - 8;
+  mute.y = STAGE_HEIGHT - 30;
+  app.stage.addChild(mute);
 
   // ── Sim loop ──
   app.ticker.add(({ deltaMS }) => {

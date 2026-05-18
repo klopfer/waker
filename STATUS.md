@@ -229,7 +229,32 @@ audit.
 
 ---
 
-## 5. Open questions / pending decisions
+## 5. Known asset issues (fix when relevant)
+
+- **`spikeyObjects` (`tempObs/Portal.png`) has a black background where it
+  should be alpha-transparent.** Visible in-game as black squares with a
+  spiral inside. Until this is fixed, spikes will read as "black boxes
+  with art inside" instead of proper hazard glyphs. Likely a JPEXS export
+  issue when the original SWF's shape was rasterized. To fix: re-extract
+  with a transparent-bg flag, or run the PNG through ImageMagick's
+  `-fuzz 5% -transparent black`, or grab a clean spike asset from the
+  FLA assets the user has (only the unbroken ones — most FLAs are
+  corrupted, per session notes).
+- **`spikeyObjects` sprite anchor in `Spike.ts` is top-left (matches
+  legacy `spike.x = posX` semantic) but the Portal.png texture is
+  tall enough that placing the top at y=555 puts most of it below the
+  visible 600 px stage.** When re-adding spikes, either: (a) measure the
+  texture and shift y by `-height`, (b) change Spike to bottom-anchor and
+  shift all per-level Y coords by texture height, or (c) extract a smaller
+  spike asset. Option (a) is least invasive.
+
+These were both noticed during D1 playtesting (2026-05-18). The spikes
+have since been removed from displacement0; they'll come back when
+displacement1 is wired (which is hard-mode-only spike use in legacy).
+
+---
+
+## 6. Open questions / pending decisions
 
 Stuff to think about before the relevant phase, not now:
 
@@ -248,7 +273,7 @@ Stuff to think about before the relevant phase, not now:
 
 ---
 
-## 6. Map of the docs
+## 7. Map of the docs
 
 | File | What it's for |
 | --- | --- |
@@ -261,7 +286,7 @@ Stuff to think about before the relevant phase, not now:
 
 ---
 
-## 7. Local-only artifacts (not in git)
+## 8. Local-only artifacts (not in git)
 
 These exist on the original machine but aren't committed. If you
 need them, re-create:
@@ -277,7 +302,7 @@ need them, re-create:
 
 ---
 
-## 8. Pickup checklist
+## 9. Pickup checklist
 
 When starting a fresh session, run these in order:
 

@@ -58,30 +58,9 @@ export const DISPLACEMENT0: LevelConfig = {
   // skip the runtime procedural prompts to avoid stacking.
   hasHelpPromptsInBg: true,
 
-  // Spikes are present in the legacy file only on hard difficulty (see
-  // legacy/src/levels/displacement0.mxml line 35). Faithful port of that
-  // line plus one moving spike to exercise both code paths.
-  //
-  // Difficulty selection isn't wired yet (Phase 5), so these always show
-  // up. Easy to remove once we wire the difficulty selector.
-  spikes: [
-    // Hard-mode stationary spike from legacy displacement0.mxml:
-    //   addSpike(540, 440, false, true, true, 500, 400, 0)
-    // Sits between the orb stand and the exit path; player has to drop
-    // their drawn-curve platform AROUND it (or jump over it).
-    { x: 540, y: 440 },
-    // Smoke test for moving spikes: horizontal sweep in the bottom-left
-    // floor area (y=540 is below the bottom cloud bank), so it doesn't
-    // collide with the player's intended path. Easy to remove.
-    {
-      x: 100,
-      y: 555,
-      isMoving: true,
-      horizontal: true,
-      upOrLeft: false,
-      turn: 60,
-      turn2: 220,
-      speed: 3,
-    },
-  ],
+  // No spikes on easy/medium difficulty in the legacy game. The hard-mode
+  // addSpike(540, 440, ...) from displacement0.mxml will land back here
+  // when the difficulty selector is wired up (Phase 5), at which point
+  // we'll also need the spike art alpha-channel issue resolved — see
+  // STATUS.md §5 (Known asset issues).
 };
