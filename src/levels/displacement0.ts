@@ -42,7 +42,17 @@ export const DISPLACEMENT0: LevelConfig = {
         width: 200,
         height: 200,
         maxValue: 550,
-        yOffset: 70,
+        // Legacy spec was yOffset=70. Reduced to 55 so the value=0
+        // curve line sits at world y=289 (band 282-296) — high enough
+        // that the avatar standing on the orb stand (body top y=298)
+        // fits cleanly underneath. The legacy game had slightly
+        // different avatar proportions; with our HEIGHT=35 + stand
+        // y=333 geometry, yOffset=70 left the curve overlapping the
+        // avatar's body by 13 px, which used to be hacked around by a
+        // larger BODY.SIDE_TOP_MARGIN. With margin tightened back to 4
+        // (so displacement3's "draw too low → trapped" puzzle works),
+        // displacement0 needs the curve nudged up to compensate.
+        yOffset: 55,
       },
       // Cradle: a thin orb-only horizontal shelf that holds the orb 12 px
       // above the painted floor at level start. See docs/calibration.md §6.1.

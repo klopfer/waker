@@ -90,20 +90,23 @@ export const BODY = {
   // Iteration cap on the iterative "push out of wall" loop, in pixels.
   MAX_PUSH: 30,
   // Top-of-body margin where SIDE collision is suppressed — gives the
-  // head/upper torso clearance to brush past low overhead obstacles
-  // (e.g., a player-drawn graph curve at the lowest reachable y) without
-  // the side-push tripping. Matches the legacy game's behavior of having
-  // shorter "leftPt"/"rightPt" aura images than the full body (the side
-  // auras only covered torso, not head).
+  // head a tiny clearance for floating-point precision and avoids
+  // flickering on borderline-touching edges.
   //
-  // Calibrated against the lowest-reachable curve overhead: line_y=304,
-  // curve solid band [297, 311]; avatar on orb-stand at y=333, body
-  // covers [298, 333] with HEIGHT=35. To fit body samples ABOVE the
-  // curve's solid band: side samples must start at y ≥ 312, i.e.,
-  // sideTopY = 333 - 35 + SIDE_TOP_MARGIN ≥ 312 → SIDE_TOP_MARGIN ≥ 14.
-  // Smaller margins (was 8 in calibration v2) leave a few-px overlap
-  // and the side-push trips intermittently.
-  SIDE_TOP_MARGIN: 14,
+  // CALIBRATION HISTORY:
+  //   v14: SIDE_TOP_MARGIN = 14, sized to let the avatar walk under the
+  //        lowest reachable curve in displacement0 (line_y=304 with body
+  //        top at y=298 → 14 px overlap). This was too permissive: by
+  //        displacement3 the "draw the curve too low → get trapped"
+  //        puzzle became trivial because the avatar could squeeze past
+  //        even fully-overlapping curves.
+  //   v15 (this): SIDE_TOP_MARGIN = 4. Curves with non-trivial body
+  //        overlap now block sideways motion (matching legacy intent).
+  //        displacement0 was rebalanced via its graph yOffset so the
+  //        lowest curve at value=0 is high enough (band 282-296) that
+  //        the avatar's body (top y=298) clears it naturally — no
+  //        body-margin hack needed.
+  SIDE_TOP_MARGIN: 4,
 } as const;
 
 export interface MovementInputs {

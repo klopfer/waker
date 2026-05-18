@@ -15,6 +15,10 @@ import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
 import { LevelManager } from './game/LevelManager.js';
 import { DISPLACEMENT0 } from './levels/displacement0.js';
+import { DISPLACEMENT1 } from './levels/displacement1.js';
+import { DISPLACEMENT2 } from './levels/displacement2.js';
+import { DISPLACEMENT3 } from './levels/displacement3.js';
+import { makeLevelPicker } from './ui/LevelPicker.js';
 import { makeMuteControls } from './ui/MuteControls.js';
 
 const STAGE_WIDTH = 800;
@@ -100,6 +104,20 @@ async function main(): Promise<void> {
   mute.x = STAGE_WIDTH - mute.width - 8;
   mute.y = STAGE_HEIGHT - 30;
   app.stage.addChild(mute);
+
+  // ── TEMPORARY level picker (debug only) ──
+  // Bottom-LEFT corner so it stays clear of the mute toggles on the
+  // right. Remove this + src/ui/LevelPicker.ts once the proper menu /
+  // difficulty selector lands in Phase 5.
+  const picker = makeLevelPicker(levels, [
+    { label: 'D0', cfg: DISPLACEMENT0 },
+    { label: 'D1', cfg: DISPLACEMENT1 },
+    { label: 'D2', cfg: DISPLACEMENT2 },
+    { label: 'D3', cfg: DISPLACEMENT3 },
+  ]);
+  picker.x = 8;
+  picker.y = STAGE_HEIGHT - 30;
+  app.stage.addChild(picker);
 
   // ── Sim loop ──
   app.ticker.add(({ deltaMS }) => {

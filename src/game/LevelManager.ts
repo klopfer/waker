@@ -33,6 +33,7 @@ export class LevelManager {
     this.current?.tick();
   }
 
+
   /** Wire `cfg.nextLevel` onto the current Level's win-space hook. */
   private wireTransition(cfg: LevelConfig): void {
     const cur = this.current;
@@ -49,15 +50,20 @@ export class LevelManager {
     };
   }
 
-  private async advanceTo(nextCfg: LevelConfig): Promise<void> {
+  /**
+   * Public so the debug level-picker UI can jump to any level by
+   * config, in addition to the wireTransition() use for advancing on
+   * win-overlay SPACE. Same lifecycle in both cases: dispose current,
+   * load new, start audio on the new level (user click on the picker
+   * IS a gesture, so the unlock requirement is satisfied).
+   */
+  async advanceTo(nextCfg: LevelConfig): Promise<void> {
     if (!this.deps) return;
     const oldLevel = this.current;
     this.current = null; // prevent tick() from driving the disposing level
     oldLevel?.dispose();
 
     const next = await Level.load(nextCfg, this.deps);
-    // SPACE itself is a user gesture → safe to start audio immediately
-    // on the new level, no need to wait for another keypress.
     next.startAudio();
     this.current = next;
     this.wireTransition(nextCfg);
