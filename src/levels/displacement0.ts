@@ -58,26 +58,7 @@ export const DISPLACEMENT0: LevelConfig = {
   // skip the runtime procedural prompts to avoid stacking.
   hasHelpPromptsInBg: true,
 
-  // TEMPORARY visual-verification spikes for the procedural Spike art
-  // (see legacy/screenshots/ for the design we're matching). REMOVE
-  // these once the user has confirmed the look + animation. On easy/
-  // medium difficulty the legacy game has no spikes here; the hard-mode
-  // addSpike(540, 440, ...) is the only one in displacement0.mxml.
-  spikes: [
-    // Stationary spike — same position as legacy hard-mode addSpike(540, 440).
-    // Lands on the painted ground at roughly platform level.
-    { x: 540, y: 440 },
-    // Horizontally-moving spike at y=485 (just above the bottom cloud
-    // bank so the avatar can see it but it doesn't block the staircase).
-    {
-      x: 100,
-      y: 485,
-      isMoving: true,
-      horizontal: true,
-      upOrLeft: false,
-      turn: 60,
-      turn2: 220,
-      speed: 3,
-    },
-  ],
+  // No spikes on easy/medium difficulty in the legacy game. The hard-mode
+  // addSpike(540, 440, ...) from displacement0.mxml will land back here
+  // when the difficulty selector is wired up in Phase 5.
 };
