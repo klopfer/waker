@@ -231,26 +231,19 @@ audit.
 
 ## 5. Known asset issues (fix when relevant)
 
-- **`spikeyObjects` (`tempObs/Portal.png`) has a black background where it
-  should be alpha-transparent.** Visible in-game as black squares with a
-  spiral inside. Until this is fixed, spikes will read as "black boxes
-  with art inside" instead of proper hazard glyphs. Likely a JPEXS export
-  issue when the original SWF's shape was rasterized. To fix: re-extract
-  with a transparent-bg flag, or run the PNG through ImageMagick's
-  `-fuzz 5% -transparent black`, or grab a clean spike asset from the
-  FLA assets the user has (only the unbroken ones — most FLAs are
-  corrupted, per session notes).
-- **`spikeyObjects` sprite anchor in `Spike.ts` is top-left (matches
-  legacy `spike.x = posX` semantic) but the Portal.png texture is
-  tall enough that placing the top at y=555 puts most of it below the
-  visible 600 px stage.** When re-adding spikes, either: (a) measure the
-  texture and shift y by `-height`, (b) change Spike to bottom-anchor and
-  shift all per-level Y coords by texture height, or (c) extract a smaller
-  spike asset. Option (a) is least invasive.
-
-These were both noticed during D1 playtesting (2026-05-18). The spikes
-have since been removed from displacement0; they'll come back when
-displacement1 is wired (which is hard-mode-only spike use in legacy).
+- ~~`spikeyObjects` (`tempObs/Portal.png`) has no transparent pixels~~
+  **Resolved by going procedural.** Pixel inspection confirmed the PNG
+  is a fully-opaque 20×20 rgba bitmap — JPEXS rasterized the entire
+  SWF symbol bounding box, not just the irregular silhouette. Rather
+  than try to recover the original shape, `src/game/Spike.ts` now
+  draws the spike directly with `Pixi.Graphics` (dark blob silhouette
+  + rotating brown spiral, matching `legacy/screenshots/Screenshot
+  2026-05-18 1337*.png`). No asset needed.
+- **`tempObs/Obstacle.png` + `tempObs/obs_*.png` have the same opaque-
+  bbox issue.** Those will be used for the switch-controlled moving
+  platforms in D2. Same fix likely applies — draw them as
+  `Pixi.Graphics` rectangles with a stylized fill rather than try to
+  recover transparency from the rasterized SWF symbols.
 
 ---
 

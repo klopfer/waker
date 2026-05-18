@@ -98,7 +98,6 @@ interface LevelTextures {
   origin: Texture;
   graphBg: Texture;
   exit: Texture;
-  spike: Texture | null;
 }
 
 // ─── Constants that aren't per-level ──────────────────────────────────
@@ -179,23 +178,16 @@ export class Level {
 
   /** Async factory — loads textures + pixel ground from manifest keys, then constructs. */
   static async load(cfg: LevelConfig, deps: LevelDeps): Promise<Level> {
-    const needsSpike = !!cfg.spikes && cfg.spikes.length > 0;
-    const [bg, ground, orb, origin, graphBg, exit, spike] = await Promise.all([
+    const [bg, ground, orb, origin, graphBg, exit] = await Promise.all([
       deps.assets.image(cfg.bgKey),
       deps.assets.image(cfg.groundKey),
       deps.assets.image('disOrb'),
       deps.assets.image('displaceOrigin'),
       deps.assets.image('graphBGD'),
       deps.assets.image('exit'),
-      needsSpike ? deps.assets.image('spikeyObjects') : Promise.resolve(null),
     ]);
     const pixelGround = await loadPixelGround(deps.assets.url(cfg.groundKey));
-    return new Level(
-      cfg,
-      deps,
-      { bg, ground, orb, origin, graphBg, exit, spike },
-      pixelGround,
-    );
+    return new Level(cfg, deps, { bg, ground, orb, origin, graphBg, exit }, pixelGround);
   }
 
   private constructor(
@@ -309,21 +301,13 @@ export class Level {
     }
 
     // ── Spikes ──
-    // Added BEFORE the avatar so the avatar draws on top. If cfg.spikes
-    // is set, tex.spike was loaded in Level.load() — assert for safety.
-    if (cfg.spikes && cfg.spikes.length > 0) {
-      if (!tex.spike) {
-        throw new Error('Level: spike texture missing but cfg.spikes is non-empty');
-      }
-      const spikeTex = tex.spike;
-      this.spikes = cfg.spikes.map((s) => {
-        const spike = new Spike(s, spikeTex);
-        deps.app.stage.addChild(spike.container);
-        return spike;
-      });
-    } else {
-      this.spikes = [];
-    }
+    // Added BEFORE the avatar so the avatar draws on top. Spike art is
+    // procedural Pixi.Graphics (see src/game/Spike.ts), no texture needed.
+    this.spikes = (cfg.spikes ?? []).map((s) => {
+      const spike = new Spike(s);
+      deps.app.stage.addChild(spike.container);
+      return spike;
+    });
 
     // ── Body (avatar physics state) ──
     this.body = new Body({ x: cfg.spawn.x, y: cfg.spawn.y, onGround: false });

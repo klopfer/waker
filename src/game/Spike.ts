@@ -1,19 +1,27 @@
 // Ported from legacy/src/spikeClass.mxml + spikeObstacle.mxml. A spike is
-// a deadly sprite that either sits still or oscillates between two
-// coordinates along a single axis. Touching it teleports the player back
-// to the level's entrance and plays the hurt SFX (handled in Level.ts).
+// a deadly hazard that either sits still or oscillates between two
+// coordinates along a single axis. Touching one teleports the avatar
+// back to spawn and plays the hurt SFX (handled in Level.ts).
 //
-// Pure motion + AABB-overlap logic is exported as standalone functions so
-// the unit tests don't need a Pixi runtime; the Spike class is a thin
-// wrapper that pairs that logic with a Sprite.
+// The original game's spike art (extracted as `tempObs/Portal.png`)
+// rasterized to a fully-opaque 20×20 black rectangle — JPEXS captured
+// just the SWF symbol's bbox, not its actual irregular silhouette. The
+// real on-screen shape (per Ruffle screenshots: legacy/screenshots/
+// Screenshot 2026-05-18 1337*.png) is a dark organic blob with a
+// brown/orange spiral painted inside, slowly rotating. We draw that
+// directly with Pixi.Graphics rather than fight the broken extraction.
+//
+// Pure motion + AABB-overlap logic is exported as standalone functions
+// so the unit tests don't need a Pixi runtime; the Spike class is a
+// thin wrapper that pairs that logic with the drawn graphics.
 
-import { Sprite, type Texture } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import { BODY } from './Movements.js';
 
 export interface SpikeConfig {
-  /** Top-left x in stage space (matches legacy `spike.x = posX`). */
+  /** Top-left x of the spike bbox in stage space (matches legacy `spike.x = posX`). */
   x: number;
-  /** Top-left y in stage space. */
+  /** Top-left y of the spike bbox in stage space. */
   y: number;
   /** False = stationary; remaining motion fields are ignored. */
   isMoving?: boolean;
@@ -35,6 +43,30 @@ export interface SpikeMotionState {
   y: number;
   upOrLeft: boolean;
 }
+
+// ── Sizing ──
+// Bbox is the collision rectangle; the blob silhouette extends slightly
+// past it for visual feel (the irregular outline doesn't have to match
+// the collision box exactly). 30×30 is a touch larger than the legacy
+// 20×20 sprite — gives the spike enough visual weight to read as a
+// hazard at the avatar's 0.25 display scale.
+export const SPIKE_BBOX_W = 30;
+export const SPIKE_BBOX_H = 30;
+const BLOB_RADIUS = 15;
+const BLOB_BUMP_COUNT = 6;
+const BLOB_BUMP_RADIUS = 9;
+const BLOB_BUMP_DIST = 10;
+const SPIRAL_MAX_RADIUS = 7.5;
+const SPIRAL_TURNS = 2.25;
+const SPIRAL_THICKNESS = 1.5;
+const SPIRAL_SEGMENTS = 48;
+const SPIRAL_ROTATION_PER_TICK = 0.06; // ~½ rotation/sec at 24 Hz
+
+// Colors sampled from the Ruffle screenshot of displacement0 hard-mode:
+//   blob silhouette ≈ very dark warm black
+//   spiral fill     ≈ warm rust / brown
+const BLOB_COLOR = 0x1a0e0a;
+const SPIRAL_COLOR = 0x8b4513;
 
 /**
  * Advance a moving spike by one tick. Matches legacy spikeObstacle.mxml
@@ -64,9 +96,8 @@ export function stepSpikeMotion(state: SpikeMotionState, cfg: Required<SpikeConf
 
 /**
  * AABB overlap between the avatar body box (anchor: bottom-center at
- * `bx`/`by`, dims from `BODY`) and a spike sprite (anchor: top-left at
- * `sx`/`sy`, dims `sw`×`sh`). Used in place of the legacy pixel-perfect
- * test — bbox is fine here because the spike art fills its bounding box.
+ * `bx`/`by`, dims from `BODY`) and a spike bbox (anchor: top-left at
+ * `sx`/`sy`, dims `sw`×`sh`).
  */
 export function spikeOverlapsBody(
   bx: number,
@@ -96,21 +127,61 @@ function normalizeConfig(cfg: SpikeConfig): Required<SpikeConfig> {
   };
 }
 
+/** Build the irregular dark silhouette: 1 center disc + 6 perimeter bumps. */
+function drawBlob(g: Graphics): void {
+  g.circle(0, 0, BLOB_RADIUS).fill({ color: BLOB_COLOR });
+  for (let i = 0; i < BLOB_BUMP_COUNT; i++) {
+    const t = (i / BLOB_BUMP_COUNT) * Math.PI * 2;
+    g.circle(
+      Math.cos(t) * BLOB_BUMP_DIST,
+      Math.sin(t) * BLOB_BUMP_DIST,
+      BLOB_BUMP_RADIUS,
+    ).fill({ color: BLOB_COLOR });
+  }
+}
+
+/** Draw the inward spiral as a connected polyline. */
+function drawSpiral(g: Graphics): void {
+  const pts: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i <= SPIRAL_SEGMENTS; i++) {
+    const t = i / SPIRAL_SEGMENTS;
+    const angle = t * SPIRAL_TURNS * Math.PI * 2;
+    const r = t * SPIRAL_MAX_RADIUS;
+    pts.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+  }
+  g.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i]!.x, pts[i]!.y);
+  g.stroke({ color: SPIRAL_COLOR, width: SPIRAL_THICKNESS, cap: 'round' });
+}
+
 export class Spike {
-  readonly container: Sprite;
-  readonly width: number;
-  readonly height: number;
+  readonly container: Container;
+  readonly width = SPIKE_BBOX_W;
+  readonly height = SPIKE_BBOX_H;
   readonly state: SpikeMotionState;
 
   private readonly normCfg: Required<SpikeConfig>;
+  private readonly spiralGfx: Graphics;
 
-  constructor(cfg: SpikeConfig, texture: Texture) {
+  constructor(cfg: SpikeConfig) {
     this.normCfg = normalizeConfig(cfg);
-    this.container = new Sprite(texture);
+
+    this.container = new Container();
     this.container.x = this.normCfg.x;
     this.container.y = this.normCfg.y;
-    this.width = this.container.width;
-    this.height = this.container.height;
+
+    const blob = new Graphics();
+    drawBlob(blob);
+    blob.x = SPIKE_BBOX_W / 2;
+    blob.y = SPIKE_BBOX_H / 2;
+    this.container.addChild(blob);
+
+    this.spiralGfx = new Graphics();
+    drawSpiral(this.spiralGfx);
+    this.spiralGfx.x = SPIKE_BBOX_W / 2;
+    this.spiralGfx.y = SPIKE_BBOX_H / 2;
+    this.container.addChild(this.spiralGfx);
+
     this.state = {
       x: this.normCfg.x,
       y: this.normCfg.y,
@@ -118,11 +189,12 @@ export class Spike {
     };
   }
 
-  /** Advance motion + sync sprite. Caller decides ordering vs. body.step. */
+  /** Advance motion + spiral rotation + sync container position. */
   tick(): void {
     stepSpikeMotion(this.state, this.normCfg);
     this.container.x = this.state.x;
     this.container.y = this.state.y;
+    this.spiralGfx.rotation += SPIRAL_ROTATION_PER_TICK;
   }
 
   /** True if the spike's bbox overlaps the avatar body bbox. */
@@ -137,5 +209,6 @@ export class Spike {
     this.state.upOrLeft = this.normCfg.upOrLeft;
     this.container.x = this.state.x;
     this.container.y = this.state.y;
+    this.spiralGfx.rotation = 0;
   }
 }
