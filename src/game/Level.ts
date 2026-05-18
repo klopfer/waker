@@ -150,6 +150,20 @@ const LAND_SFX_VARIANTS = ['sfxLand01', 'sfxLand02', 'sfxLand03', 'sfxLand04', '
 const GRAPH_TONE_BASE_HZ = 220;
 const GRAPH_TONE_OCTAVES = 2;
 
+// Inset from the bottom of the avatar bbox used in moving-platform squish
+// detection. Without this, body.step's ground-snap leaves the avatar's
+// feet at the platform's top y — and a horizontal platform's overlap check
+// "(by + bh) > platform.y" trips false-positive on float precision, so the
+// platform stops every frame the avatar stands on it. 4 px is generous
+// enough to absorb any rounding, narrow enough that a platform visibly
+// inside the avatar's lower legs still triggers squish.
+const PLATFORM_SQUISH_FEET_INSET = 4;
+// Tolerance for detecting which platform the avatar is "standing on" so
+// we can carry them along with the platform's motion. body.state.y should
+// equal the platform's top exactly after ground-snap, but allow a couple
+// of px to be safe.
+const AVATAR_PLATFORM_DETECT_TOLERANCE = 2;
+
 // ─── The Level class ──────────────────────────────────────────────────
 
 export class Level {
@@ -184,6 +198,11 @@ export class Level {
   private audioCtx: AudioContext | null = null;
   private graphTone: GraphTone | null = null;
   private audioStarted = false;
+
+  // The platform the avatar's feet are resting on this frame (if any).
+  // Set after body.step, used during platform.tick to carry the avatar
+  // along with the platform's motion.
+  private avatarPlatform: MovingPlatform | null = null;
 
   private tickCount = 0;
   private firstRunTick: number | null = null;
@@ -439,17 +458,52 @@ export class Level {
       }
     }
 
+    // Detect which platform (if any) the avatar is currently standing on.
+    // Must run AFTER body.step so we see the post-snap y. Used below to
+    // carry the avatar with the platform if it moves this tick.
+    this.avatarPlatform = null;
+    if (this.body.state.onGround) {
+      for (const p of this.platforms) {
+        const bx = this.body.state.x;
+        const by = this.body.state.y;
+        if (
+          bx >= p.ground.x &&
+          bx <= p.ground.x + p.ground.w &&
+          Math.abs(by - p.ground.y) <= AVATAR_PLATFORM_DETECT_TOLERANCE
+        ) {
+          this.avatarPlatform = p;
+          break;
+        }
+      }
+    }
+
     // Moving platforms — each ticks itself, stopping on stage edge /
-    // avatar squish / other-platform collision. Avatar bbox passed in is
-    // the avatar's CURRENT position (post-body.step) so the platform sees
-    // where the player actually is, not where they were.
+    // avatar squish / other-platform collision. Avatar bbox passed in has
+    // its bottom inset by PLATFORM_SQUISH_FEET_INSET so a platform passing
+    // UNDER the avatar's feet doesn't false-trigger squish-stop.
     const avatarBox = {
       x: this.body.state.x - BODY.HALF_WIDTH,
       y: this.body.state.y - BODY.HEIGHT,
       w: BODY.HALF_WIDTH * 2,
-      h: BODY.HEIGHT,
+      h: BODY.HEIGHT - PLATFORM_SQUISH_FEET_INSET,
     };
-    for (const p of this.platforms) p.tick(this.platforms, avatarBox, STAGE_WIDTH, STAGE_HEIGHT);
+    for (const p of this.platforms) {
+      const oldX = p.ground.x;
+      const oldY = p.ground.y;
+      p.tick(this.platforms, avatarBox, STAGE_WIDTH, STAGE_HEIGHT);
+      // If the avatar is riding this platform AND it actually moved,
+      // bring the avatar along by the same delta. Next frame's body.step
+      // will resolve any side-push if the carry pushed them into a wall.
+      if (p === this.avatarPlatform) {
+        const dx = p.ground.x - oldX;
+        const dy = p.ground.y - oldY;
+        if (dx !== 0 || dy !== 0) {
+          this.body.state.x += dx;
+          this.body.state.y += dy;
+          this.deps.avatar.setPosition(this.body.state.x, this.body.state.y);
+        }
+      }
+    }
 
     // Switch pulse animations.
     for (const sw of this.switches) sw.tick();

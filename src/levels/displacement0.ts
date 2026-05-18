@@ -67,17 +67,19 @@ export const DISPLACEMENT0: LevelConfig = {
   // has confirmed it looks/behaves right. displacement0 in the legacy
   // game has no switches or platforms.
   //
-  // Layout: switch sits on the bottom floor at the very left; pressing D
-  // while overlapping it starts a horizontal platform sweeping in the
-  // gap between the bottom-cloud bank and the staircase. The platform
-  // bumps back when it hits the stage edge or the avatar.
+  // Layout: switch on the bottom-left floor next to the avatar's spawn
+  // landing zone. Platform at y=460 — high enough that its bottom (y=476)
+  // sits above the avatar's bbox top (y=485 when feet are on the floor
+  // at y=520), so the avatar can walk UNDER it to reach the switch even
+  // if the platform parks over the switch's x range. Platform sweeps
+  // horizontally between the stage edges.
   switches: [
     {
-      switch: { x: 20, y: 492 },
+      switch: { x: 10, y: 492 },
       platforms: [
         {
-          x: 180,
-          y: 470,
+          x: 250,
+          y: 460,
           width: 80,
           height: 16,
           horizontal: true,
