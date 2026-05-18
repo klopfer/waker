@@ -135,16 +135,18 @@ exit portal, sun pulse, parallax sway, animated bg, etc.) — see
 Suggested order — feel free to deviate. Each item is a self-contained
 chunk that can land in 1–3 commits.
 
-### A. Win detection at the exit portal (~30 min)
+### A. Win detection at the exit portal ✅ done
 
-The exit portal is placed at `(750, 174)` (from `displacement0.mxml`)
-but reaching it does nothing. Add a per-tick check: if the avatar's
-feet are inside the exit's bounding box, fire a "level complete"
-overlay (just a text Pixi `Text` for now) and reset on key press.
+Avatar's body-bbox overlap with the exit's (40×40) bbox latches
+`levelComplete = true`, freezes physics + input handling, shows
+a centered "Level Complete / press SPACE to restart" overlay
+(semi-transparent dim + Pixi `Text`). SPACE → `resetLevel()`
+restores spawn position, orb in cradle, graph back to idle, all
+solidified curves removed from the avatar's ground stack, prompt
+latches cleared. Visual ticks (orb pulse, sun pulse, bg sway, exit
+glow) keep running behind the overlay so the scene doesn't freeze.
 
-This validates the gameplay loop end-to-end before more polish.
-
-### B. Audio integration (~1 day)
+### B. Audio integration (~1 day) ← next
 
 `engine/Audio.ts` (Howler wrapper) and `engine/GraphTone.ts`
 (OscillatorNode-based pitch tone) are built but not wired. Wire up:

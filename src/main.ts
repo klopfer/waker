@@ -84,6 +84,9 @@ const ORIGIN_MAX_GLOW_STRENGTH = 4;
 // default anchor (0, 0)), so we mirror that with anchor (0, 0).
 const EXIT_X = 750;
 const EXIT_Y = 174;
+// Exit sprite is 40 × 40. Bbox is (EXIT_X, EXIT_Y) → (EXIT_X+40, EXIT_Y+40).
+const EXIT_W = 40;
+const EXIT_H = 40;
 
 // Key-prompt floating sprites — visual hints that fade in/out based on
 // context. Each prompt bobs ~3 px on a slow sine for a "floating" feel.
@@ -294,6 +297,63 @@ async function main(): Promise<void> {
   exitSprite.filters = [exitGlow];
   app.stage.addChild(exitSprite);
 
+  // ───────────────────────────────────────────────────────────────────────
+  // Level-complete overlay (hidden until win detection fires).
+  //
+  // A semi-transparent dimming layer + centered title text + a
+  // "press SPACE to restart" instruction. Sits above everything except
+  // the debug readouts. Display order matters: this is added LATE so
+  // it occludes the gameplay when shown.
+  // ───────────────────────────────────────────────────────────────────────
+  const winOverlay = new Container();
+  winOverlay.visible = false;
+  const winDim = new Graphics()
+    .rect(0, 0, STAGE_WIDTH, STAGE_HEIGHT)
+    .fill({ color: 0x000000, alpha: 0.55 });
+  winOverlay.addChild(winDim);
+  const winTitle = new Text({
+    text: 'Level Complete',
+    style: {
+      fill: 0xffffff,
+      fontFamily: 'sans-serif',
+      fontSize: 48,
+      fontWeight: '700',
+      align: 'center',
+    },
+  });
+  winTitle.anchor.set(0.5, 1);
+  winTitle.x = STAGE_WIDTH / 2;
+  winTitle.y = STAGE_HEIGHT / 2 - 8;
+  winOverlay.addChild(winTitle);
+  const winSub = new Text({
+    text: 'press SPACE to restart',
+    style: {
+      fill: 0xffeec8,
+      fontFamily: 'sans-serif',
+      fontSize: 16,
+      align: 'center',
+    },
+  });
+  winSub.anchor.set(0.5, 0);
+  winSub.x = STAGE_WIDTH / 2;
+  winSub.y = STAGE_HEIGHT / 2 + 12;
+  winOverlay.addChild(winSub);
+  // Deferred: addChild for winOverlay happens after the gameplay
+  // layers so it draws on top. We add it right before the tick loop.
+
+  // Bbox-overlap predicate. The avatar uses bottom-center anchor; treat
+  // the avatar's body as covering [x-HALF_WIDTH, x+HALF_WIDTH] horiz and
+  // [y-HEIGHT, y] vertically. Win fires when the avatar's body bbox
+  // intersects the exit's bbox at all — generous so you don't have to
+  // stand IN the portal, walking onto the exit platform near it counts.
+  const avatarOverlapsExit = (avatarX: number, avatarY: number): boolean => {
+    const ax0 = avatarX - 12; // HALF_WIDTH; hard-coded here to avoid importing BODY just for this
+    const ax1 = avatarX + 12;
+    const ay0 = avatarY - 35;
+    const ay1 = avatarY;
+    return ax0 < EXIT_X + EXIT_W && ax1 > EXIT_X && ay0 < EXIT_Y + EXIT_H && ay1 > EXIT_Y;
+  };
+
   // Key prompts — small floating help glyphs we draw procedurally instead
   // of the curated `help_image_D` / `help_image_spacebar` PNGs (which read
   // as too prominent at this scale). A rounded dark-cream rectangle with
@@ -364,6 +424,11 @@ async function main(): Promise<void> {
   avatar.setPosition(body.state.x, body.state.y);
   app.stage.addChild(avatar.container);
 
+  // Win overlay sits ABOVE the avatar so it occludes the play scene
+  // when shown. tickReadout is below it (drawn first), so debug text
+  // is hidden under the overlay too — fine for v1.
+  app.stage.addChild(winOverlay);
+
   const input = new Input(window, { preventDefaultFor: GAME_KEYS });
   const sim = new FixedStep({ hz: SIM_HZ });
 
@@ -381,6 +446,10 @@ async function main(): Promise<void> {
   let firstRunTick: number | null = null;
   let firstJumped = false;
   let firstDropped = false;
+  // Win state. Set when the avatar's body bbox overlaps the exit portal.
+  // While true: physics + input handling freeze, the winOverlay is shown,
+  // and pressing the restart key resets everything back to spawn.
+  let levelComplete = false;
   // Phase accumulator drives prompt bobbing AND exit-portal glow pulse —
   // sharing one phase keeps everything visually in sync without tracking
   // separate timers.
@@ -392,10 +461,63 @@ async function main(): Promise<void> {
   let sunPhase = 0;
   let bgSwayPhase = 0;
 
+  // Restore every piece of mutable state back to level-start. Called when
+  // the player presses restart on the win overlay, and could also be
+  // wired to a debug "reset" hotkey later.
+  const resetLevel = (): void => {
+    // Avatar back to spawn.
+    body.state.x = SPAWN_X;
+    body.state.y = SPAWN_Y;
+    body.state.vx = 0;
+    body.state.vy = 0;
+    body.state.facingRight = true;
+    body.state.onGround = false;
+    avatar.setPosition(body.state.x, body.state.y);
+
+    // Orb back to in_world at the cradle, gravity will let it settle.
+    // If the orb was held, drop() flips it to in_world. If it was
+    // already in_world (e.g., dropped on a curve far from origin), we
+    // forcibly reposition it.
+    if (orb.state === 'held') {
+      orb.drop(ORB_X, ORB_Y);
+    } else {
+      orb.x = ORB_X;
+      orb.y = ORB_Y;
+      orb.container.x = Math.round(ORB_X);
+      orb.container.y = Math.round(ORB_Y);
+    }
+
+    // Graph back to idle, clear any solidified curve.
+    const oldCurve = graph.ground;
+    if (oldCurve && ground.has(oldCurve)) ground.remove(oldCurve);
+    graph.reset();
+
+    // Latches.
+    firstRunTick = null;
+    firstJumped = false;
+    firstDropped = false;
+    levelComplete = false;
+
+    // Hide overlay.
+    winOverlay.visible = false;
+  };
+
   app.ticker.add(({ deltaMS }) => {
     const { steps } = sim.advance(deltaMS);
     for (let i = 0; i < steps; i++) {
       tickCount++;
+
+      // While the win overlay is up, freeze the gameplay sim. Listen
+      // only for the restart key. Keep visuals (orb pulse, sun pulse,
+      // bg sway, exit glow) running below in the unconditional block
+      // so the screen doesn't go static behind the overlay.
+      if (levelComplete) {
+        if (input.wasPressed('Space')) {
+          resetLevel();
+        }
+        input.endTick();
+        continue;
+      }
 
       const moveInputs: MovementInputs = {
         moveLeft: input.isDown('ArrowLeft'),
@@ -451,6 +573,15 @@ async function main(): Promise<void> {
       });
 
       orb.update(body.state.x, body.state.y, orbGround);
+
+      // Win check: avatar's body bbox overlaps the exit portal's bbox.
+      // The visuals (orb/sun/exit pulse, bg sway) keep ticking below,
+      // but the next iteration's `if (levelComplete)` branch short-
+      // circuits input + physics.
+      if (avatarOverlapsExit(body.state.x, body.state.y)) {
+        levelComplete = true;
+        winOverlay.visible = true;
+      }
 
       // Origin proximity glow: glow strength is linear in |avatar.x - origin.x|,
       // max at the origin and zero at GRAPH_MAX_VALUE away. The stand sprite
