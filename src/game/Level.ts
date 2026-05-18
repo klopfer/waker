@@ -21,6 +21,7 @@ import { Graph } from './Graph.js';
 import { BODY, Body, type MovementInputs } from './Movements.js';
 import { Orb } from './Orb.js';
 import { loadPixelGround, type PixelGround } from './PixelGround.js';
+import { Spike, type SpikeConfig } from './Spike.js';
 
 // ─── Per-level data ────────────────────────────────────────────────────
 
@@ -68,6 +69,14 @@ export interface LevelConfig {
    * so we don't stack them on the painted ones.
    */
   hasHelpPromptsInBg: boolean;
+
+  /**
+   * Optional list of spike hazards. Touching a spike teleports the
+   * avatar back to `spawn` and plays the hurt SFX. Orb / graph state
+   * are NOT reset (matches legacy spikeObstacle.mxml: only the player
+   * is moved). Empty / undefined = no spikes.
+   */
+  spikes?: readonly SpikeConfig[];
 }
 
 // ─── Engine singletons passed in ──────────────────────────────────────
@@ -89,6 +98,7 @@ interface LevelTextures {
   origin: Texture;
   graphBg: Texture;
   exit: Texture;
+  spike: Texture | null;
 }
 
 // ─── Constants that aren't per-level ──────────────────────────────────
@@ -150,6 +160,7 @@ export class Level {
   private readonly exitGlow: GlowFilter;
   private readonly promptD: Container | null;
   private readonly promptSpacebar: Container | null;
+  private readonly spikes: readonly Spike[];
   private readonly winOverlay: Container;
   private readonly tickReadout: Text;
 
@@ -168,16 +179,23 @@ export class Level {
 
   /** Async factory — loads textures + pixel ground from manifest keys, then constructs. */
   static async load(cfg: LevelConfig, deps: LevelDeps): Promise<Level> {
-    const [bg, ground, orb, origin, graphBg, exit] = await Promise.all([
+    const needsSpike = !!cfg.spikes && cfg.spikes.length > 0;
+    const [bg, ground, orb, origin, graphBg, exit, spike] = await Promise.all([
       deps.assets.image(cfg.bgKey),
       deps.assets.image(cfg.groundKey),
       deps.assets.image('disOrb'),
       deps.assets.image('displaceOrigin'),
       deps.assets.image('graphBGD'),
       deps.assets.image('exit'),
+      needsSpike ? deps.assets.image('spikeyObjects') : Promise.resolve(null),
     ]);
     const pixelGround = await loadPixelGround(deps.assets.url(cfg.groundKey));
-    return new Level(cfg, deps, { bg, ground, orb, origin, graphBg, exit }, pixelGround);
+    return new Level(
+      cfg,
+      deps,
+      { bg, ground, orb, origin, graphBg, exit, spike },
+      pixelGround,
+    );
   }
 
   private constructor(
@@ -290,6 +308,23 @@ export class Level {
       deps.app.stage.addChild(this.promptSpacebar);
     }
 
+    // ── Spikes ──
+    // Added BEFORE the avatar so the avatar draws on top. If cfg.spikes
+    // is set, tex.spike was loaded in Level.load() — assert for safety.
+    if (cfg.spikes && cfg.spikes.length > 0) {
+      if (!tex.spike) {
+        throw new Error('Level: spike texture missing but cfg.spikes is non-empty');
+      }
+      const spikeTex = tex.spike;
+      this.spikes = cfg.spikes.map((s) => {
+        const spike = new Spike(s, spikeTex);
+        deps.app.stage.addChild(spike.container);
+        return spike;
+      });
+    } else {
+      this.spikes = [];
+    }
+
     // ── Body (avatar physics state) ──
     this.body = new Body({ x: cfg.spawn.x, y: cfg.spawn.y, onGround: false });
     deps.avatar.setPosition(this.body.state.x, this.body.state.y);
@@ -368,6 +403,17 @@ export class Level {
     // Jump / land SFX.
     if (willJump) this.playRandomSfx(JUMP_SFX_VARIANTS);
     if (!wasOnGround && this.body.state.onGround) this.playRandomSfx(LAND_SFX_VARIANTS);
+
+    // Spike motion + collision. Tick first so the spike's new position is
+    // the one we test against; matches legacy spikeObstacle.spikeGameLoop
+    // (move, then overlap-check, all in the same pass).
+    for (const spike of this.spikes) spike.tick();
+    for (const spike of this.spikes) {
+      if (spike.overlapsBody(this.body.state.x, this.body.state.y)) {
+        this.respawnOnHit();
+        break;
+      }
+    }
 
     // Update avatar visuals + orb physics.
     this.deps.avatar.setPosition(this.body.state.x, this.body.state.y);
@@ -448,10 +494,27 @@ export class Level {
     this.firstDropped = false;
     this.levelComplete = false;
 
+    for (const spike of this.spikes) spike.reset();
+
     if (this.graphTone?.isPlaying) this.graphTone.stop();
     this.deps.audio.playSfx('sfxGraphReset', this.deps.assets.url('sfxGraphReset'));
 
     this.winOverlay.visible = false;
+  }
+
+  /**
+   * Spike hit response. Matches legacy spikeObstacle.mxml: teleport the
+   * avatar back to the entrance, zero velocity, play the hurt SFX. Orb /
+   * graph / win state are NOT touched — the spike is a "soft" reset.
+   */
+  private respawnOnHit(): void {
+    this.body.state.x = this.cfg.spawn.x;
+    this.body.state.y = this.cfg.spawn.y;
+    this.body.state.vx = 0;
+    this.body.state.vy = 0;
+    this.body.state.onGround = false;
+    this.deps.avatar.setPosition(this.body.state.x, this.body.state.y);
+    this.deps.audio.playSfx('sfxHurt', this.deps.assets.url('sfxHurt'));
   }
 
   // ─── Per-tick helpers ────────────────────────────────────────────

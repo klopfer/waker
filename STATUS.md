@@ -43,8 +43,8 @@ Gameplay loop currently working:
 Walking on / under / up / down jagged player-drawn curves all works as
 of calibration v14 — see `docs/calibration.md` §9 for the full journey.
 
-**Tests**: `npm run test` → 84/84 passing.
-**Build**: `npm run build` → 639 KB bundle / 275 KB gzipped.
+**Tests**: `npm run test` → 99/99 passing.
+**Build**: `npm run build` → 653 KB bundle / 279 KB gzipped.
 
 ---
 
@@ -180,10 +180,27 @@ new config, change one import in `main.ts`.
 setup, shared engine singletons (assets / audio / input / avatar /
 sim), `Level.load(DISPLACEMENT0, deps)`, sim loop calls `level.tick()`.
 
-### D. Hazards: Spike, Switch, MovingPlatform (~2 days) ← next
+### D. Hazards: Spike, Switch, MovingPlatform (~2 days) ← in progress
 
 Order 10 in §14. displacement1 (hard difficulty) uses spikes;
 displacement2 onward needs switches and moving platforms.
+
+- **D1: Spike** ✅ done. `game/Spike.ts` is a thin Pixi-sprite wrapper
+  over pure `stepSpikeMotion` + `spikeOverlapsBody` functions (15
+  unit tests). `LevelConfig.spikes?: SpikeConfig[]` accepts
+  `{x, y, isMoving, horizontal, upOrLeft, turn, turn2, speed}`
+  matching the legacy `addSpike(...)` signature. Per-tick: spike
+  motion, then bbox overlap with avatar; on hit → teleport avatar
+  to spawn + zero velocities + play `sfxHurt`. Orb / graph / win
+  state untouched (soft reset only). displacement0 ships with the
+  legacy hard-mode stationary spike at (540, 440) + one moving
+  smoke-test spike along y=555 to exercise both code paths.
+- **D2: Switch + MovingPlatform** ← next. Switch reuses the D-key
+  pickup gesture (`tryPicking` flag in legacy). MovingPlatform is
+  owned by a switch and the squish-physics is gnarly (~200 lines
+  in legacy `obstaclesClass`).
+- **D3: Hit-effect red flash polish**. Programmatic red bloom at
+  player position for ~12 ticks on spike hit. Hooks D1 + D2 squish.
 
 ### E. Remaining levels (~3–4 days)
 
