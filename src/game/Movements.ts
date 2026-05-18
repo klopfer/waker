@@ -202,9 +202,25 @@ function anySolidAlongTopEdge(
 
 // Distinguish a true wall from a slope/floor at the avatar's leading edge.
 //
-// Semantic definition: a WALL is something the avatar can't step over (its
-// top is higher than STEP_UP above feet). A slope/floor's top is within
-// step-up range and the avatar would normally walk onto it.
+// Three regimes for the obstacle top y (relative to the avatar's feet
+// bottomY and BODY.HEIGHT=35, BODY.STEP_UP=40):
+//
+//   topY ≥ bottomY              (obstacle at or below feet)
+//     → NOT a wall. Avatar is walking ON it; step-down logic handles
+//       small descents.
+//
+//   topY ∈ [bottomY-HEIGHT, bottomY) (obstacle's top overlaps body)
+//     → WALL. Without this, drawn curves that sit at body height phase
+//       through the avatar's torso when side-push refuses to push and
+//       step-up rejects (continuity-check fails on the steep slope from
+//       the avatar's feet to the curve's top). This is the "draw too
+//       low → trap yourself" enforcement on displacement3.
+//
+//   topY ∈ [bottomY-STEP_UP, bottomY-HEIGHT) (clear of body, within step-up)
+//     → NOT a wall. The avatar can step up onto it.
+//
+//   topY < bottomY-STEP_UP      (too high to step over)
+//     → WALL.
 //
 // The earlier `solidAt(feet + 1)` heuristic worked for descents but failed
 // for gentle ascending slopes where the curve's solid band still includes
@@ -220,10 +236,19 @@ function isWallAt(edgeX: number, bottomY: number, ground: GroundProvider): boole
   const topY = ground.groundYBelow(edgeX, bottomY - 1000);
   if (topY === Number.POSITIVE_INFINITY) return false;
   if (topY >= bottomY) return false; // Obstacle is at or below feet — not a side wall.
-  return topY < bottomY - PHYSICS.STEP_UP; // Top too high to step over → wall.
+  // Wall if either too high to step over OR overlapping the body. The
+  // body-overlap branch is what gives drawn curves teeth: a curve whose
+  // top sits between feet and (feet - HEIGHT) physically blocks the
+  // avatar instead of phasing through.
+  return topY < bottomY - PHYSICS.STEP_UP || topY >= bottomY - BODY.HEIGHT;
 }
 
-function pushOutFromWallRight(x: number, bottomY: number, ground: GroundProvider): number {
+function pushOutFromWallRight(
+  x: number,
+  bottomY: number,
+  ground: GroundProvider,
+  minX: number,
+): number {
   let cur = x;
   for (let i = 0; i < BODY.MAX_PUSH; i++) {
     const edgeX = cur + BODY.HALF_WIDTH;
@@ -232,17 +257,24 @@ function pushOutFromWallRight(x: number, bottomY: number, ground: GroundProvider
     // step up onto? If solid doesn't extend below feet, treat as slope
     // and let the avatar pass (step-up will catch them next tick).
     if (!isWallAt(edgeX, bottomY, ground)) return cur;
+    if (cur <= minX) return minX; // Don't teleport past the avatar's pre-move x.
     cur -= 1;
   }
   return cur;
 }
 
-function pushOutFromWallLeft(x: number, bottomY: number, ground: GroundProvider): number {
+function pushOutFromWallLeft(
+  x: number,
+  bottomY: number,
+  ground: GroundProvider,
+  maxX: number,
+): number {
   let cur = x;
   for (let i = 0; i < BODY.MAX_PUSH; i++) {
     const edgeX = cur - BODY.HALF_WIDTH - 1;
     if (!anySolidAlongVerticalEdge(edgeX, bottomY, ground)) return cur;
     if (!isWallAt(edgeX, bottomY, ground)) return cur;
+    if (cur >= maxX) return maxX; // Don't teleport past the avatar's pre-move x.
     cur += 1;
   }
   return cur;
@@ -412,13 +444,17 @@ export function step(
 
   if (!steppedToFloor) {
     if (vx > 0) {
-      const pushed = pushOutFromWallRight(x, y, ground);
+      // Pass state.x as minX: if the avatar walks into a wall, they stop
+      // at most at their pre-move position. Without the cap, a long wall
+      // (e.g., a player-drawn curve at body height covering 100+ px of x)
+      // would push the avatar BACK by the full MAX_PUSH=30 each tick.
+      const pushed = pushOutFromWallRight(x, y, ground, state.x);
       if (pushed !== x) {
         x = pushed;
         vx = 0;
       }
     } else if (vx < 0) {
-      const pushed = pushOutFromWallLeft(x, y, ground);
+      const pushed = pushOutFromWallLeft(x, y, ground, state.x);
       if (pushed !== x) {
         x = pushed;
         vx = 0;
