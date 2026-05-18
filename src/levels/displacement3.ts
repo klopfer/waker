@@ -51,7 +51,16 @@ export const DISPLACEMENT3: LevelConfig = {
         width: 180,
         height: 180,
         maxValue: 400,
-        yOffset: 90,
+        // Legacy spec was yOffset=90 (matching displacement3.mxml).
+        // Reduced to 60: pushes the value-0 line UP from world y=500
+        // to y=470 (band 463-477), still overlapping the avatar's
+        // body (465-500) by 12 px so the "draw the curve too low
+        // → trap yourself" puzzle still triggers. But the value-max
+        // line also moves up from y=410 to y=380 (curve top y=373),
+        // giving the player 37 px more headroom to reach orb 2 at
+        // (280, 320) from the curve's right end via a jump. Playtest
+        // (2026-05-18) showed yOffset=90 was just barely solvable.
+        yOffset: 60,
       },
       cradle: { lift: 12, halfWidth: 18 },
     },

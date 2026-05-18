@@ -40,6 +40,7 @@ const GAME_KEYS = [
   'ArrowDown',
   'Space',
   'KeyD',
+  'KeyR',
   'KeyS',
   'ShiftLeft',
   'ShiftRight',
@@ -84,7 +85,7 @@ async function main(): Promise<void> {
   const label = new Text({
     text:
       'Waker — displacement0 (tutorial): orb pickup + graph drawing\n' +
-      'arrows: walk   |   S/shift: sprint   |   space/up: jump   |   D: pick up / drop orb',
+      'arrows: walk   |   S/shift: sprint   |   space/up: jump   |   D: pick up / drop orb   |   R: restart',
     style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, align: 'center' },
   });
   label.anchor.set(0.5, 0);

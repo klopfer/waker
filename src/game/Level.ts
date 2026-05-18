@@ -470,6 +470,16 @@ export class Level {
     // D key: pickup OR drop.
     if (this.deps.input.wasPressed('KeyD')) this.handleDKey();
 
+    // R key: emergency restart. Same effect as the win-overlay SPACE
+    // restart (reset orbs, curves, avatar, switches/platforms) — gives
+    // the player an escape hatch if they wedge themselves under a
+    // self-drawn curve and can't move in either direction.
+    if (this.deps.input.wasPressed('KeyR')) {
+      this.reset();
+      this.deps.input.endTick();
+      return;
+    }
+
     // Pre-step state for jump/land SFX triggers.
     const wasOnGround = this.body.state.onGround;
     const willJump = moveInputs.jumpPressed && this.body.state.onGround;

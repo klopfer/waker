@@ -26,6 +26,7 @@ Controls:
 - `S` or `Shift`: sprint
 - `Space` or `↑`: jump
 - `D`: pick up / drop the orb
+- `R`: restart level (emergency escape if you wedge yourself under a curve)
 
 Gameplay loop currently working:
 

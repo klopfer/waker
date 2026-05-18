@@ -100,13 +100,22 @@ export const BODY = {
   //        displacement3 the "draw the curve too low → get trapped"
   //        puzzle became trivial because the avatar could squeeze past
   //        even fully-overlapping curves.
-  //   v15 (this): SIDE_TOP_MARGIN = 4. Curves with non-trivial body
-  //        overlap now block sideways motion (matching legacy intent).
+  //   v15: SIDE_TOP_MARGIN = 4. Curves with non-trivial body overlap
+  //        now block sideways motion (matching legacy intent).
   //        displacement0 was rebalanced via its graph yOffset so the
   //        lowest curve at value=0 is high enough (band 282-296) that
   //        the avatar's body (top y=298) clears it naturally — no
   //        body-margin hack needed.
-  SIDE_TOP_MARGIN: 4,
+  //   v16 (this): SIDE_TOP_MARGIN = 8. v15's 4 px slop was too strict
+  //        for "barely-overlapping" cases where the curve clips the
+  //        top ~5 px of the avatar's head: avatar reads as stuck even
+  //        though they should be able to walk under. 8 px lets those
+  //        through while still blocking real overlaps (≥10 px deep).
+  //        For displacement3's value=0 curve (band 493-507 vs body
+  //        465-500, 7 px overlap) the BAND samples still hit at
+  //        margin=8 (sideTopY=473, samples y=479..499 cover band's
+  //        497-499 range), so the trap puzzle is preserved.
+  SIDE_TOP_MARGIN: 8,
 } as const;
 
 export interface MovementInputs {
