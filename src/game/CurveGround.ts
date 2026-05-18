@@ -47,7 +47,14 @@ export class CurveGround implements GroundProvider {
       const t = dx === 0 ? 0 : (x - p0.x) / dx;
       const yLine = p0.y + t * (p1.y - p0.y);
       const yTop = yLine - half;
-      if (yTop >= searchFromY && yTop < best) best = yTop;
+      const yBottom = yLine + half;
+      // Return yTop if the search start is either ABOVE the band (standard
+      // "next floor below" case) OR INSIDE the band (the avatar's feet
+      // are inside the curve body — snap UP to the top). Without the
+      // inside-band branch, a fast vertical move OR a lateral jump that
+      // lands at an x where the interpolated yTop is above the avatar's
+      // feet would tunnel through the curve.
+      if (yBottom >= searchFromY && yTop < best) best = yTop;
     }
     return best;
   }

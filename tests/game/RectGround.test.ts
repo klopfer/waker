@@ -9,10 +9,22 @@ describe('RectGround', () => {
     expect(r.groundYBelow(120, 0)).toBe(200);
   });
 
-  it('groundYBelow returns +Infinity when searchFromY is below the top (avatar walking under)', () => {
-    const r = new RectGround(100, 200, 60, 30);
-    expect(r.groundYBelow(120, 201)).toBe(Number.POSITIVE_INFINITY);
+  it('groundYBelow returns +Infinity when searchFromY is fully below the rect (walking under)', () => {
+    const r = new RectGround(100, 200, 60, 30); // covers y ∈ [200, 230]
+    // Avatar feet at y=231 or below are below the rect's body — no
+    // snap (rect is above, avatar is walking under).
+    expect(r.groundYBelow(120, 231)).toBe(Number.POSITIVE_INFINITY);
     expect(r.groundYBelow(120, 250)).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('groundYBelow returns the top when searchFromY is INSIDE the rect (tunneling snap)', () => {
+    const r = new RectGround(100, 200, 60, 30);
+    // Feet inside the rect body should snap UP to the top — the
+    // alternative is the avatar getting "stuck inside" the platform
+    // (e.g., after a high-velocity move that lands them in the body).
+    expect(r.groundYBelow(120, 201)).toBe(200);
+    expect(r.groundYBelow(120, 215)).toBe(200);
+    expect(r.groundYBelow(120, 229)).toBe(200);
   });
 
   it('groundYBelow returns +Infinity when column misses the rect', () => {

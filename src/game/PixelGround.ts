@@ -32,6 +32,18 @@ export class PixelGround implements GroundProvider {
     const ix = Math.floor(x);
     if (ix < 0 || ix >= this.width) return Number.POSITIVE_INFINITY;
     const startY = Math.max(0, Math.floor(searchFromY));
+    // If the search start is already inside a solid band, scan UPWARD to
+    // find the band's TOP and return that (snap the avatar onto the
+    // platform's top, not the pixel they happened to be inside). Matches
+    // CurveGround's inside-band semantic — keeps the GroundProvider
+    // contract symmetric. Without this, the avatar can end up standing
+    // a few px inside a painted floor after a high-velocity fall whose
+    // ground-snap landed them at startY rather than at the floor top.
+    if (startY < this.height && (this.alpha[startY * this.width + ix] ?? 0) > ALPHA_THRESHOLD) {
+      let y = startY;
+      while (y > 0 && (this.alpha[(y - 1) * this.width + ix] ?? 0) > ALPHA_THRESHOLD) y--;
+      return y;
+    }
     for (let y = startY; y < this.height; y++) {
       if ((this.alpha[y * this.width + ix] ?? 0) > ALPHA_THRESHOLD) return y;
     }

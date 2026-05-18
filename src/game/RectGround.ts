@@ -21,7 +21,11 @@ export class RectGround implements GroundProvider {
 
   groundYBelow(x: number, searchFromY: number): number {
     if (x < this.x || x >= this.x + this.w) return Number.POSITIVE_INFINITY;
-    return this.y >= searchFromY ? this.y : Number.POSITIVE_INFINITY;
+    // Return the rect's top if searchFromY is above it OR inside the
+    // rect body. The inside-rect case lets a fast-moving avatar that
+    // tunnels into the platform snap to its top instead of falling
+    // through. Matches CurveGround / PixelGround semantic.
+    return this.y + this.h >= searchFromY ? this.y : Number.POSITIVE_INFINITY;
   }
 
   solidAt(x: number, y: number): boolean {

@@ -418,10 +418,14 @@ export function step(
       }
     }
 
-    // Floor lookup uses the new x AND the old y as the search start, so a
-    // descending avatar whose feet cross a platform top during this tick
-    // lands on the platform rather than passing through.
-    const groundY = ground.groundYBelow(x, state.y);
+    // Floor lookup uses the new x AND the HIGHEST (smallest-y) point the
+    // avatar occupied this tick — min(state.y, y) — so both descending
+    // and ascending crossings are caught. With this + the inside-band
+    // semantic in CurveGround.groundYBelow, an avatar whose feet end up
+    // inside a curve's solid band (e.g., jumped sideways and landed at
+    // an x where the interpolated curve top is above their feet) gets
+    // snapped to the band's top instead of tunneling through.
+    const groundY = ground.groundYBelow(x, Math.min(state.y, y));
     if (y >= groundY) {
       y = groundY;
       if (vy > 0) vy = 0;
