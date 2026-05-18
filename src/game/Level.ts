@@ -66,11 +66,13 @@ export interface LevelConfig {
   sunCentroid: { x: number; y: number };
 
   /**
-   * True if the painted bg already has D / ↑ / SPACEBAR help glyphs
-   * baked in (tutorial levels). Skips the runtime procedural prompts
-   * so we don't stack them on the painted ones.
+   * Show the runtime procedural D / SPACE key prompts. Default false:
+   * by displacement1 the player has learned both controls (and the
+   * tutorial bg already paints them), so the floating prompts read as
+   * noise on subsequent levels. Set true only on levels where the
+   * mechanic is genuinely new and the bg doesn't already advertise it.
    */
-  hasHelpPromptsInBg: boolean;
+  showHelpPrompts?: boolean;
 
   /**
    * Optional list of spike hazards. Touching a spike teleports the
@@ -342,15 +344,15 @@ export class Level {
     this.exitSprite.filters = [this.exitGlow];
     deps.app.stage.addChild(this.exitSprite);
 
-    // ── Procedural key prompts (skipped on tutorial levels) ──
-    if (cfg.hasHelpPromptsInBg) {
-      this.promptD = null;
-      this.promptSpacebar = null;
-    } else {
+    // ── Procedural key prompts (default: skipped) ──
+    if (cfg.showHelpPrompts) {
       this.promptD = Level.makeKeyPrompt('D', 22, 22);
       deps.app.stage.addChild(this.promptD);
       this.promptSpacebar = Level.makeKeyPrompt('SPACE', 50, 20);
       deps.app.stage.addChild(this.promptSpacebar);
+    } else {
+      this.promptD = null;
+      this.promptSpacebar = null;
     }
 
     // ── Spikes ──

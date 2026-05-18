@@ -55,9 +55,8 @@ export const DISPLACEMENT0: LevelConfig = {
   // of pure-white pixels in the upper-left region.
   sunCentroid: { x: 207, y: 102 },
 
-  // displacement0's bg has D / ↑ / SPACEBAR / flag glyphs baked in, so
-  // skip the runtime procedural prompts to avoid stacking.
-  hasHelpPromptsInBg: true,
+  // (omit showHelpPrompts → defaults false; the bg already paints D / ↑ /
+  // SPACEBAR / flag glyphs so we don't want procedural prompts on top.)
 
   // No spikes on easy/medium difficulty in the legacy game. The hard-mode
   // addSpike(540, 440, ...) from displacement0.mxml will land back here

@@ -64,7 +64,6 @@ export const DISPLACEMENT1: LevelConfig = {
   // pixels in the upper-left quadrant.
   sunCentroid: { x: 118, y: 109 },
 
-  // displacement1's bg has NO baked-in help glyphs (it's past the
-  // tutorial), so the procedural D / SPACEBAR prompts should show.
-  hasHelpPromptsInBg: false,
+  // (omit showHelpPrompts → defaults false; the player has learned D
+  // and SPACE in displacement0.)
 };
