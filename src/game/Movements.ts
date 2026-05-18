@@ -106,16 +106,20 @@ export const BODY = {
   //        lowest curve at value=0 is high enough (band 282-296) that
   //        the avatar's body (top y=298) clears it naturally — no
   //        body-margin hack needed.
-  //   v16 (this): SIDE_TOP_MARGIN = 8. v15's 4 px slop was too strict
-  //        for "barely-overlapping" cases where the curve clips the
-  //        top ~5 px of the avatar's head: avatar reads as stuck even
-  //        though they should be able to walk under. 8 px lets those
-  //        through while still blocking real overlaps (≥10 px deep).
-  //        For displacement3's value=0 curve (band 493-507 vs body
-  //        465-500, 7 px overlap) the BAND samples still hit at
-  //        margin=8 (sideTopY=473, samples y=479..499 cover band's
-  //        497-499 range), so the trap puzzle is preserved.
-  SIDE_TOP_MARGIN: 8,
+  //   v16: SIDE_TOP_MARGIN = 8. Let "barely-overlapping" head clips
+  //        through but still trip on real overlap. Preserved
+  //        displacement3 trap puzzle but the block range for V<18
+  //        was still wide enough that a back-and-forth-drawn curve
+  //        could have dips that re-trap the avatar mid-walk.
+  //   v17 (this): SIDE_TOP_MARGIN = 10. With displacement3 g1
+  //        yOffset=60 (line at world y=470 at V=0, band 463-477),
+  //        samples shift to {499,495,491,487,483,479,476} and only
+  //        y=476 lands in the V=0 band → block range narrows to
+  //        V<~5. Player still gets a "you drew straight down → no
+  //        platform → stuck momentarily" lesson, but as soon as
+  //        they walk a few px the curve clears. R hotkey is the
+  //        escape for the V=0 exact-trap.
+  SIDE_TOP_MARGIN: 10,
 } as const;
 
 export interface MovementInputs {
