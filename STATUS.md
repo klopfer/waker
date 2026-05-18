@@ -146,37 +146,41 @@ solidified curves removed from the avatar's ground stack, prompt
 latches cleared. Visual ticks (orb pulse, sun pulse, bg sway, exit
 glow) keep running behind the overlay so the scene doesn't freeze.
 
-### B. Audio integration (~1 day) ← next
+### B. Audio integration ✅ done
 
 `engine/Audio.ts` (Howler wrapper) and `engine/GraphTone.ts`
-(OscillatorNode-based pitch tone) are built but not wired. Wire up:
+(single-OscillatorNode pitch tracking) are wired into the level:
 
-- BGM: `bgmWorld1` (loop while in `displacement0`).
-- One-shot SFX: orb pickup, jump, drop, exit/win, landing.
-- Graph tone: while the orb is held and the graph is drawing, the
-  `GraphTone.setFrequency(hz)` is called per tick with `hz` derived
-  from the curve's current y. This is unique-to-Waker feedback — the
-  player "hears" the curve's shape.
+- BGM (`bgmWorld1`) loops; starts on first user gesture.
+- SFX: pickup, drop, jump (random of 5 variants), land (random of
+  5), win, graph-reset.
+- GraphTone: 220 Hz base, up to 2 octaves at max curve value. Sine
+  wave. Plays iff `orb.state === 'held' && graph.state === 'drawing'`;
+  frequency tracks normalized `|avatarX - originX| / maxValue`.
 
-**Recommended deviation from the plan**: do this BEFORE level
-abstraction. The graph tone is a gameplay element, not decoration,
-and it's easier to tune against a single working level.
+Volumes: BGM 0.4, SFX 0.6 (will become user-configurable when the
+options menu lands in Phase 5).
 
-### C. Level abstraction — `game/Level.ts` (~1–2 days)
+### C. Level abstraction ✅ done
 
-The level wiring currently lives inline in `main.ts` (~300 lines of
-setup for one level). Extract it into a `Level` class with a config
-shape mirroring the legacy `addGraph(...)` signature. Each future
-level becomes a small TS file in `src/levels/` that returns the
-config.
+`game/Level.ts` is a new class that owns all level-specific objects
+(bg / ground / sun / origin / exit / orb / graph / cradle /
+win-overlay / prompts) AND the per-tick logic (input, body.step,
+audio triggers, visuals, win check, reset). `LevelConfig` is a
+pure-data interface capturing per-level constants (asset keys,
+spawn, exit, origin, orb, graph rect, cradle, sun centroid,
+`hasHelpPromptsInBg`).
 
-Without this, every new level is a copy-paste of `main.ts`.
+`src/levels/displacement0.ts` exports a `DISPLACEMENT0: LevelConfig`
+literal sourced from `displacement0.mxml`. **Adding a new level is
+now data-only**: create `src/levels/displacement1.ts` returning a
+new config, change one import in `main.ts`.
 
-The legacy `level.mxml` (base class) is the reference for the API
-shape — `setBG`, `setGround`, `setEntrance`, `setExit`, `addGraph`,
-`addSwitch`, `addSpike`, `setHint`.
+`main.ts` went from 785 → 102 lines. It now does just: Pixi app
+setup, shared engine singletons (assets / audio / input / avatar /
+sim), `Level.load(DISPLACEMENT0, deps)`, sim loop calls `level.tick()`.
 
-### D. Hazards: Spike, Switch, MovingPlatform (~2 days)
+### D. Hazards: Spike, Switch, MovingPlatform (~2 days) ← next
 
 Order 10 in §14. displacement1 (hard difficulty) uses spikes;
 displacement2 onward needs switches and moving platforms.
