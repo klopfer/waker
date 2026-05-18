@@ -13,7 +13,7 @@ import { Audio } from './engine/Audio.js';
 import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
-import { Level } from './game/Level.js';
+import { LevelManager } from './game/LevelManager.js';
 import { DISPLACEMENT0 } from './levels/displacement0.js';
 import { makeMuteControls } from './ui/MuteControls.js';
 
@@ -88,12 +88,14 @@ async function main(): Promise<void> {
   label.y = 12;
   app.stage.addChild(label);
 
-  // ── Load + bind the level ──
-  const level = await Level.load(DISPLACEMENT0, { app, assets, avatar, audio, input });
+  // ── Level manager handles initial load + transitions on win ──
+  const levels = new LevelManager();
+  await levels.start(DISPLACEMENT0, { app, assets, avatar, audio, input });
 
   // ── Mute controls (TEMPORARY Pixi-side UI, see ui/MuteControls.ts) ──
   // Bottom-right corner; clear of the centered debug tick readout below
-  // and the graph rect above.
+  // and the graph rect above. Added AFTER LevelManager so the controls
+  // draw on top of any level-owned objects in that corner.
   const mute = makeMuteControls(audio);
   mute.x = STAGE_WIDTH - mute.width - 8;
   mute.y = STAGE_HEIGHT - 30;
@@ -102,10 +104,10 @@ async function main(): Promise<void> {
   // ── Sim loop ──
   app.ticker.add(({ deltaMS }) => {
     const { steps } = sim.advance(deltaMS);
-    for (let i = 0; i < steps; i++) level.tick();
+    for (let i = 0; i < steps; i++) levels.tick();
   });
 
-  console.log('Waker displacement0 (tutorial) ready: orb + graph mechanic wired up.');
+  console.log('Waker ready: displacement0 → displacement1 wired up.');
 }
 
 void main();

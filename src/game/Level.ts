@@ -88,6 +88,14 @@ export interface LevelConfig {
    * by sides). Empty / undefined = no switches.
    */
   switches?: readonly SwitchWithPlatformsConfig[];
+
+  /**
+   * Optional next level to load when the player presses SPACE on the
+   * win overlay. Undefined = SPACE restarts the current level
+   * (terminal / standalone level). LevelManager reads this to chain
+   * transitions; if unset, Level falls back to its own reset().
+   */
+  nextLevel?: LevelConfig;
 }
 
 export interface SwitchWithPlatformsConfig {
@@ -198,11 +206,19 @@ export class Level {
   private audioCtx: AudioContext | null = null;
   private graphTone: GraphTone | null = null;
   private audioStarted = false;
+  private disposed = false;
 
   // The platform the avatar's feet are resting on this frame (if any).
   // Set after body.step, used during platform.tick to carry the avatar
   // along with the platform's motion.
   private avatarPlatform: MovingPlatform | null = null;
+
+  /**
+   * Hook called when the player presses SPACE on the win overlay. If
+   * unset, falls back to reset() (single-level behavior). LevelManager
+   * sets this to advance to cfg.nextLevel.
+   */
+  onWinSpacePressed: (() => void) | null = null;
 
   private tickCount = 0;
   private firstRunTick: number | null = null;
@@ -374,7 +390,10 @@ export class Level {
     deps.app.stage.addChild(deps.avatar.container);
 
     // ── Win overlay (added LAST so it draws on top) ──
-    this.winOverlay = Level.makeWinOverlay();
+    const winSubtitle = cfg.nextLevel
+      ? 'press SPACE for next level'
+      : 'press SPACE to restart';
+    this.winOverlay = Level.makeWinOverlay(winSubtitle);
     deps.app.stage.addChild(this.winOverlay);
 
     // ── Debug tick readout (added last; underneath the win overlay) ──
@@ -401,7 +420,10 @@ export class Level {
     // (orb/sun/exit pulse, bg sway) still tick below so the scene
     // doesn't go static behind the overlay.
     if (this.levelComplete) {
-      if (this.deps.input.wasPressed('Space')) this.reset();
+      if (this.deps.input.wasPressed('Space')) {
+        if (this.onWinSpacePressed) this.onWinSpacePressed();
+        else this.reset();
+      }
       this.tickVisuals();
       this.deps.input.endTick();
       return;
@@ -741,7 +763,13 @@ export class Level {
     );
   }
 
-  private startAudio(): void {
+  /**
+   * Public so LevelManager can pre-start audio on the new level after
+   * a SPACE-press transition (the press is itself a user gesture, so
+   * the browser audio unlock requirement is satisfied). Idempotent.
+   */
+  startAudio(): void {
+    if (this.audioStarted) return;
     this.audioStarted = true;
     this.audioCtx = new AudioContext();
     if (this.audioCtx.state === 'suspended') void this.audioCtx.resume();
@@ -750,6 +778,50 @@ export class Level {
       octaves: GRAPH_TONE_OCTAVES,
     });
     this.deps.audio.playBgm(this.cfg.bgmKey, this.deps.assets.url(this.cfg.bgmKey));
+  }
+
+  /**
+   * Remove all level-owned objects from the Pixi stage and release the
+   * AudioContext + GraphTone. The shared avatar/audio/input singletons
+   * are NOT disposed (caller / next Level reuses them). Safe to call
+   * once; subsequent tick() calls become no-ops.
+   */
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+
+    if (this.graphTone?.isPlaying) this.graphTone.stop();
+    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+      void this.audioCtx.close();
+    }
+    this.audioCtx = null;
+    this.graphTone = null;
+
+    // Remove every level-owned object from the stage. Avatar.container
+    // is shared (not owned) so we just unparent it; the next Level will
+    // re-addChild it cleanly.
+    const owned: (Container | Sprite | Graphics | Text)[] = [
+      this.bgSprite,
+      this.sunPulse,
+      this.groundSprite,
+      this.graphLayer,
+      this.originSprite,
+      this.exitSprite,
+      this.orb.container,
+      this.winOverlay,
+      this.tickReadout,
+    ];
+    if (this.promptD) owned.push(this.promptD);
+    if (this.promptSpacebar) owned.push(this.promptSpacebar);
+    for (const s of this.spikes) owned.push(s.container);
+    for (const p of this.platforms) owned.push(p.container);
+    for (const sw of this.switches) owned.push(sw.container);
+    for (const o of owned) {
+      if (o.parent) o.parent.removeChild(o);
+    }
+    if (this.deps.avatar.container.parent) {
+      this.deps.avatar.container.parent.removeChild(this.deps.avatar.container);
+    }
   }
 
   private playRandomSfx(variants: readonly string[]): void {
@@ -784,7 +856,7 @@ export class Level {
     return c;
   }
 
-  private static makeWinOverlay(): Container {
+  private static makeWinOverlay(subtitle: string): Container {
     const c = new Container();
     c.visible = false;
     const dim = new Graphics()
@@ -806,7 +878,7 @@ export class Level {
     title.y = STAGE_HEIGHT / 2 - 8;
     c.addChild(title);
     const sub = new Text({
-      text: 'press SPACE to restart',
+      text: subtitle,
       style: { fill: 0xffeec8, fontFamily: 'sans-serif', fontSize: 16, align: 'center' },
     });
     sub.anchor.set(0.5, 0);

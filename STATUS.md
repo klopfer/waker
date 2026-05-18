@@ -18,8 +18,8 @@ npm install   # if first time
 npm run dev   # http://localhost:5173
 ```
 
-Boots into **displacement0** (the tutorial — the original game's actual
-level 1). Controls:
+Boots into **displacement0** (the tutorial). Beating the level (touching
+the exit portal) advances to **displacement1** on SPACE. Controls:
 
 - Arrows: walk left / right
 - `S` or `Shift`: sprint
@@ -82,8 +82,8 @@ Mapped against the plan's `§14 Module porting order`:
 | 10 | `Switch.ts`, `MovingPlatform.ts`, `Spike.ts` | ⏳ not started |
 | 11 | `Level.ts` (base class) | ⏳ **not started** — level wiring currently inlined in `main.ts` |
 | 12 | `Movements.ts` | ✅ done + heavily calibrated (v1–v14) |
-| 13 | Per-level files in `src/levels/` | ⏳ only displacement0 is wired (via main.ts directly) |
-| 14 | `LevelManager.ts` | ⏳ |
+| 13 | Per-level files in `src/levels/` | 🟡 displacement0 + displacement1 wired; remaining 9 levels still pending |
+| 14 | `LevelManager.ts` | ✅ done — handles transitions on win-overlay SPACE press |
 | 15 | HUD (in-game pause/hint/HUD) | ⏳ |
 | 16 | Menus (Menu, Options, Instructions, Credits) | ⏳ |
 | 17 | `Woosh2.mxml` (splash + intro cutscene gate) → main.ts | ⏳ |

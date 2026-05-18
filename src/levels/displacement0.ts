@@ -6,6 +6,7 @@
 // `docs/calibration.md` §7 for the full table + sourcing.
 
 import type { LevelConfig } from '../game/Level.js';
+import { DISPLACEMENT1 } from './displacement1.js';
 
 export const DISPLACEMENT0: LevelConfig = {
   bgKey: 'bgWorld1_t',
@@ -62,4 +63,8 @@ export const DISPLACEMENT0: LevelConfig = {
   // addSpike(540, 440, ...) from displacement0.mxml will land back here
   // when the difficulty selector is wired up in Phase 5. displacement0
   // also has no switches or moving platforms in the legacy game.
+
+  // Legacy displacement0.mxml: `super.nextLvl = 'd1';`. SPACE on the win
+  // overlay advances to displacement1.
+  nextLevel: DISPLACEMENT1,
 };
