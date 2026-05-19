@@ -1,6 +1,6 @@
 # Session handoff status
 
-Last updated: 2026-05-10. Pick this up cold by reading top-to-bottom.
+Last updated: 2026-05-18. Pick this up cold by reading top-to-bottom.
 
 This file is the "what to do next" doc. It captures live context that
 isn't in the plan or the calibration doc — recent decisions, next
@@ -18,34 +18,26 @@ npm install   # if first time
 npm run dev   # http://localhost:5173
 ```
 
-Boots into **displacement0** (the tutorial). Beating each level advances
-to the next on SPACE. World 1 chain: **displacement0 → 1 → 2 → 3**.
+**World 1 is complete and chained**: boots into `displacement0` (the
+tutorial); beating the exit advances on SPACE to `displacement1` → `2`
+→ `3`. After d3 the SPACE press currently restarts d3 (legacy next is
+`cutsceneVelocity`, not wired yet).
+
 Controls:
 
 - Arrows: walk left / right
 - `S` or `Shift`: sprint
 - `Space` or `↑`: jump
 - `D`: pick up / drop the orb
-- `R`: restart level (emergency escape if you wedge yourself under a curve)
+- `R`: restart current level (emergency escape if you wedge yourself)
 
-Gameplay loop currently working:
+Plus two debug UIs on screen:
+- Bottom-right: `♪ MUSIC` / `♪ SFX` mute toggles (Pixi-side, will move
+  to the HTML overlay in Phase 5).
+- Bottom-left: `DEBUG: [D0] [D1] [D2] [D3]` level picker buttons
+  (jump to any level for testing; **temporary**, remove before release).
 
-1. Avatar drops in from upper-left, lands on the bottom-floor cloud.
-2. Player has to climb a 4-step painted-cloud staircase by jumping
-   (the leftmost-cloud → orb-stand jump is now well-calibrated).
-3. Walk to the orb sitting in its origin stand at (300, 321), press
-   `D` to pick it up.
-4. Walk around. As you move, a green displacement curve plots in the
-   graph rect (upper-right corner of the level).
-5. Press `D` again to drop. The curve solidifies into a black walkable
-   platform at the same world coordinates.
-6. The platform should now bridge you toward the exit portal at the
-   upper-right corner (no win detection yet — reaching it does nothing).
-
-Walking on / under / up / down jagged player-drawn curves all works as
-of calibration v14 — see `docs/calibration.md` §9 for the full journey.
-
-**Tests**: `npm run test` → 123/123 passing.
+**Tests**: `npm run test` → 124/124 passing.
 **Build**: `npm run build` → ~660 KB bundle / 282 KB gzipped.
 
 ---
@@ -61,7 +53,7 @@ status:
 | 1 | Vite + PixiJS scaffold + smoke test | ✅ done |
 | 2 | JPEXS asset extraction + curation | ✅ done — 181 manifest entries, ~14 MB committed |
 | 3 | Engine layer (FixedStep, Input, HitTest, Audio, GraphTone, AssetLoader, MovieClipShim) | ✅ done — 8/8 modules + avatar |
-| 4 | **Game logic port — Phase 4 step 5 complete + extensive polish** | 🟡 in progress |
+| 4 | **Game logic port** | 🟡 in progress — world 1 complete, worlds 2+3 pending |
 | 5 | UI port (menu, options, HUD) | ⏳ |
 | 6 | Testing + polish (cross-browser, mobile, perf) | ⏳ |
 | 7 | Release prep | ⏳ |
@@ -72,165 +64,130 @@ Mapped against the plan's `§14 Module porting order`:
 
 | Order | Module | Status |
 | --- | --- | --- |
-| 1 | `types.ts` + `state.ts` (Color, Settings, etc.) | ✅ partial — `engine/types.ts` exists; Color/Settings/state still inline in main.ts |
+| 1 | `types.ts` + `state.ts` (Color, Settings, etc.) | ✅ partial — `engine/types.ts` exists; Color/Settings still inline |
 | 2 | `HitTest.ts` | ✅ done |
 | 3 | `AssetManager` → `engine/AssetLoader.ts` + manifest | ✅ done |
-| 4 | `Audio.ts` + `GraphTone.ts` | ✅ modules built, **NOT yet wired into main.ts** — see Next Steps |
+| 4 | `Audio.ts` + `GraphTone.ts` | ✅ done — wired into Level via startAudio() on first user gesture |
 | 5 | `Input.ts` | ✅ done |
 | 6 | `Avatar.ts` + `AvatarSprites.ts` | ✅ done |
-| 7 | `GraphObstacles.ts` (procedural spike placement) | ⏳ not started |
-| 8 | `Graph.ts` | ✅ done (basic), tone-on-draw + spike-obstacles still pending |
+| 7 | `GraphObstacles.ts` (procedural spike placement) | ⏳ not started — needed for hard-mode levels |
+| 8 | `Graph.ts` | ✅ done |
 | 9 | `Orb.ts` | ✅ done |
-| 10 | `Switch.ts`, `MovingPlatform.ts`, `Spike.ts` | ⏳ not started |
-| 11 | `Level.ts` (base class) | ⏳ **not started** — level wiring currently inlined in `main.ts` |
-| 12 | `Movements.ts` | ✅ done + heavily calibrated (v1–v14) |
-| 13 | Per-level files in `src/levels/` | 🟡 displacement0–3 wired (world 1 complete); velocity*/mixed* still pending |
-| 14 | `LevelManager.ts` | ✅ done — handles transitions on win-overlay SPACE press |
-| 15 | HUD (in-game pause/hint/HUD) | ⏳ |
+| 10 | `Switch.ts`, `MovingPlatform.ts`, `Spike.ts` | ✅ done (D1+D2); D3 polish (squish pushback + hit flash) still pending |
+| 11 | `Level.ts` (base class) + `LevelConfig` data | ✅ done — multi-orb refactor; per-level files are pure data literals |
+| 12 | `Movements.ts` | ✅ done + extensively calibrated (v1–v18) — see `docs/calibration.md` §9 |
+| 13 | Per-level files in `src/levels/` | 🟡 4 of 11 wired (d0, d1, d2, d3); velocity*, mixed*, cutscenes pending |
+| 14 | `LevelManager.ts` | ✅ done — handles win-overlay SPACE transitions + debug `advanceTo` for the level picker |
+| 15 | HUD (in-game pause/hint/HUD) | ⏳ — `src/ui/MuteControls.ts` + `LevelPicker.ts` are Pixi-side placeholders; Phase 5 moves to HTML overlay |
 | 16 | Menus (Menu, Options, Instructions, Credits) | ⏳ |
 | 17 | `Woosh2.mxml` (splash + intro cutscene gate) → main.ts | ⏳ |
 | 18 | Delete vendored `gs/` (TweenMax) | n/a — not imported |
 
 ---
 
-## 3. What we just finished (today's context)
+## 3. What this session accomplished (2026-05-18)
 
-The last few sessions focused entirely on **calibrating physics for
-displacement0** — running through 14 distinct calibration commits
-based on playtest feedback. The journey is documented in
-`docs/calibration.md` §9, but the short version:
+Started the day with displacement0 as the only wired level. Ended with
+world 1 complete + a major collision-system improvement.
 
-- Started with off-the-cuff `BODY` size and physics constants from the
-  legacy game.
-- Iteratively diagnosed and fixed: phantom head-bumps, stuck-on-slopes,
-  fall-through-curves, auto-grab-platforms-from-below, auto-grab-curve-
-  from-painted-floor, stuck-walking-up-slopes-after-flat-sections.
-- Final state: `STEP_UP/DOWN=40`, slope-aware path-continuity check
-  with avgSlope discriminator at 3.0, side-push wall-vs-slope
-  discriminator that asks "can I step over this?" semantically.
-- 84/84 tests pass. All commits prefixed `calibration v1` … `v14`.
+**Shipped (in order):**
 
-Recent commits on `main`:
+- **Win detection** — exit-portal bbox overlap → "Level Complete /
+  press SPACE" overlay, restart on SPACE.
+- **Audio** — Howler BGM + SFX + Web-Audio GraphTone wired into Level
+  on first user gesture.
+- **Level abstraction** — `game/Level.ts` owns all per-level Pixi
+  objects + tick logic. `LevelConfig` interface, `src/levels/*.ts`
+  pure-data files. `main.ts` shrunk 785 → 102 lines.
+- **D1 Spike** — procedural Pixi.Graphics art (`tempObs/Portal.png`
+  was rasterized as fully-opaque). Static + horizontally/vertically
+  oscillating motion variants.
+- **Mute controls** — Pixi-side `♪ MUSIC` / `♪ SFX` toggles in
+  bottom-right.
+- **D2 Switch + MovingPlatform** — procedural panel + procedural
+  rectangle platforms with `RectGround` AABB ground provider. Avatar
+  rides platforms (carry logic), feet-inset on squish bbox so landing
+  doesn't false-stop the platform.
+- **E1 LevelManager + displacement1** — first transition wiring; SPACE
+  on win overlay loads next level + starts its audio.
+- **E2 multi-orb refactor + displacement2 + displacement3** —
+  `LevelConfig.orbs: OrbSetupConfig[]` (was singletons). d2 + d3 each
+  have two orbs (d3's second orb floats in mid-air, by legacy design).
+- **Tunneling fix** — `groundYBelow` returns the band's top when the
+  search start is INSIDE the band; `body.step` searches from
+  `min(state.y, y_new)`. Stops the "jumped sideways INTO a curve"
+  fall-through.
+- **Debug level picker** — bottom-left `DEBUG: [D0] [D1] [D2] [D3]`.
+- **R restart hotkey** — emergency escape from any state.
+- **The d3 anti-alias saga** — see calibration.md §9 v15–v18 for the
+  full play-by-play. Summary: the painted floor's anti-aliased top
+  edge was tripping side-collision false-positives. The HUD-driven
+  diagnosis revealed alpha=133 at one column vs alpha=75 at the
+  neighboring column (binary threshold = 128). Final fix:
+  `SIDE_BOTTOM_INSET = 4` lifts the lowest sample above the
+  anti-alias band, which then unblocks the `isWallAt` overlap rule
+  so curves at body height actually trap.
+
+**Key recent commits** (newest first):
 
 ```
-a54e06d docs/calibration.md: comprehensive rewrite for future-level reference
-aee5917 calibration v14: wall discriminator uses obstacle-top vs STEP_UP
-18d7c90 calibration v13: side-push wall-vs-slope discriminator (the real fix)
-fb2abfc calibration v12: bump slope discriminator threshold + tolerance
-4164996 calibration v11: avgSlope discriminator (fix flat→slope stuck-up bug)
-7956d00 calibration v10: slope tolerance 20→30 + ground-catch safety net
-b6f0fbe calibration v9: slope-aware step-up + remove mid-air ledge grab
-8713dd7 calibration v8: step-up path-continuity check (no more overhead auto-grab)
-1629ab5 calibration v7: STEP_UP/STEP_DOWN 24→40 (still bounded by 56 px cliff)
-0087b7e calibration v6: STEP_UP 18→24 to match STEP_DOWN
-...
+0fbac1e remove debug HUD + diagnose exports
+efc5070 fix d3 stuck: SIDE_BOTTOM_INSET=4 + re-add overlap wall rule
+971ac8c debug HUD: per-tick side-collision + step-up diagnostics
+bf886d7 revert isWallAt body-overlap rule
+8111bd7 isWallAt: treat body-overlap as wall (first attempt)
+21e1741 d3 g1 yOffset 60 → 75
+532f8db SIDE_TOP_MARGIN 8 → 10
+84ff314 displacement3 polish: side-margin + raised g1 + R hotkey
+1c3ed48 step E2: displacement2 + displacement3 + multi-orb refactor
+9cb05de step E1: LevelManager + displacement1 + win transitions
+0f012c2 step D2: Switch + MovingPlatform
+c4f3eae step D1: Spike hazard
+aa05d71 step C: refactor level wiring into game/Level.ts
+9ffb254 step B: wire audio + GraphTone
+be1e18e step A: win detection
 ```
-
-Before that, leveld1 polish (orb visual passes v1–v8, key prompts,
-exit portal, sun pulse, parallax sway, animated bg, etc.) — see
-`git log` for the full sequence.
 
 ---
 
 ## 4. Next steps (priority order)
 
-Suggested order — feel free to deviate. Each item is a self-contained
-chunk that can land in 1–3 commits.
+Suggested order — feel free to deviate.
 
-### A. Win detection at the exit portal ✅ done
-
-Avatar's body-bbox overlap with the exit's (40×40) bbox latches
-`levelComplete = true`, freezes physics + input handling, shows
-a centered "Level Complete / press SPACE to restart" overlay
-(semi-transparent dim + Pixi `Text`). SPACE → `resetLevel()`
-restores spawn position, orb in cradle, graph back to idle, all
-solidified curves removed from the avatar's ground stack, prompt
-latches cleared. Visual ticks (orb pulse, sun pulse, bg sway, exit
-glow) keep running behind the overlay so the scene doesn't freeze.
-
-### B. Audio integration ✅ done
-
-`engine/Audio.ts` (Howler wrapper) and `engine/GraphTone.ts`
-(single-OscillatorNode pitch tracking) are wired into the level:
-
-- BGM (`bgmWorld1`) loops; starts on first user gesture.
-- SFX: pickup, drop, jump (random of 5 variants), land (random of
-  5), win, graph-reset.
-- GraphTone: 220 Hz base, up to 2 octaves at max curve value. Sine
-  wave. Plays iff `orb.state === 'held' && graph.state === 'drawing'`;
-  frequency tracks normalized `|avatarX - originX| / maxValue`.
-
-Volumes: BGM 0.4, SFX 0.6 (will become user-configurable when the
-options menu lands in Phase 5).
-
-### C. Level abstraction ✅ done
-
-`game/Level.ts` is a new class that owns all level-specific objects
-(bg / ground / sun / origin / exit / orb / graph / cradle /
-win-overlay / prompts) AND the per-tick logic (input, body.step,
-audio triggers, visuals, win check, reset). `LevelConfig` is a
-pure-data interface capturing per-level constants (asset keys,
-spawn, exit, origin, orb, graph rect, cradle, sun centroid,
-`hasHelpPromptsInBg`).
-
-`src/levels/displacement0.ts` exports a `DISPLACEMENT0: LevelConfig`
-literal sourced from `displacement0.mxml`. **Adding a new level is
-now data-only**: create `src/levels/displacement1.ts` returning a
-new config, change one import in `main.ts`.
-
-`main.ts` went from 785 → 102 lines. It now does just: Pixi app
-setup, shared engine singletons (assets / audio / input / avatar /
-sim), `Level.load(DISPLACEMENT0, deps)`, sim loop calls `level.tick()`.
-
-### D. Hazards: Spike, Switch, MovingPlatform (~2 days) ← in progress
-
-Order 10 in §14. displacement1 (hard difficulty) uses spikes;
-displacement2 onward needs switches and moving platforms.
-
-- **D1: Spike** ✅ done. `game/Spike.ts` draws procedurally (dark
-  blob + rotating brown spiral); the broken `tempObs/Portal.png`
-  was unusable. Bbox 20×20 (matches legacy). `LevelConfig.spikes`
-  accepts `SpikeConfig` matching the legacy `addSpike(...)`
-  signature. Per-tick: spike motion → bbox overlap with avatar
-  → on hit, teleport avatar to spawn + play `sfxHurt`.
-- **D2: Switch + MovingPlatform** ✅ done. `game/Switch.ts` (two-
-  state procedural panel) reuses the D-key gesture; orb wins if
-  both overlap. `game/MovingPlatform.ts` (procedural rectangle
-  art + `RectGround` AABB ground provider) is owned by a Switch;
-  toggling a switch flips direction + restarts motion on all
-  attached platforms. Platforms act as ground (avatar can stand
-  on top, blocked by sides). Stops on stage edge, avatar squish,
-  or other-platform collision. `LevelConfig.switches` accepts
-  `{switch: SwitchConfig, platforms: MovingPlatformConfig[]}`.
-  v1 squish behavior = "stop the platform" (matches legacy except
-  for the ~200-line player-pushback logic, deferred to D3).
-- **D3: Hit-effect red flash + squish-pushback polish**. Red bloom
-  at player on spike hit, plus the legacy obstaclesClass squish
-  physics that pushes the platform back 2x speed if the player is
-  sandwiched between platform + wall.
-
-### E. Remaining levels (~3–4 days)
-
-Order 13 in §14. With Level abstraction in place, each is mostly
-mechanical:
-
-- displacement1, displacement2, displacement3
-- velocity1, velocity2, velocity3
-- mixed1, mixed2, mixed3, mixed4
-- Cutscenes (intro, world transitions, ending — MP4s already curated)
-
-### F. LevelManager + UI shell (~3 days)
-
-Order 14–16 in §14: level transitions, pause menu, options, level
-select, hint overlays.
-
-### G. Cutscenes (~½ day)
-
-Drop-in `<video>` players for the curated MP4s (`intro`, `level-complete`,
-`ending`). Already extracted via `npm run extract:cutscenes`.
-
-### H. Phase 5/6 polish (~3–5 days)
-
+### A. Win detection at the exit portal ✅ done (be1e18e)
+### B. Audio integration ✅ done (9ffb254)
+### C. Level abstraction ✅ done (aa05d71)
+### D. Hazards ⚙️ partial
+- **D1 Spike** ✅ done
+- **D2 Switch + MovingPlatform** ✅ done (basic; squish-pushback
+  deferred to D3)
+- **D3 polish** — `obstaclesClass.mxml`-style player pushback when
+  squished between platform + wall; programmatic red bloom at avatar
+  on spike hit. Defer until a level actually needs the polish.
+### E. Per-level files ⚙️ partial
+- **E1 displacement1** ✅ done
+- **E2 displacement2 + 3 + multi-orb** ✅ done
+- **E3 velocity world ← next.** velocity0–3. Need a `valueMode:
+  'displacement' | 'velocity'` flag in `OrbSetupConfig` — velocity
+  orbs plot `avatar.vx` instead of `|avatarX - originX|`. Otherwise
+  mostly data (per-level configs from legacy `velocity*.mxml` +
+  pngjs sweeps for the new collision PNGs).
+- **E4 mixed world** — mixed0–3. Combines displacement + velocity
+  orbs; switches + moving platforms used heavily.
+- **E5 cutscenes** — drop-in `<video>` players for the curated MP4s
+  (`intro`, `levelcomplete`, `ending`). Already extracted under
+  `src/assets/cutscenes/`.
+### F. LevelManager + UI shell
+- LevelManager exists; needs the **menu** layer (main menu, level
+  select, options, instructions, credits) — Phase 5 / §14 items 15–16.
+- Eventually replace `src/ui/MuteControls.ts` and `src/ui/LevelPicker.ts`
+  with the proper HTML+CSS overlay.
+### G. Difficulty selector
+- Legacy spec has 3 difficulties; per-level configs already pick the
+  easy-mode parameters. Add `Settings.LEVEL_DIFFICULTY` and have
+  each `src/levels/*.ts` branch (or replace each with a `function
+  config(difficulty)` that returns the right `LevelConfig`).
+### H. Phase 5/6 polish
 Cross-browser pass, mobile touch controls, perf, accessibility, bundle
 audit.
 
@@ -239,18 +196,21 @@ audit.
 ## 5. Known asset issues (fix when relevant)
 
 - ~~`spikeyObjects` (`tempObs/Portal.png`) has no transparent pixels~~
-  **Resolved by going procedural.** Pixel inspection confirmed the PNG
-  is a fully-opaque 20×20 rgba bitmap — JPEXS rasterized the entire
-  SWF symbol bounding box, not just the irregular silhouette. Rather
-  than try to recover the original shape, `src/game/Spike.ts` now
-  draws the spike directly with `Pixi.Graphics` (dark blob silhouette
-  + rotating brown spiral, matching `legacy/screenshots/Screenshot
-  2026-05-18 1337*.png`). No asset needed.
-- **`tempObs/Obstacle.png` + `tempObs/obs_*.png` have the same opaque-
-  bbox issue.** Those will be used for the switch-controlled moving
-  platforms in D2. Same fix likely applies — draw them as
-  `Pixi.Graphics` rectangles with a stylized fill rather than try to
-  recover transparency from the rasterized SWF symbols.
+  **Resolved by going procedural.** `src/game/Spike.ts` draws the
+  spike directly with `Pixi.Graphics` (dark blob silhouette + rotating
+  brown spiral). No asset needed.
+- ~~`tempObs/obs_*.png` have the same opaque-bbox issue~~ **Resolved
+  by going procedural.** `src/game/MovingPlatform.ts` draws the
+  platforms as `Pixi.Graphics` rectangles with a top highlight + bolt
+  decorations.
+- ~~Switch art (`switch_mode_*.png`)~~ **Resolved by going procedural.**
+  `src/game/Switch.ts` draws a two-state panel with a green/orange
+  indicator dot.
+- **Painted-floor PNGs are anti-aliased.** Caused the d3 stuck saga;
+  fix landed in v18 (`SIDE_BOTTOM_INSET=4`). When porting future levels,
+  trust that the anti-alias band can extend 1-2 px above/below the
+  "true" floor top — don't tighten side-sample range without leaving
+  this slop.
 
 ---
 
@@ -258,18 +218,22 @@ audit.
 
 Stuff to think about before the relevant phase, not now:
 
-- **Audio synth fidelity**: The legacy game's `GaverRingTone1` (Sonoflash)
+- **Audio synth fidelity**: The legacy `GaverRingTone1` (Sonoflash)
   is a proprietary FM synth. Plan §10 Q3 calls for a single
-  `OscillatorNode` approximation. Decision to revisit once D is wired
-  and we hear how it sounds: "good enough" → ship as is; "feels
-  flat" → add a second oscillator + LFO for vibrato.
-- **Mobile target**: Plan §11 Q1 left mobile as a stretch goal. The
-  orb-graph mechanic is thumb-control awkward. Probably defer to a
-  post-1.0 pass.
-- **Tutorial bg vs procedural prompts**: displacement0's bg has D / ↑ /
-  SPACEBAR glyphs baked in. We skip the procedural prompts on that
-  level via `BG_HAS_HELP_PROMPTS = true`. Other levels' bgs probably
-  don't have them — confirm per level when wiring it up.
+  `OscillatorNode` approximation. Currently shipped; revisit if it
+  feels flat — add a second oscillator + LFO for vibrato.
+- **Mobile target**: Plan §11 Q1 left mobile as stretch. The orb +
+  draw mechanic is thumb-control awkward. Probably defer to post-1.0.
+- **Tutorial bg vs procedural prompts**: `LevelConfig.showHelpPrompts`
+  defaults to false (no prompts). displacement0 doesn't need them
+  (bg has them baked in); displacement1+ doesn't need them (player
+  has learned). Future tutorial-style levels can opt in.
+- **D3 next-level chain**: legacy displacement3 → `cutsceneVelocity`
+  → velocity0. We don't have cutscene wiring yet; for now d3's
+  `nextLevel` is unset (SPACE restarts d3). When cutscenes land,
+  wire d3.nextLevel = (cutscene that loads velocity0).
+- **`LevelManager.advanceTo` made public** for the debug level
+  picker. When the picker is removed, decide whether to re-private it.
 
 ---
 
@@ -281,24 +245,19 @@ Stuff to think about before the relevant phase, not now:
 | `flash-to-html5-conversion-plan.md` | The full conversion plan (7 phases, module porting order, decisions log). |
 | `docs/calibration.md` | All physics + scaling constants, derivations, history. **Read this before tuning anything** in `Movements.ts` or per-level constants. |
 | `CLAUDE.md` | Per-session conventions for Claude Code (style, do/don't, glossary). |
-| **`STATUS.md`** (this file) | Live "what to do next" context. Update this when you finish a chunk. |
-| `legacy/CLAUDE.md`? | (Not present — `CLAUDE.md` is at repo root, sufficient.) |
+| **`STATUS.md`** (this file) | Live "what to do next" context. Update when you finish a chunk. |
 
 ---
 
 ## 8. Local-only artifacts (not in git)
 
-These exist on the original machine but aren't committed. If you
-need them, re-create:
-
 - `legacy/screenshots/*.png` — Ruffle screenshots of the original
-  game at known game states (avatar on each cloud step, mid-jump,
-  graph drawing, etc.). Used for calibration measurements. Re-create
-  by opening `legacy/reference/waker.swf` in Ruffle at native size
-  and capturing screenshots; or use a recorded video.
-- Any local PixelGround analysis scratch files in `tools/` — recreate
-  with the pngjs sweep pattern (see `tools/measure-screenshots.mjs`
-  for an example).
+  game at known game states (cloud platforms, mid-jump, graph drawing,
+  spike art, etc.). Used for calibration measurements. Re-create by
+  opening `legacy/reference/waker.swf` in Ruffle at native size.
+- Any local PixelGround scratch files in `tools/` — recreate with the
+  pngjs sweep pattern (see `tools/measure-screenshots.mjs` for an
+  example).
 
 ---
 
@@ -311,9 +270,10 @@ git pull
 npm install               # if dependencies changed
 npm run typecheck
 npm run lint
-npm run test              # should be 84/84
-npm run dev               # confirm displacement0 still plays end-to-end
+npm run test              # should be 124/124
+npm run dev               # confirm world 1 still plays end-to-end
 ```
 
-If all 5 pass and the level plays, you're good to start on §4 above.
-If anything fails, that's the first thing to fix.
+If all 5 pass and the level chain plays (use the debug level picker
+to spot-check each), you're good to start on §4 above. If anything
+fails, that's the first thing to fix.

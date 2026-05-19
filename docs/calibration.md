@@ -6,8 +6,9 @@ new level is wired up (or a constant feels "off"), check here first
 before guessing.
 
 The physics work documented here was iterative — calibrations v1 through
-v14, all driven by playtest feedback on `displacement0` (the tutorial).
-The current state is in §§ 1–6; the journey and lessons are in §§ 7–8.
+v18, all driven by playtest feedback. v1–v14 came from `displacement0`
+(the tutorial); v15–v18 from `displacement3` (the trap-puzzle level).
+The current state is in §§ 1–6; the journey and lessons are in §§ 7–9.
 
 ---
 
@@ -31,17 +32,22 @@ PHYSICS = {
 };
 
 BODY = {
-  HALF_WIDTH:        12,
-  HEAD_HALF_WIDTH:   4,
-  HEIGHT:            35,
-  SAMPLE_STEP:       4,
-  MAX_PUSH:          30,
-  SIDE_TOP_MARGIN:   14,
+  HALF_WIDTH:          12,
+  HEAD_HALF_WIDTH:     4,
+  HEIGHT:              35,
+  SAMPLE_STEP:         4,
+  MAX_PUSH:            30,
+  SIDE_TOP_MARGIN:     10,  // ⚠️ tightened from v14 (was 14) — see §9 v17
+  SIDE_BOTTOM_INSET:   4,   // ⚠️ NEW v18 — anti-alias floor edge workaround
 };
 
 // Step-up path-continuity check (in step())
 isSlopePath        = avgSlope <= 3.0;
 continuityTolerance = isSlopePath ? 50 : 8;
+
+// isWallAt (in step's side-push) — v18 has TWO wall conditions:
+//   topY < bottomY - STEP_UP            → too high to step over
+//   topY ≥ bottomY - HEIGHT (overlap)   → curve at body height → trap
 ```
 
 ⚠️ flags mark intentional deviations from the legacy AS3 game; their
@@ -394,23 +400,78 @@ user flagged.**
 
 ---
 
-## 7. Per-level data (displacement0 = the tutorial)
+## 7. Per-level data
+
+Each wired level has a `src/levels/*.ts` config literal. Source values
+come from `legacy/src/levels/<name>.mxml`; world-y values for origins
+come from pngjs sweeps of the level's collision PNG. The general
+`legacy_y + 60` convention works for origin Y (the legacy game's
+marker sprite is ~60 px tall, anchored top in legacy / bottom in port).
+
+### displacement0 (tutorial — `src/levels/displacement0.ts`)
 
 | Quantity | Value | Source |
 | --- | --- | --- |
 | BG asset key | `bgWorld1_t` | displacement0.mxml line 21 |
 | Collision asset key | `levelTD_collision` | displacement0.mxml line 24 |
-| `SPAWN_X, SPAWN_Y` | `30, 0` | Original `setEntrance(0, 467)` is a Flash top-left marker, not the avatar's feet. SPAWN_X=30 puts the avatar above the very-bottom cloud bank; SPAWN_Y=0 lets gravity drop the player in. |
-| `EXIT_X, EXIT_Y` | `750, 174` | displacement0.mxml line 27 |
-| `ORIGIN_X, ORIGIN_Y` | `300, 333` | Origin Y = topmost-solid Y of orb-stand at x=300 (measured by pngjs sweep). Legacy origin Y=273 is a Flash top-left coordinate; we use a (0.5, 1) bottom-anchor and place the origin's bottom on the painted floor. |
-| `ORB_X, ORB_Y` | `ORIGIN_X, ORIGIN_Y - STAND_CRADLE_LIFT` = `300, 321` | Orb spawns sitting on the cradle's top. |
-| `STAND_CRADLE_LIFT` | `12` | How far above the painted floor the cradle holds the orb. |
-| `STAND_CRADLE_HALF_WIDTH` | `18` | Half-width of the cradle shelf. |
-| `GRAPH_X, GRAPH_Y, GRAPH_W, GRAPH_H` | `490, 134, 200, 200` | From addGraph call. |
-| `GRAPH_MAX_VALUE` | `550` | `scale` arg of addGraph. |
-| `GRAPH_OFFSET` | `70` | `offset` arg of addGraph. |
-| `SUN_X, SUN_Y` | `207, 102` | Painted-sun centroid in `levelTD_bg.png`, measured by pngjs sweep of pure-white pixels in upper-left region. |
-| `BG_HAS_HELP_PROMPTS` | `true` | The painted bg has D / ↑ / SPACEBAR / flag glyphs baked in; skip the runtime procedural prompts. |
+| `spawn` | `{x:30, y:0}` | Original `setEntrance(0, 467)` is a Flash top-left marker. SPAWN_X=30 puts the avatar above the bottom-cloud bank; SPAWN_Y=0 lets gravity drop the player in. |
+| `exit` | `{x:750, y:174}` | displacement0.mxml line 27 |
+| `orbs[0].origin` | `{x:300, y:333}` | Topmost-solid Y of orb-stand at x=300 (pngjs sweep). |
+| `orbs[0].orb` | `{x:300, y:321}` | ORIGIN.y - cradle.lift = 321. |
+| `orbs[0].cradle` | `{lift:12, halfWidth:18}` | The cradle shelf the orb rests on. |
+| `orbs[0].graph` | `{x:490, y:134, width:200, height:200, maxValue:550, yOffset:55}` | From `addGraph(0,0,800-110-200,134,550,200,200,70,300,290,0,300,273,0,0)`. **⚠️ yOffset deviates from legacy 70 → 55** to push the value=0 curve high enough that the avatar fits cleanly underneath it without needing the v14 SIDE_TOP_MARGIN=14 hack. See §9 v16. |
+| `sunCentroid` | `{x:207, y:102}` | Painted-sun centroid in `levelTD_bg.png`. |
+| `nextLevel` | DISPLACEMENT1 | Legacy `super.nextLvl = 'd1'`. |
+
+### displacement1 (`src/levels/displacement1.ts`)
+
+Easy-mode config (legacy spec branches on `Settings.LEVEL_DIFFICULTY`;
+we ship the easy/default branch).
+
+| Quantity | Value | Notes |
+| --- | --- | --- |
+| BG / ground | `bgWorld1_1` / `leveld1_collision` | |
+| `spawn` | `{x:30, y:0}` | Lands on left ledge at y=440. |
+| `exit` | `{x:740, y:195}` | Upper-right exit. |
+| `orbs[0].origin` | `{x:200, y:498}` | Middle platform; topmost-solid at x=200 = 498. |
+| `orbs[0].orb` | `{x:200, y:486}` | y - cradle.lift. |
+| `orbs[0].graph` | `{x:308, y:200, width:300, height:300, maxValue:400, yOffset:100}` | Legacy spec; unmodified. |
+| `sunCentroid` | `{x:118, y:109}` | |
+| `nextLevel` | DISPLACEMENT2 | |
+| Hard-mode delta | adds a horizontally-moving spike at `(500,480)` | Not wired (no difficulty selector). |
+
+### displacement2 (`src/levels/displacement2.ts`)
+
+**Two orbs.** Easy-mode.
+
+| Quantity | Value | Notes |
+| --- | --- | --- |
+| BG / ground | `bgWorld1_2` / `leveld2_collision` | |
+| `spawn` | `{x:30, y:200}` | **⚠️ y=200 not 0** so gravity drops past the top shelf (y=100-135) onto the small left ledge (y=440). spawn.y=0 would land on top shelf right next to the exit and trigger win immediately. |
+| `exit` | `{x:0, y:60}` | Top-left niche **above** the high shelf. |
+| `orbs[0].origin` | `{x:160, y:500}` | Bottom cloud bank. |
+| `orbs[0].graph` | `{x:240, y:340, w:160, h:160, maxValue:600, yOffset:40}` | |
+| `orbs[1].origin` | `{x:740, y:329}` | Right cloud top. |
+| `orbs[1].graph` | `{x:223, y:60, w:220, h:220, maxValue:500, yOffset:80}` | |
+| `sunCentroid` | `{x:170, y:88}` | |
+| `nextLevel` | DISPLACEMENT3 | |
+
+### displacement3 (`src/levels/displacement3.ts`)
+
+**Two orbs**, second one **floats in mid-air** (intentional per legacy).
+Easy-mode.
+
+| Quantity | Value | Notes |
+| --- | --- | --- |
+| BG / ground | `bgWorld1_3` / `leveld3_collision` | |
+| `spawn` | `{x:30, y:0}` | Drops to bottom cloud bank at y=500. |
+| `exit` | `{x:740, y:100}` | Upper-right above mountain. |
+| `orbs[0].origin` | `{x:500, y:500}` | Bottom cloud at x=500. |
+| `orbs[0].graph` | `{x:100, y:320, w:180, h:180, maxValue:400, yOffset:75}` | **⚠️ yOffset deviates from legacy 90 → 75** — middle ground between "too lenient" (60: trap never fires) and "barely solvable" (90: orb-2 jump is exact-timing-only). With margin=10 + isWallAt overlap rule (v18), the trap range is V<~95. See §9 v17–v18. |
+| `orbs[1].origin` | `{x:280, y:320}` | **Floating in mid-air** — no painted floor at x=280, y=320. Player reaches it via orb 1's curve top + jump. |
+| `orbs[1].graph` | `{x:320, y:140, w:180, h:180, maxValue:300, yOffset:90}` | |
+| `sunCentroid` | `{x:64, y:209}` | |
+| `nextLevel` | unset | Legacy next is `cutsceneVelocity` → velocity0; cutscene machinery not wired yet, so SPACE on win restarts d3. |
 
 ---
 
@@ -454,11 +515,13 @@ without changes (in theory).
 
 ---
 
-## 9. Calibration history (lessons from displacement0)
+## 9. Calibration history
 
-The physics evolved over 14 calibration commits, each driven by a
+The physics evolved over 18 calibration commits, each driven by a
 specific playtest issue. Documented here so future me / future you
 doesn't re-derive the same mistakes.
+
+### v1–v14: displacement0 (tutorial)
 
 | v | What changed | Why |
 | --- | --- | --- |
@@ -476,6 +539,19 @@ doesn't re-derive the same mistakes.
 | 12 | avgSlope threshold 2.0 → 3.0; slope tolerance 30 → 50 | Reality kept exceeding the analytical 1.45-per-x slope max. Added 2× headroom. |
 | 13 | Side-push: added `isWallAt(edgeX, feet+1)` to skip pushes on slopes | Walking right toward an uptick where the slope started AHEAD of new_x: step-up didn't fire (newFloorY = state.y still on flat), side-push then tripped on the rising slope at edgeX (12 px past new_x). Side-push needs to know "is this a wall or a slope I'm about to step onto?". The `solidAt(feet+1)` test answered "is solid below feet?" — works for descents but… |
 | 14 | …the v13 discriminator failed for gentle slopes (curve band can extend up to 7 px below feet when line is near feet level). Replaced with `isWallAt` that asks "is the obstacle's top within STEP_UP above feet?" — actual semantic question. | Real walls have tops far above feet; curve slopes have tops within ~17 px of feet. The semantic question discriminates without the geometric edge cases. |
+
+### v15–v18: displacement3 (trap-puzzle level)
+
+The d3 level introduces the "draw the curve too low and you're trapped"
+puzzle. v15–v18 are about making that puzzle actually work without
+breaking normal walking.
+
+| v | What changed | Why |
+| --- | --- | --- |
+| 15 | `groundYBelow` returns yTop if `searchFromY` is INSIDE the band (`yBottom ≥ searchFromY`), not just above (`yTop ≥ searchFromY`); `body.step` searches from `min(state.y, y_new)`. Applies to `CurveGround`, `PixelGround`, `RectGround`. | "Jump sideways into a curve" tunneling: lateral motion landed avatar feet at an x where the interpolated curve top was above their feet, but the old groundYBelow returned Infinity (yTop < searchFromY) — avatar phased through. Inside-band semantic + min-y search catches both descending and ascending crossings. |
+| 16 | `SIDE_TOP_MARGIN` 14 → 8, then displacement0 graph `yOffset` 70 → 55 | v14's margin=14 was originally to let the avatar squeeze under the lowest curve on displacement0 (line_y=304, body overlaps band by 14 px). But it made displacement3's trap trivial — player could squeeze past any curve at body height. Rebalanced: tighter margin + raise the displacement0 curve via yOffset so the avatar fits cleanly underneath without the body-margin hack. |
+| 17 | `SIDE_TOP_MARGIN` 8 → 10; displacement3 g1 `yOffset` 90 → 60 → 75 | v16's margin=8 was still too strict — borderline overlap cases (curve clipping the top ~5 px of head) read as stuck. Bumped to 10. Plus several rounds of d3 g1 yOffset tuning: 90 (legacy spec, "just barely" reachable) → 60 (too lenient, trap never fired) → 75 (substantial trap V<~95 + comfortable orb-2 jump). |
+| 18 | NEW `SIDE_BOTTOM_INSET` = 4; re-added `isWallAt` overlap rule (`topY ≥ bottomY - HEIGHT → wall`); `pushOutFromWall*` clamp pushback to original x (no MAX_PUSH=30 teleport) | The REAL fix for d3 stuck. Painted floors are anti-aliased: at x=163 the cloud's "top" is y=501 (alpha=75 above is below threshold), at x=175 (right body edge) the same edge band is y=500 (alpha=133 above threshold). Sample at y=500 hit the cloud's own anti-alias band at the next column, combined with a curve overhead providing wall=true → side-push false-fired. Inset lifts the lowest sample firmly above any anti-alias band. With the false-positive shielded, the overlap-wall rule can come back and make d3's trap actually work. Found via on-screen debug HUD that dumped per-tick side-collision state (since removed). |
 
 ### Key lessons
 
@@ -511,6 +587,24 @@ doesn't re-derive the same mistakes.
    threshold, leave at least 2× headroom over the math. The avgSlope
    threshold ended up at 3.0 over an analytical max of 1.45;
    continuity tolerance at 50 over an analytical max of 9.
+9. **Anti-aliased collision PNGs leak ±1-2 px past the "true" edge.**
+   The painted floors are full RGBA; the binary alpha threshold (128)
+   reads anti-alias pixels as solid at some columns and air at others.
+   Body-edge samples grazing this band false-fire side-push when
+   combined with a wall classification from a different obstacle in
+   the same column. The fix is `BODY.SIDE_BOTTOM_INSET=4` — lifts
+   the lowest side-sample above any anti-alias band. When sampling
+   the collision PNG for floor positioning, also assume ±2 px of slop.
+10. **Instrument THEN fix when static analysis disagrees with playtest.**
+    The d3 stuck case (v18) couldn't be reproduced from reading the
+    code — my trace said "no push, avatar moves," but the user was
+    stuck. Adding a 4-line on-screen HUD that dumped per-tick edge
+    diagnostics (`solid`, `wall`, `topY`, `vx`) made the contradiction
+    obvious in one screenshot. Don't keep re-tracing; write the probe.
+11. **Cap pushback to the avatar's pre-move x.** Without the cap, side-
+    push iterates up to `MAX_PUSH=30` px and can teleport the avatar
+    back 30 px when walking into a long wall. With the cap, the move
+    just doesn't happen — no movement, no teleport. v18.
 
 ### Update protocol
 
