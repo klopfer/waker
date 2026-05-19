@@ -17,6 +17,7 @@ function fullCfg(partial: Partial<SpikeConfig> = {}): Required<SpikeConfig> {
     turn: 0,
     turn2: 0,
     speed: 0,
+    style: 'normal',
     ...partial,
   };
 }

@@ -17,6 +17,7 @@
 // TOP shelf at y=100 — wrong floor (and the exit at (0, 60) would
 // trigger immediately!). Spawn at y=200 instead.
 
+import { placeGraphObstacles } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
 import { displacement3 } from './displacement3.js';
@@ -24,7 +25,7 @@ import { displacement3 } from './displacement3.js';
 export const displacement2: LevelBuilder = (difficulty): LevelConfig => {
   // Per legacy displacement2.mxml: hard mode adds two moving spikes
   // (one in the bottom area, one at the orb-stand cliff).
-  // Medium/easy have no spikes.
+  // Medium/easy have no level spikes.
   const spikes: SpikeConfig[] = [];
   if (difficulty === 3) {
     // Horizontal spike at y=480 (bottom area), oscillating full stage
@@ -52,6 +53,25 @@ export const displacement2: LevelBuilder = (difficulty): LevelConfig => {
       speed: 7,
     });
   }
+
+  // Per legacy addGraph args 14 + 14:
+  //   graph 1: easy=0, medium=1, hard=2
+  //   graph 2: easy=0, medium=1, hard=1
+  const g1Count = difficulty === 1 ? 0 : difficulty === 2 ? 1 : 2;
+  const g2Count = difficulty === 1 ? 0 : 1;
+  const g1Obstacles = placeGraphObstacles({
+    graphRect: { x: 240, y: 340, width: 160, height: 160 },
+    numberObstacles: g1Count,
+    difficulty,
+    seed: 21,
+  }).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
+  const g2Obstacles = placeGraphObstacles({
+    graphRect: { x: 223, y: 60, width: 220, height: 220 },
+    numberObstacles: g2Count,
+    difficulty,
+    seed: 22,
+  }).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
+  spikes.push(...g1Obstacles, ...g2Obstacles);
 
   return {
     bgKey: 'bgWorld1_2',

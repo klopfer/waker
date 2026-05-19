@@ -11,6 +11,7 @@
 //   x=100..600 → topmost-solid y=498 (main middle platform)
 //   x=700..780 → topmost-solid y=235 (upper-right exit ledge)
 
+import { placeGraphObstacles } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
 import { displacement2 } from './displacement2.js';
@@ -31,6 +32,20 @@ export const displacement1: LevelBuilder = (difficulty): LevelConfig => {
       speed: 7,
     });
   }
+
+  // Per legacy addGraph(..., difficulty, 20): graph-rect obstacle
+  // count matches the difficulty value (easy=1, medium=2, hard=3).
+  // Placed procedurally inside the graph rect via the legacy
+  // proceduralGeneration algorithm (deterministic via seed).
+  const graphObstacles = placeGraphObstacles({
+    graphRect: { x: 308, y: 200, width: 300, height: 300 },
+    numberObstacles: difficulty,
+    difficulty,
+    seed: 1, // stable per-level seed
+  }).map(
+    (p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }),
+  );
+  spikes.push(...graphObstacles);
 
   return {
     bgKey: 'bgWorld1_1',

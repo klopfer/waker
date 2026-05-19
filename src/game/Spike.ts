@@ -35,6 +35,12 @@ export interface SpikeConfig {
   turn2?: number;
   /** Pixels per simulation tick. */
   speed?: number;
+  /**
+   * Visual variant. 'normal' (default) for legacy-spec level spikes
+   * placed via addSpike(); 'graph' for procedural in-rect obstacles
+   * (pink/magenta spiral instead of brown).
+   */
+  style?: SpikeStyle;
 }
 
 /** Mutable per-spike state advanced by `stepSpikeMotion`. */
@@ -63,11 +69,18 @@ const SPIRAL_THICKNESS = 1.25;
 const SPIRAL_SEGMENTS = 48;
 const SPIRAL_ROTATION_PER_TICK = 0.06; // ~½ rotation/sec at 24 Hz
 
-// Colors sampled from the Ruffle screenshot of displacement0 hard-mode:
-//   blob silhouette ≈ very dark warm black
-//   spiral fill     ≈ warm rust / brown
-const BLOB_COLOR = 0x1a0e0a;
-const SPIRAL_COLOR = 0x8b4513;
+// Colors sampled from Ruffle screenshots. Two style variants:
+//   'normal' — level-placed spikes (addSpike). Dark warm-black blob,
+//              warm brown spiral. Matches the original level spike art.
+//   'graph'  — graph-rect obstacles (proceduralGeneration). Same blob
+//              shape, but cooler tint + pink/magenta spiral so they
+//              read as related but distinct from level spikes.
+const BLOB_COLOR_NORMAL = 0x1a0e0a;
+const SPIRAL_COLOR_NORMAL = 0x8b4513;
+const BLOB_COLOR_GRAPH = 0x18121a;
+const SPIRAL_COLOR_GRAPH = 0xd83a90;
+
+export type SpikeStyle = 'normal' | 'graph';
 
 /**
  * Advance a moving spike by one tick. Matches legacy spikeObstacle.mxml
@@ -125,24 +138,27 @@ function normalizeConfig(cfg: SpikeConfig): Required<SpikeConfig> {
     turn: cfg.turn ?? 0,
     turn2: cfg.turn2 ?? 0,
     speed: cfg.speed ?? 0,
+    style: cfg.style ?? 'normal',
   };
 }
 
 /** Build the irregular dark silhouette: 1 center disc + 6 perimeter bumps. */
-function drawBlob(g: Graphics): void {
-  g.circle(0, 0, BLOB_RADIUS).fill({ color: BLOB_COLOR });
+function drawBlob(g: Graphics, style: SpikeStyle): void {
+  const color = style === 'graph' ? BLOB_COLOR_GRAPH : BLOB_COLOR_NORMAL;
+  g.circle(0, 0, BLOB_RADIUS).fill({ color });
   for (let i = 0; i < BLOB_BUMP_COUNT; i++) {
     const t = (i / BLOB_BUMP_COUNT) * Math.PI * 2;
     g.circle(
       Math.cos(t) * BLOB_BUMP_DIST,
       Math.sin(t) * BLOB_BUMP_DIST,
       BLOB_BUMP_RADIUS,
-    ).fill({ color: BLOB_COLOR });
+    ).fill({ color });
   }
 }
 
 /** Draw the inward spiral as a connected polyline. */
-function drawSpiral(g: Graphics): void {
+function drawSpiral(g: Graphics, style: SpikeStyle): void {
+  const color = style === 'graph' ? SPIRAL_COLOR_GRAPH : SPIRAL_COLOR_NORMAL;
   const pts: Array<{ x: number; y: number }> = [];
   for (let i = 0; i <= SPIRAL_SEGMENTS; i++) {
     const t = i / SPIRAL_SEGMENTS;
@@ -152,7 +168,7 @@ function drawSpiral(g: Graphics): void {
   }
   g.moveTo(pts[0]!.x, pts[0]!.y);
   for (let i = 1; i < pts.length; i++) g.lineTo(pts[i]!.x, pts[i]!.y);
-  g.stroke({ color: SPIRAL_COLOR, width: SPIRAL_THICKNESS, cap: 'round' });
+  g.stroke({ color, width: SPIRAL_THICKNESS, cap: 'round' });
 }
 
 export class Spike {
@@ -166,19 +182,20 @@ export class Spike {
 
   constructor(cfg: SpikeConfig) {
     this.normCfg = normalizeConfig(cfg);
+    const style: SpikeStyle = cfg.style ?? 'normal';
 
     this.container = new Container();
     this.container.x = this.normCfg.x;
     this.container.y = this.normCfg.y;
 
     const blob = new Graphics();
-    drawBlob(blob);
+    drawBlob(blob, style);
     blob.x = SPIKE_BBOX_W / 2;
     blob.y = SPIKE_BBOX_H / 2;
     this.container.addChild(blob);
 
     this.spiralGfx = new Graphics();
-    drawSpiral(this.spiralGfx);
+    drawSpiral(this.spiralGfx, style);
     this.spiralGfx.x = SPIKE_BBOX_W / 2;
     this.spiralGfx.y = SPIKE_BBOX_H / 2;
     this.container.addChild(this.spiralGfx);
