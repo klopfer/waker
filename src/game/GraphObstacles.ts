@@ -49,6 +49,8 @@ export interface PlacementConfig {
    * (undefined param) means no nudges anywhere.
    */
   yOffsets?: readonly number[] | undefined;
+  /** Same as `yOffsets` but for the X axis. Positive = right, negative = left. */
+  xOffsets?: readonly number[] | undefined;
 }
 
 const OBSTACLE_SIZE = 20;
@@ -79,6 +81,7 @@ export function obstaclesForDifficulty(
   hardCount: number,
   count: number,
   yOffsetsPerSlot?: readonly number[],
+  xOffsetsPerSlot?: readonly number[],
 ): ObstaclePlacement[] {
   if (count <= 0 || hardCount <= 0) return [];
   const all = placeGraphObstacles({
@@ -87,6 +90,7 @@ export function obstaclesForDifficulty(
     difficulty: 2, // fixed: keeps positions consistent across difficulties
     seed,
     yOffsets: yOffsetsPerSlot,
+    xOffsets: xOffsetsPerSlot,
   });
   return all.slice(0, Math.min(count, all.length));
 }
@@ -152,12 +156,21 @@ export function placeGraphObstacles(cfg: PlacementConfig): ObstaclePlacement[] {
     remaining--;
   }
 
-  // Apply per-obstacle Y nudges, sorted top-to-bottom so yOffsets[0]
-  // always lands on the topmost obstacle regardless of placement order.
-  if (cfg.yOffsets && cfg.yOffsets.length > 0) {
+  // Apply per-obstacle Y + X nudges, sorted top-to-bottom by raw Y so
+  // offsets[0] always lands on the topmost obstacle regardless of
+  // placement order. Sort happens once even if both arrays are set.
+  const hasOffsets =
+    (cfg.yOffsets && cfg.yOffsets.length > 0) ||
+    (cfg.xOffsets && cfg.xOffsets.length > 0);
+  if (hasOffsets) {
     placed.sort((a, b) => a.y - b.y);
-    for (let i = 0; i < placed.length && i < cfg.yOffsets.length; i++) {
-      placed[i]!.y += cfg.yOffsets[i] ?? 0;
+    for (let i = 0; i < placed.length; i++) {
+      if (cfg.yOffsets && i < cfg.yOffsets.length) {
+        placed[i]!.y += cfg.yOffsets[i] ?? 0;
+      }
+      if (cfg.xOffsets && i < cfg.xOffsets.length) {
+        placed[i]!.x += cfg.xOffsets[i] ?? 0;
+      }
     }
   }
 

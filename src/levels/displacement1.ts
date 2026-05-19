@@ -39,7 +39,9 @@ export const displacement1: LevelBuilder = (difficulty): LevelConfig => {
   // the SAME first N positions — easy d1 = medium's top, hard d1 =
   // medium's two + a third below. Per-slot nudges:
   //   slot 0 (top):    +20 down (one spike-width)
-  //   slot 1 (middle): -40 up (two spike-widths)
+  //   slot 1 (middle): -40 up (two spike-widths), -30 left
+  //                    (playtest 2026-05-19: raw position was in a
+  //                    too-narrow gap on medium/hard, shift left)
   //   slot 2 (bottom): no nudge (only present on hard)
   const graphObstacles = obstaclesForDifficulty(
     { x: 308, y: 200, width: 300, height: 300 },
@@ -47,6 +49,7 @@ export const displacement1: LevelBuilder = (difficulty): LevelConfig => {
     /* hardCount */ 3,
     /* count */ difficulty,
     /* yOffsetsPerSlot */ [20, -40, 0],
+    /* xOffsetsPerSlot */ [0, -30, 0],
   ).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
   spikes.push(...graphObstacles);
 

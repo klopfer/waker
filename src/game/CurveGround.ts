@@ -42,9 +42,15 @@ export class CurveGround implements GroundProvider {
       const p1 = this.points[i + 1]!;
       const xMin = Math.min(p0.x, p1.x);
       const xMax = Math.max(p0.x, p1.x);
-      if (x < xMin || x > xMax) continue;
+      // ±half expansion + clamped t mirrors solidAt's "rounded endpoint"
+      // semantics. Without the expansion, the avatar's ground-catch
+      // would miss the curve at columns just past a segment endpoint
+      // (where solidAt still reports solid because of the endcap),
+      // causing fall-through bugs at segment joints.
+      if (x < xMin - half || x > xMax + half) continue;
       const dx = p1.x - p0.x;
-      const t = dx === 0 ? 0 : (x - p0.x) / dx;
+      const tRaw = dx === 0 ? 0 : (x - p0.x) / dx;
+      const t = Math.max(0, Math.min(1, tRaw));
       const yLine = p0.y + t * (p1.y - p0.y);
       const yTop = yLine - half;
       const yBottom = yLine + half;
@@ -69,7 +75,8 @@ export class CurveGround implements GroundProvider {
       const xMax = Math.max(p0.x, p1.x);
       if (x < xMin - half || x > xMax + half) continue;
       const dx = p1.x - p0.x;
-      const t = dx === 0 ? 0 : (x - p0.x) / dx;
+      const tRaw = dx === 0 ? 0 : (x - p0.x) / dx;
+      const t = Math.max(0, Math.min(1, tRaw));
       const yAt = p0.y + t * (p1.y - p0.y);
       if (Math.abs(y - yAt) <= half) return true;
     }
