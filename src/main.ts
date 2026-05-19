@@ -72,6 +72,13 @@ async function main(): Promise<void> {
     backgroundColor: 0x111418,
     antialias: true,
   });
+  // Sort stage children by zIndex on each render so the persistent
+  // chrome (instructions banner, mute toggles, level picker, diff
+  // picker) stays on top of level-owned objects added later by
+  // Level.load(). Without this, switching levels via the debug
+  // picker would re-add the new level's bg AFTER the chrome,
+  // hiding the buttons behind it.
+  app.stage.sortableChildren = true;
 
   // ── Shared engine singletons ──
   const assets = new AssetLoader();
@@ -92,6 +99,7 @@ async function main(): Promise<void> {
   label.anchor.set(0.5, 0);
   label.x = STAGE_WIDTH / 2;
   label.y = 12;
+  label.zIndex = 1000;
   app.stage.addChild(label);
 
   // ── Level manager handles initial load + transitions on win ──
@@ -105,6 +113,7 @@ async function main(): Promise<void> {
   const mute = makeMuteControls(audio);
   mute.x = STAGE_WIDTH - mute.width - 8;
   mute.y = STAGE_HEIGHT - 30;
+  mute.zIndex = 1000;
   app.stage.addChild(mute);
 
   // ── TEMPORARY level picker (debug only) ──
@@ -119,6 +128,7 @@ async function main(): Promise<void> {
   ]);
   picker.x = 8;
   picker.y = STAGE_HEIGHT - 30;
+  picker.zIndex = 1000;
   app.stage.addChild(picker);
 
   // ── TEMPORARY difficulty picker (debug only) ──
@@ -129,6 +139,7 @@ async function main(): Promise<void> {
   const diffPicker = makeDifficultyPicker(levels);
   diffPicker.x = picker.x + picker.width + 12;
   diffPicker.y = STAGE_HEIGHT - 30;
+  diffPicker.zIndex = 1000;
   app.stage.addChild(diffPicker);
 
   // ── Sim loop ──
