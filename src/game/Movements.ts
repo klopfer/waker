@@ -120,6 +120,17 @@ export const BODY = {
   //        they walk a few px the curve clears. R hotkey is the
   //        escape for the V=0 exact-trap.
   SIDE_TOP_MARGIN: 10,
+  // Inset from the BOTTOM of the body for side-collision samples. The
+  // painted floors are RGBA with anti-aliased top edges; the alpha at
+  // y=feet-1 can be above the binary threshold at one column (= solid)
+  // and below it at the next, making the lowest side-sample
+  // intermittently hit the floor's own anti-alias band at neighboring
+  // x positions. Without this inset, walking past a drawn curve that
+  // makes isWallAt=true (curve above) combined with the cloud edge at
+  // feet making solid=true → side-push false-fires (HUD evidence:
+  // x=175 had alpha=133 at y=500, x=163 had alpha=75 at y=500).
+  // 4 px lifts the lowest sample above the anti-alias band reliably.
+  SIDE_BOTTOM_INSET: 4,
 } as const;
 
 export interface MovementInputs {
@@ -204,15 +215,16 @@ function anySolidAlongVerticalEdge(
   bottomY: number,
   ground: GroundProvider,
 ): boolean {
-  // Sample from one pixel above the body bottom up to the SIDE top —
-  // which is HEIGHT-SIDE_TOP_MARGIN px above feet, NOT the absolute body
-  // top. The top SIDE_TOP_MARGIN px of the body are excluded so the
-  // head/upper torso can brush past low overhead obstacles without
-  // tripping the side-push (see BODY.SIDE_TOP_MARGIN comment).
-  // Ceiling collision (anySolidAlongTopEdge) still uses the full body
-  // top, so head-bumps into actual ceilings work normally.
+  // Sample from `feet - 1 - SIDE_BOTTOM_INSET` up to `sideTopY`. The
+  // bottom inset avoids the anti-aliased top edge of painted floors:
+  // a body sample at y=feet-1 often grazes the floor's own
+  // semi-transparent edge pixels at neighboring x columns, which the
+  // binary alpha threshold reads as "solid." Skipping the lowest 4 px
+  // takes the sample range firmly above any such edge band.
+  // SIDE_TOP_MARGIN still excludes the top of the body so the head can
+  // brush past low overhead obstacles.
   const sideTopY = bottomY - BODY.HEIGHT + BODY.SIDE_TOP_MARGIN;
-  for (let y = bottomY - 1; y > sideTopY; y -= BODY.SAMPLE_STEP) {
+  for (let y = bottomY - 1 - BODY.SIDE_BOTTOM_INSET; y > sideTopY; y -= BODY.SAMPLE_STEP) {
     if (ground.solidAt(edgeX, y)) return true;
   }
   return ground.solidAt(edgeX, sideTopY + 1);
@@ -232,16 +244,18 @@ function anySolidAlongTopEdge(
 
 // Distinguish a true wall from a slope/floor at the avatar's leading edge.
 //
-// Semantic definition: a WALL is something the avatar can't step over (its
-// top is higher than STEP_UP above feet). A slope/floor's top is within
-// step-up range and the avatar would normally walk onto it.
-//
-// (An earlier attempt to also treat curve-overlap-with-body as a wall —
-// for the displacement3 trap puzzle — caused regressions in normal
-// walking that couldn't be reproduced from static analysis. Reverted;
-// the trap is currently weak, player can usually walk under drawn
-// curves at low value. Plays as a puzzle of "draw the curve high enough
-// to be a useful platform" rather than "don't trap yourself.")
+// Two ways something is a wall:
+//   1. topY < bottomY - STEP_UP: too high to step over.
+//   2. topY in [bottomY - HEIGHT, bottomY): overlaps the avatar's body.
+// The overlap branch (re-added in v18 alongside SIDE_BOTTOM_INSET=4)
+// is what gives drawn curves teeth on displacement3: a curve whose
+// top sits at body height blocks sideways motion instead of phasing
+// through. v17's revert was due to the cloud anti-alias false-firing
+// `solid=true` from the body's bottom sample grazing the painted
+// floor's anti-aliased top edge; SIDE_BOTTOM_INSET now lifts the
+// lowest sample firmly above that band, so the false-positive is
+// gone and overlap-wall can come back without breaking normal
+// walking on cloud floors.
 //
 // The earlier `solidAt(feet + 1)` heuristic worked for descents but failed
 // for gentle ascending slopes where the curve's solid band still includes
@@ -257,7 +271,7 @@ function isWallAt(edgeX: number, bottomY: number, ground: GroundProvider): boole
   const topY = ground.groundYBelow(edgeX, bottomY - 1000);
   if (topY === Number.POSITIVE_INFINITY) return false;
   if (topY >= bottomY) return false; // Obstacle is at or below feet — not a side wall.
-  return topY < bottomY - PHYSICS.STEP_UP; // Top too high to step over → wall.
+  return topY < bottomY - PHYSICS.STEP_UP || topY >= bottomY - BODY.HEIGHT;
 }
 
 function pushOutFromWallRight(
