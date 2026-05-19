@@ -62,6 +62,35 @@ function minDistance(d: Difficulty): number {
   return d === 1 ? 110 : d === 2 ? 100 : 90;
 }
 
+/**
+ * Convenience wrapper that places the MAX-count obstacles once with
+ * a fixed difficulty, then returns just the first `count` (sorted
+ * top→bottom by Y). This guarantees that easy/medium/hard see the
+ * SAME first N positions — easy d1 uses the top slot from medium d1,
+ * hard d1 adds a 3rd slot below medium's two, etc.
+ *
+ * `yOffsetsPerSlot` is applied per (sorted) slot, so the same offset
+ * lands on the same visual position regardless of how many obstacles
+ * the current difficulty actually shows.
+ */
+export function obstaclesForDifficulty(
+  graphRect: GraphRect,
+  seed: number,
+  hardCount: number,
+  count: number,
+  yOffsetsPerSlot?: readonly number[],
+): ObstaclePlacement[] {
+  if (count <= 0 || hardCount <= 0) return [];
+  const all = placeGraphObstacles({
+    graphRect,
+    numberObstacles: hardCount,
+    difficulty: 2, // fixed: keeps positions consistent across difficulties
+    seed,
+    yOffsets: yOffsetsPerSlot,
+  });
+  return all.slice(0, Math.min(count, all.length));
+}
+
 /** Mulberry32 PRNG — small, fast, good distribution for placement. */
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;

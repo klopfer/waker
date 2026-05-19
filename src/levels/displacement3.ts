@@ -19,7 +19,7 @@
 // y=500). The origin marker is deliberately floating in mid-air —
 // the puzzle is to use orb 1's drawn curve to step up to it.
 
-import { placeGraphObstacles } from '../game/GraphObstacles.js';
+import { obstaclesForDifficulty } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
 
@@ -58,26 +58,27 @@ export const displacement3: LevelBuilder = (difficulty): LevelConfig => {
   // Per legacy addGraph 14th arg:
   //   graph 1: easy=0, medium=1, hard=1
   //   graph 2: easy=0 (no arg → 0), medium=1, hard=2
-  // Playtest-derived nudges (2026-05-19) for medium: raise both
-  // obstacles by 20 px (one spike-width).
+  // Slot-aligned nudges so medium and hard share the same y for
+  // shared slots.
+  //   g1 slot 0: -20 (medium nudge — shared with hard's only slot)
+  //   g2 slot 0: -20 (medium nudge — shared with hard's first)
+  //   g2 slot 1: 0   (only present on hard)
   const g1Count = difficulty === 1 ? 0 : 1;
   const g2Count = difficulty === 1 ? 0 : difficulty === 2 ? 1 : 2;
-  const g1Offsets = difficulty === 2 ? [-20] : undefined;
-  const g2Offsets = difficulty === 2 ? [-20] : undefined;
-  const g1Obstacles = placeGraphObstacles({
-    graphRect: { x: 100, y: 320, width: 180, height: 180 },
-    numberObstacles: g1Count,
-    difficulty,
-    seed: 31,
-    yOffsets: g1Offsets,
-  }).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
-  const g2Obstacles = placeGraphObstacles({
-    graphRect: { x: 320, y: 140, width: 180, height: 180 },
-    numberObstacles: g2Count,
-    difficulty,
-    seed: 32,
-    yOffsets: g2Offsets,
-  }).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
+  const g1Obstacles = obstaclesForDifficulty(
+    { x: 100, y: 320, width: 180, height: 180 },
+    /* seed */ 31,
+    /* hardCount */ 1,
+    g1Count,
+    /* yOffsetsPerSlot */ [-20],
+  ).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
+  const g2Obstacles = obstaclesForDifficulty(
+    { x: 320, y: 140, width: 180, height: 180 },
+    /* seed */ 32,
+    /* hardCount */ 2,
+    g2Count,
+    /* yOffsetsPerSlot */ [-20, 0],
+  ).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
   spikes.push(...g1Obstacles, ...g2Obstacles);
 
   return {

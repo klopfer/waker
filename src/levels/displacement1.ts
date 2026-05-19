@@ -11,7 +11,7 @@
 //   x=100..600 → topmost-solid y=498 (main middle platform)
 //   x=700..780 → topmost-solid y=235 (upper-right exit ledge)
 
-import { placeGraphObstacles } from '../game/GraphObstacles.js';
+import { obstaclesForDifficulty } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
 import { displacement2 } from './displacement2.js';
@@ -35,24 +35,19 @@ export const displacement1: LevelBuilder = (difficulty): LevelConfig => {
 
   // Per legacy addGraph(..., difficulty, 20): graph-rect obstacle
   // count matches the difficulty value (easy=1, medium=2, hard=3).
-  // Placed procedurally inside the graph rect via the legacy
-  // proceduralGeneration algorithm (deterministic via seed).
-  //
-  // yOffsets tune the raw RNG output into better playable positions
-  // (sorted top-to-bottom by Y, so yOffsets[0] = topmost obstacle).
-  // Playtest-derived (2026-05-19) for medium: top obstacle down 20 px
-  // (one spike-width), bottom up 40 px (two spike-widths).
-  const yOffsets: number[] | undefined =
-    difficulty === 2 ? [20, -40] : undefined;
-  const graphObstacles = placeGraphObstacles({
-    graphRect: { x: 308, y: 200, width: 300, height: 300 },
-    numberObstacles: difficulty,
-    difficulty,
-    seed: 1, // stable per-level seed
-    yOffsets,
-  }).map(
-    (p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }),
-  );
+  // Placed once at the hard count (3) so easy/medium/hard all use
+  // the SAME first N positions — easy d1 = medium's top, hard d1 =
+  // medium's two + a third below. Per-slot nudges:
+  //   slot 0 (top):    +20 down (one spike-width)
+  //   slot 1 (middle): -40 up (two spike-widths)
+  //   slot 2 (bottom): no nudge (only present on hard)
+  const graphObstacles = obstaclesForDifficulty(
+    { x: 308, y: 200, width: 300, height: 300 },
+    /* seed */ 1,
+    /* hardCount */ 3,
+    /* count */ difficulty,
+    /* yOffsetsPerSlot */ [20, -40, 0],
+  ).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
   spikes.push(...graphObstacles);
 
   return {
