@@ -471,14 +471,22 @@ export function step(
       }
     }
 
-    // Floor lookup uses the new x AND the HIGHEST (smallest-y) point the
-    // avatar occupied this tick — min(state.y, y) — so both descending
-    // and ascending crossings are caught. With this + the inside-band
-    // semantic in CurveGround.groundYBelow, an avatar whose feet end up
-    // inside a curve's solid band (e.g., jumped sideways and landed at
-    // an x where the interpolated curve top is above their feet) gets
-    // snapped to the band's top instead of tunneling through.
-    const groundY = ground.groundYBelow(x, Math.min(state.y, y));
+    // Floor lookup samples at THREE x positions (left edge, center,
+    // right edge) and snaps to the HIGHEST (smallest-y) floor among
+    // them. Without this, the avatar's bbox center has to be exactly
+    // over a ledge to grab — even if the body's edge would visually
+    // overlap. Three-sample matches the legacy pixel-overlap semantic
+    // (any body pixel over solid = grab) using cheap point checks.
+    //
+    // Search-from y uses min(state.y, y) so both descending and
+    // ascending crossings are caught (combined with CurveGround's
+    // inside-band semantic).
+    const searchFromY = Math.min(state.y, y);
+    const groundY = Math.min(
+      ground.groundYBelow(x - BODY.HALF_WIDTH, searchFromY),
+      ground.groundYBelow(x, searchFromY),
+      ground.groundYBelow(x + BODY.HALF_WIDTH, searchFromY),
+    );
     if (y >= groundY) {
       y = groundY;
       if (vy > 0) vy = 0;
