@@ -159,6 +159,36 @@ export interface GroundProvider {
   solidAt(x: number, y: number): boolean;
 }
 
+/**
+ * TEMPORARY debug helper — exposes the side-collision internals at a
+ * given edge for HUD display. Returns the topmost-solid y, whether the
+ * column has a solid sample at body height (would trigger side-push),
+ * and whether that obstacle would be classified as a wall (would push
+ * the avatar back).
+ *
+ * Pure read; no side effects. Remove together with the debug HUD in
+ * Level.ts once the d3 stuck issue is diagnosed.
+ */
+export function diagnoseSide(
+  edgeX: number,
+  bottomY: number,
+  ground: GroundProvider,
+): { topY: number; solid: boolean; wall: boolean } {
+  const topY = ground.groundYBelow(edgeX, bottomY - 1000);
+  const solid = anySolidAlongVerticalEdge(edgeX, bottomY, ground);
+  const wall = isWallAt(edgeX, bottomY, ground);
+  return { topY, solid, wall };
+}
+
+/**
+ * TEMPORARY debug helper — what step-up's groundYBelow call would
+ * return at a given x. If this is < state.y AND >= state.y - STEP_UP,
+ * step-up is a candidate (continuity check then decides).
+ */
+export function diagnoseStepUp(x: number, bottomY: number, ground: GroundProvider): number {
+  return ground.groundYBelow(x, bottomY - PHYSICS.STEP_UP);
+}
+
 export class FlatGround implements GroundProvider {
   constructor(private readonly y: number) {}
   groundYBelow(_x: number, searchFromY: number): number {
