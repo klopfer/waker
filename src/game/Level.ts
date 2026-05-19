@@ -18,13 +18,7 @@ import { Avatar } from './Avatar.js';
 import { CompositeGround } from './CompositeGround.js';
 import { CurveGround } from './CurveGround.js';
 import { Graph } from './Graph.js';
-import {
-  BODY,
-  Body,
-  diagnoseSide,
-  diagnoseStepUp,
-  type MovementInputs,
-} from './Movements.js';
+import { BODY, Body, type MovementInputs } from './Movements.js';
 import { MovingPlatform, type MovingPlatformConfig } from './MovingPlatform.js';
 import { Orb } from './Orb.js';
 import { loadPixelGround, type PixelGround } from './PixelGround.js';
@@ -226,10 +220,6 @@ export class Level {
   private readonly platforms: readonly MovingPlatform[];
   private readonly winOverlay: Container;
   private readonly tickReadout: Text;
-  // TEMPORARY debug HUD — top-left, shows per-tick side-collision +
-  // step-up diagnostics so we can see what's blocking the avatar.
-  // Remove once the d3 stuck issue is diagnosed.
-  private readonly debugHUD: Text;
 
   private audioCtx: AudioContext | null = null;
   private graphTone: GraphTone | null = null;
@@ -442,21 +432,6 @@ export class Level {
     this.tickReadout.x = STAGE_WIDTH / 2;
     this.tickReadout.y = STAGE_HEIGHT - 8;
     deps.app.stage.addChild(this.tickReadout);
-
-    // TEMPORARY debug HUD — top-left below the instructions banner.
-    this.debugHUD = new Text({
-      text: '',
-      style: {
-        fill: 0xffee66,
-        fontFamily: 'monospace',
-        fontSize: 11,
-        lineHeight: 13,
-        stroke: { color: 0x000000, width: 2 },
-      },
-    });
-    this.debugHUD.x = 6;
-    this.debugHUD.y = 44;
-    deps.app.stage.addChild(this.debugHUD);
   }
 
   /** Run one simulation tick. Called from the engine's FixedStep driver. */
@@ -641,30 +616,6 @@ export class Level {
     this.tickReadout.text = `tick ${this.tickCount}   avatar=(${this.body.state.x.toFixed(
       0,
     )},${this.body.state.y.toFixed(0)})   ${orbsInfo}`;
-
-    // TEMPORARY debug HUD: dump per-tick collision state so we can see
-    // what's blocking sideways motion. Each line = one fact about the
-    // current frame, no animation, no rate-limiting.
-    const bx = this.body.state.x;
-    const by = this.body.state.y;
-    const vx = this.body.state.vx;
-    const vy = this.body.state.vy;
-    const og = this.body.state.onGround;
-    const rightEdge = bx + BODY.HALF_WIDTH;
-    const leftEdge = bx - BODY.HALF_WIDTH - 1;
-    const rDiag = diagnoseSide(rightEdge, by, this.ground);
-    const lDiag = diagnoseSide(leftEdge, by, this.ground);
-    const stepUpRight = diagnoseStepUp(bx + 6, by, this.ground);
-    const stepUpLeft = diagnoseStepUp(bx - 6, by, this.ground);
-    const groundY = this.ground.groundYBelow(bx, by);
-    const intendedDir = moveInputs.moveRight ? '→' : moveInputs.moveLeft ? '←' : '·';
-    const fmt = (n: number): string =>
-      n === Number.POSITIVE_INFINITY ? '∞' : n.toFixed(0);
-    this.debugHUD.text =
-      `body  x=${bx.toFixed(1)} y=${by.toFixed(1)} vx=${vx.toFixed(1)} vy=${vy.toFixed(1)} og=${og} input=${intendedDir}\n` +
-      `R     edgeX=${rightEdge} topY=${fmt(rDiag.topY)} solid=${rDiag.solid} wall=${rDiag.wall}\n` +
-      `L     edgeX=${leftEdge} topY=${fmt(lDiag.topY)} solid=${lDiag.solid} wall=${lDiag.wall}\n` +
-      `stepU R=${fmt(stepUpRight)} L=${fmt(stepUpLeft)}   gndY=${fmt(groundY)}`;
 
     this.deps.input.endTick();
   }
@@ -921,7 +872,6 @@ export class Level {
       this.exitSprite,
       this.winOverlay,
       this.tickReadout,
-      this.debugHUD,
     ];
     for (const b of this.orbBundles) {
       owned.push(b.originSprite, b.orb.container);
