@@ -55,21 +55,27 @@ export const displacement2: LevelBuilder = (difficulty): LevelConfig => {
   }
 
   // Per legacy addGraph args 14 + 14:
-  //   graph 1: easy=0, medium=1, hard=2
-  //   graph 2: easy=0, medium=1, hard=1
+  //   graph 1 (bottom rect): easy=0, medium=1, hard=2
+  //   graph 2 (top rect):    easy=0, medium=1, hard=1
+  // Playtest-derived nudges (2026-05-19) for medium:
+  //   bottom-graph obstacle down 20 px, top-graph obstacle down 40 px.
   const g1Count = difficulty === 1 ? 0 : difficulty === 2 ? 1 : 2;
   const g2Count = difficulty === 1 ? 0 : 1;
+  const g1Offsets = difficulty === 2 ? [20] : undefined;
+  const g2Offsets = difficulty === 2 ? [40] : undefined;
   const g1Obstacles = placeGraphObstacles({
     graphRect: { x: 240, y: 340, width: 160, height: 160 },
     numberObstacles: g1Count,
     difficulty,
     seed: 21,
+    yOffsets: g1Offsets,
   }).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
   const g2Obstacles = placeGraphObstacles({
     graphRect: { x: 223, y: 60, width: 220, height: 220 },
     numberObstacles: g2Count,
     difficulty,
     seed: 22,
+    yOffsets: g2Offsets,
   }).map((p): SpikeConfig => ({ x: p.x, y: p.y, style: 'graph' }));
   spikes.push(...g1Obstacles, ...g2Obstacles);
 

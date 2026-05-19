@@ -35,6 +35,20 @@ export interface PlacementConfig {
   difficulty: Difficulty;
   attempts?: number;
   seed: number;
+  /**
+   * Optional per-obstacle Y nudges, applied AFTER placement is sorted
+   * top-to-bottom by Y. yOffsets[0] adjusts the top-most obstacle,
+   * yOffsets[1] the next, etc. Positive = move down, negative = up.
+   *
+   * Used to tune procedurally-placed obstacles into positions that
+   * play better than the raw RNG output without losing determinism
+   * (the SEED + RNG still pick the (x, y) starting point; the nudge
+   * just shifts the result deterministically).
+   *
+   * Indices past `yOffsets.length` get no nudge; missing yOffsets
+   * (undefined param) means no nudges anywhere.
+   */
+  yOffsets?: readonly number[] | undefined;
 }
 
 const OBSTACLE_SIZE = 20;
@@ -107,6 +121,15 @@ export function placeGraphObstacles(cfg: PlacementConfig): ObstaclePlacement[] {
     }
     if (!success) break; // ran out of attempts; stop trying further obstacles
     remaining--;
+  }
+
+  // Apply per-obstacle Y nudges, sorted top-to-bottom so yOffsets[0]
+  // always lands on the topmost obstacle regardless of placement order.
+  if (cfg.yOffsets && cfg.yOffsets.length > 0) {
+    placed.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < placed.length && i < cfg.yOffsets.length; i++) {
+      placed[i]!.y += cfg.yOffsets[i] ?? 0;
+    }
   }
 
   return placed;
