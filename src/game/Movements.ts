@@ -202,25 +202,16 @@ function anySolidAlongTopEdge(
 
 // Distinguish a true wall from a slope/floor at the avatar's leading edge.
 //
-// Three regimes for the obstacle top y (relative to the avatar's feet
-// bottomY and BODY.HEIGHT=35, BODY.STEP_UP=40):
+// Semantic definition: a WALL is something the avatar can't step over (its
+// top is higher than STEP_UP above feet). A slope/floor's top is within
+// step-up range and the avatar would normally walk onto it.
 //
-//   topY ≥ bottomY              (obstacle at or below feet)
-//     → NOT a wall. Avatar is walking ON it; step-down logic handles
-//       small descents.
-//
-//   topY ∈ [bottomY-HEIGHT, bottomY) (obstacle's top overlaps body)
-//     → WALL. Without this, drawn curves that sit at body height phase
-//       through the avatar's torso when side-push refuses to push and
-//       step-up rejects (continuity-check fails on the steep slope from
-//       the avatar's feet to the curve's top). This is the "draw too
-//       low → trap yourself" enforcement on displacement3.
-//
-//   topY ∈ [bottomY-STEP_UP, bottomY-HEIGHT) (clear of body, within step-up)
-//     → NOT a wall. The avatar can step up onto it.
-//
-//   topY < bottomY-STEP_UP      (too high to step over)
-//     → WALL.
+// (An earlier attempt to also treat curve-overlap-with-body as a wall —
+// for the displacement3 trap puzzle — caused regressions in normal
+// walking that couldn't be reproduced from static analysis. Reverted;
+// the trap is currently weak, player can usually walk under drawn
+// curves at low value. Plays as a puzzle of "draw the curve high enough
+// to be a useful platform" rather than "don't trap yourself.")
 //
 // The earlier `solidAt(feet + 1)` heuristic worked for descents but failed
 // for gentle ascending slopes where the curve's solid band still includes
@@ -236,11 +227,7 @@ function isWallAt(edgeX: number, bottomY: number, ground: GroundProvider): boole
   const topY = ground.groundYBelow(edgeX, bottomY - 1000);
   if (topY === Number.POSITIVE_INFINITY) return false;
   if (topY >= bottomY) return false; // Obstacle is at or below feet — not a side wall.
-  // Wall if either too high to step over OR overlapping the body. The
-  // body-overlap branch is what gives drawn curves teeth: a curve whose
-  // top sits between feet and (feet - HEIGHT) physically blocks the
-  // avatar instead of phasing through.
-  return topY < bottomY - PHYSICS.STEP_UP || topY >= bottomY - BODY.HEIGHT;
+  return topY < bottomY - PHYSICS.STEP_UP; // Top too high to step over → wall.
 }
 
 function pushOutFromWallRight(
