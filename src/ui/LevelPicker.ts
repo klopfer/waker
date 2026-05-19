@@ -6,13 +6,13 @@
 // and proper menu nav are in place.
 
 import { Container, Graphics, Text } from 'pixi.js';
+import type { LevelBuilder } from '../game/Level.js';
 import type { LevelManager } from '../game/LevelManager.js';
-import type { LevelConfig } from '../game/Level.js';
 
 export interface LevelPickerEntry {
   /** Short label shown on the button ("L1", "D0", etc.). */
   label: string;
-  cfg: LevelConfig;
+  builder: LevelBuilder;
 }
 
 const BUTTON_W = 36;
@@ -86,7 +86,7 @@ export function makeLevelPicker(
   let x = labelText.width + PAD * 2;
   for (const entry of entries) {
     const b = makeButton(entry.label, () => {
-      void levels.advanceTo(entry.cfg);
+      void levels.advanceTo(entry.builder);
     });
     b.x = x;
     root.addChild(b);

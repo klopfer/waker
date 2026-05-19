@@ -31,11 +31,14 @@ Controls:
 - `D`: pick up / drop the orb
 - `R`: restart current level (emergency escape if you wedge yourself)
 
-Plus two debug UIs on screen:
+Plus three debug UIs on screen:
 - Bottom-right: `♪ MUSIC` / `♪ SFX` mute toggles (Pixi-side, will move
   to the HTML overlay in Phase 5).
 - Bottom-left: `DEBUG: [D0] [D1] [D2] [D3]` level picker buttons
   (jump to any level for testing; **temporary**, remove before release).
+- Bottom-left next to picker: `DIFF: EASY/MEDIUM/HARD` button that
+  cycles difficulty and reloads the current level — used to verify
+  hard-mode spike placements without waiting for the Phase 5 menu.
 
 **Tests**: `npm run test` → 124/124 passing.
 **Build**: `npm run build` → ~660 KB bundle / 282 KB gzipped.
@@ -182,11 +185,17 @@ Suggested order — feel free to deviate.
   select, options, instructions, credits) — Phase 5 / §14 items 15–16.
 - Eventually replace `src/ui/MuteControls.ts` and `src/ui/LevelPicker.ts`
   with the proper HTML+CSS overlay.
-### G. Difficulty selector
-- Legacy spec has 3 difficulties; per-level configs already pick the
-  easy-mode parameters. Add `Settings.LEVEL_DIFFICULTY` and have
-  each `src/levels/*.ts` branch (or replace each with a `function
-  config(difficulty)` that returns the right `LevelConfig`).
+### G. Difficulty selector ⚙️ debug-UI version done
+- ✅ Each `src/levels/*.ts` exports a `LevelBuilder` function
+  `(difficulty) => LevelConfig`. Hard-mode spikes from the legacy
+  `displacement*.mxml` are wired (per-level: d0 has 1 static, d1
+  has 1 horizontal, d2 has 2, d3 has 2).
+- ✅ `LevelManager` tracks `currentDifficulty` + exposes
+  `setDifficulty(d)` that re-runs the current builder + reloads.
+- ✅ Debug `DIFF: EASY/MEDIUM/HARD` button cycles the difficulty
+  on click.
+- ⏳ Phase 5 work: real menu UI + persistence. The current button
+  is a dev shortcut; the proper menu lands with §16.
 ### H. Phase 5/6 polish
 Cross-browser pass, mobile touch controls, perf, accessibility, bundle
 audit.

@@ -14,10 +14,11 @@ import { FixedStep } from './engine/FixedStep.js';
 import { Input } from './engine/Input.js';
 import { Avatar } from './game/Avatar.js';
 import { LevelManager } from './game/LevelManager.js';
-import { DISPLACEMENT0 } from './levels/displacement0.js';
-import { DISPLACEMENT1 } from './levels/displacement1.js';
-import { DISPLACEMENT2 } from './levels/displacement2.js';
-import { DISPLACEMENT3 } from './levels/displacement3.js';
+import { displacement0 } from './levels/displacement0.js';
+import { displacement1 } from './levels/displacement1.js';
+import { displacement2 } from './levels/displacement2.js';
+import { displacement3 } from './levels/displacement3.js';
+import { makeDifficultyPicker } from './ui/DifficultyPicker.js';
 import { makeLevelPicker } from './ui/LevelPicker.js';
 import { makeMuteControls } from './ui/MuteControls.js';
 
@@ -95,7 +96,7 @@ async function main(): Promise<void> {
 
   // ── Level manager handles initial load + transitions on win ──
   const levels = new LevelManager();
-  await levels.start(DISPLACEMENT0, { app, assets, avatar, audio, input });
+  await levels.start(displacement0, { app, assets, avatar, audio, input });
 
   // ── Mute controls (TEMPORARY Pixi-side UI, see ui/MuteControls.ts) ──
   // Bottom-right corner; clear of the centered debug tick readout below
@@ -111,14 +112,24 @@ async function main(): Promise<void> {
   // right. Remove this + src/ui/LevelPicker.ts once the proper menu /
   // difficulty selector lands in Phase 5.
   const picker = makeLevelPicker(levels, [
-    { label: 'D0', cfg: DISPLACEMENT0 },
-    { label: 'D1', cfg: DISPLACEMENT1 },
-    { label: 'D2', cfg: DISPLACEMENT2 },
-    { label: 'D3', cfg: DISPLACEMENT3 },
+    { label: 'D0', builder: displacement0 },
+    { label: 'D1', builder: displacement1 },
+    { label: 'D2', builder: displacement2 },
+    { label: 'D3', builder: displacement3 },
   ]);
   picker.x = 8;
   picker.y = STAGE_HEIGHT - 30;
   app.stage.addChild(picker);
+
+  // ── TEMPORARY difficulty picker (debug only) ──
+  // Single button that cycles EASY → MEDIUM → HARD → EASY and reloads
+  // the current level at the new difficulty (so per-difficulty content
+  // like hard-mode spikes becomes visible for placement verification).
+  // To the right of the level picker.
+  const diffPicker = makeDifficultyPicker(levels);
+  diffPicker.x = picker.x + picker.width + 12;
+  diffPicker.y = STAGE_HEIGHT - 30;
+  app.stage.addChild(diffPicker);
 
   // ── Sim loop ──
   app.ticker.add(({ deltaMS }) => {

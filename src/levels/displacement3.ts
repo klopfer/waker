@@ -1,15 +1,14 @@
 // displacement3 — the legacy game's fourth (and final-of-world-1)
 // displacement level. The original has `super.nextLvl = 'cutsceneVelocity'`
 // after it; we don't have cutscenes wired yet, so SPACE on the win
-// overlay loops back to displacement0 for now (a clean "you finished
-// world 1" restart). Real cutscene wiring lands in step F.
+// overlay loops back / restarts for now (a clean "you finished
+// world 1" placeholder). Real cutscene wiring lands in step F.
 //
-// Numbers come from `legacy/src/levels/displacement3.mxml` easy mode
-// (the else branch — no spike, two addGraph calls).
+// Numbers come from `legacy/src/levels/displacement3.mxml`.
 //
 // Layout (from a pngjs band-scan of `leveld3_ground.png`):
 //   x=0..400, y=500-599     → bottom cloud bank (origin 2 here at x=280)
-//   x=400..600, y=319-365   → middle floating island (origin 1 here at x=500 has higher band too)
+//   x=400..600, y=319-365   → middle floating island
 //   x=500..780, y=140-198   → upper-right mountain top (where the exit is)
 //
 // Origin 1 (x=500): legacy_originY=441 → port_y=501. At x=500 the
@@ -20,75 +19,98 @@
 // y=500). The origin marker is deliberately floating in mid-air —
 // the puzzle is to use orb 1's drawn curve to step up to it.
 
-import type { LevelConfig } from '../game/Level.js';
+import type { LevelBuilder, LevelConfig } from '../game/Level.js';
+import type { SpikeConfig } from '../game/Spike.js';
 
-export const DISPLACEMENT3: LevelConfig = {
-  bgKey: 'bgWorld1_3',
-  groundKey: 'leveld3_collision',
-  bgmKey: 'bgmWorld1',
+export const displacement3: LevelBuilder = (difficulty): LevelConfig => {
+  // Per legacy displacement3.mxml: hard mode adds two moving spikes.
+  // Medium adds the first one only. Easy has none.
+  const spikes: SpikeConfig[] = [];
+  if (difficulty >= 2) {
+    // Vertical spike at x=600, oscillating y=10..120 at speed 6/7 (legacy:
+    // medium uses 7, hard uses 6; we use 6 as a midpoint).
+    spikes.push({
+      x: 600,
+      y: 0,
+      isMoving: true,
+      horizontal: false,
+      upOrLeft: true,
+      turn: 10,
+      turn2: difficulty === 3 ? 120 : 110,
+      speed: difficulty === 3 ? 6 : 7,
+    });
+  }
+  if (difficulty === 3) {
+    // Hard-only: horizontal spike at y=120, oscillating x=500..777, speed 6.
+    spikes.push({
+      x: 600,
+      y: 120,
+      isMoving: true,
+      horizontal: true,
+      upOrLeft: true,
+      turn: 500,
+      turn2: 777,
+      speed: 6,
+    });
+  }
 
-  // setEntrance(0, 450) — spawn from above, fall onto bottom cloud
-  // bank (topmost-solid y=500 at x=0..400).
-  spawn: { x: 30, y: 0 },
+  return {
+    bgKey: 'bgWorld1_3',
+    groundKey: 'leveld3_collision',
+    bgmKey: 'bgmWorld1',
 
-  // setExit(740, 100) — on the upper-right mountain, exit niched
-  // above the mountain top at y=140.
-  exit: { x: 740, y: 100 },
+    // setEntrance(0, 450) — spawn from above, fall onto bottom cloud
+    // bank (topmost-solid y=500 at x=0..400).
+    spawn: { x: 30, y: 0 },
 
-  // First addGraph (easy mode):
-  //   addGraph(0, 0, 100, 320, 400, 180, 180, 90, 500, 457, 0, 500, 441, 0, 0)
-  // → graph(100, 320), maxValue=400, w/h=180, offset=90.
-  // Second addGraph (easy mode):
-  //   addGraph(0, 0, 320, 140, 300, 180, 180, 90, 280, 276, 0, 280, 260)
-  // → graph(320, 140), maxValue=300, w/h=180, offset=90.
-  orbs: [
-    {
-      origin: { x: 500, y: 500 },
-      orb: { x: 500, y: 488 },
-      graph: {
-        x: 100,
-        y: 320,
-        width: 180,
-        height: 180,
-        maxValue: 400,
-        // Legacy spec was yOffset=90 (matching displacement3.mxml).
-        // Tuning history:
-        //   v1: 60 — too lenient. Lowest curve at y=470 only traps
-        //       at V<5 (essentially "drop at exact origin"), making
-        //       the "draw too low → stuck" challenge trivial.
-        //   v2 (this): 75 — middle ground. Lowest curve at y=485
-        //       (band 478-492) overlaps body (465-500) by 14 px →
-        //       trap range V<~95 (substantial challenge: player has
-        //       to walk well clear of origin). Highest curve at y=395
-        //       (top y=388) gives ~48 px orb-2 jump distance, comfortably
-        //       inside the 75-px pickup radius (vs ~50 with legacy
-        //       yOffset=90 which was "just barely").
-        yOffset: 75,
+    // setExit(740, 100) — on the upper-right mountain, exit niched
+    // above the mountain top at y=140.
+    exit: { x: 740, y: 100 },
+
+    // First addGraph (easy mode):
+    //   addGraph(0, 0, 100, 320, 400, 180, 180, 90, 500, 457, 0, 500, 441, 0, 0)
+    // Second addGraph (easy mode):
+    //   addGraph(0, 0, 320, 140, 300, 180, 180, 90, 280, 276, 0, 280, 260)
+    orbs: [
+      {
+        origin: { x: 500, y: 500 },
+        orb: { x: 500, y: 488 },
+        graph: {
+          x: 100,
+          y: 320,
+          width: 180,
+          height: 180,
+          maxValue: 400,
+          // Legacy spec was yOffset=90. Tuned to 75 — middle ground
+          // between "too lenient" (60: trap never fires) and "barely
+          // solvable" (90: orb-2 jump is exact-timing-only). With
+          // SIDE_TOP_MARGIN=10 + isWallAt overlap rule (v18), the
+          // trap range is V<~95. See docs/calibration.md §9 v17–v18.
+          yOffset: 75,
+        },
+        cradle: { lift: 12, halfWidth: 18 },
       },
-      cradle: { lift: 12, halfWidth: 18 },
-    },
-    {
-      // Floating origin/orb in mid-air at the legacy-specified position.
-      // No solid floor at x=280, y=320 — player reaches it by walking up
-      // orb 1's drawn curve. The cradle holds the orb in place at start.
-      origin: { x: 280, y: 320 },
-      orb: { x: 280, y: 308 },
-      graph: {
-        x: 320,
-        y: 140,
-        width: 180,
-        height: 180,
-        maxValue: 300,
-        yOffset: 90,
+      {
+        origin: { x: 280, y: 320 },
+        orb: { x: 280, y: 308 },
+        graph: {
+          x: 320,
+          y: 140,
+          width: 180,
+          height: 180,
+          maxValue: 300,
+          yOffset: 90,
+        },
+        cradle: { lift: 12, halfWidth: 18 },
       },
-      cradle: { lift: 12, halfWidth: 18 },
-    },
-  ],
+    ],
 
-  sunCentroid: { x: 64, y: 209 },
+    sunCentroid: { x: 64, y: 209 },
 
-  // Legacy next is `cutsceneVelocity` — that machinery (step F) isn't
-  // here yet. Leaving nextLevel unset means SPACE on the win overlay
-  // restarts displacement3, which is the right placeholder until
-  // cutscenes + the velocity levels land.
+    spikes,
+
+    // Legacy next is `cutsceneVelocity` — that machinery (step F) isn't
+    // here yet. Leaving nextLevel unset means SPACE on the win overlay
+    // restarts displacement3.
+  };
 };

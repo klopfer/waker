@@ -14,6 +14,7 @@ import type { AssetLoader } from '../engine/AssetLoader.js';
 import type { Audio } from '../engine/Audio.js';
 import { GraphTone } from '../engine/GraphTone.js';
 import type { Input } from '../engine/Input.js';
+import type { Difficulty } from '../engine/types.js';
 import { Avatar } from './Avatar.js';
 import { CompositeGround } from './CompositeGround.js';
 import { CurveGround } from './CurveGround.js';
@@ -78,13 +79,27 @@ export interface LevelConfig {
   switches?: readonly SwitchWithPlatformsConfig[];
 
   /**
-   * Optional next level to load when the player presses SPACE on the
-   * win overlay. Undefined = SPACE restarts the current level
-   * (terminal / standalone level). LevelManager reads this to chain
-   * transitions; if unset, Level falls back to its own reset().
+   * Optional next-level BUILDER (not a resolved config). When the
+   * player presses SPACE on the win overlay, LevelManager calls this
+   * with the current Difficulty to get the next LevelConfig and
+   * loads it. Undefined = SPACE restarts the current level
+   * (terminal / standalone level).
+   *
+   * Builder-not-config so the chain stays one source of truth while
+   * each level's CONTENT (e.g., which spikes appear) varies by
+   * Settings.LEVEL_DIFFICULTY at load time.
    */
-  nextLevel?: LevelConfig;
+  nextLevel?: LevelBuilder;
 }
+
+/**
+ * A function that produces a LevelConfig for a given difficulty.
+ * Each src/levels/*.ts file exports one of these. LevelManager calls
+ * the builder with its currentDifficulty whenever a level is loaded
+ * (initial load, transition via win overlay, jump via debug picker,
+ * or difficulty change).
+ */
+export type LevelBuilder = (difficulty: Difficulty) => LevelConfig;
 
 export interface SwitchWithPlatformsConfig {
   switch: SwitchConfig;
@@ -417,6 +432,8 @@ export class Level {
     deps.app.stage.addChild(deps.avatar.container);
 
     // ── Win overlay (added LAST so it draws on top) ──
+    // cfg.nextLevel is a builder function (not a config), so a truthy
+    // check still distinguishes "chain continues" from "terminal level."
     const winSubtitle = cfg.nextLevel
       ? 'press SPACE for next level'
       : 'press SPACE to restart';

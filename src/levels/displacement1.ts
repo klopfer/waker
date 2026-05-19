@@ -10,66 +10,63 @@
 //   x=0..50   → topmost-solid y=440 (left entrance ledge)
 //   x=100..600 → topmost-solid y=498 (main middle platform)
 //   x=700..780 → topmost-solid y=235 (upper-right exit ledge)
-// Avatar must climb from the middle platform up to the exit ledge via
-// the orb-drawn graph curve. Origin marker sits at (200, 498) on the
-// middle platform.
-//
-// We ship the easy-mode config (Settings.LEVEL_DIFFICULTY == 1 in the
-// legacy code). Hard mode adds a horizontally-moving spike at y=480;
-// that lands when the difficulty selector wires up in Phase 5.
 
-import type { LevelConfig } from '../game/Level.js';
-import { DISPLACEMENT2 } from './displacement2.js';
+import type { LevelBuilder, LevelConfig } from '../game/Level.js';
+import type { SpikeConfig } from '../game/Spike.js';
+import { displacement2 } from './displacement2.js';
 
-export const DISPLACEMENT1: LevelConfig = {
-  bgKey: 'bgWorld1_1',
-  groundKey: 'leveld1_collision',
-  bgmKey: 'bgmWorld1',
+export const displacement1: LevelBuilder = (difficulty): LevelConfig => {
+  // Per legacy displacement1.mxml: hard mode adds a horizontally-moving
+  // spike across the middle platform at y=480.
+  const spikes: SpikeConfig[] = [];
+  if (difficulty === 3) {
+    spikes.push({
+      x: 500,
+      y: 480,
+      isMoving: true,
+      horizontal: true,
+      upOrLeft: true,
+      turn: 0,
+      turn2: 780,
+      speed: 7,
+    });
+  }
 
-  // setEntrance(0, 390). The avatar drops in from the upper-left and
-  // lands on the left ledge (topmost-solid y=440 at x=0..50). Spawn x
-  // matches displacement0's pattern (above the left edge); y=0 lets
-  // gravity handle the drop.
-  spawn: { x: 30, y: 0 },
+  return {
+    bgKey: 'bgWorld1_1',
+    groundKey: 'leveld1_collision',
+    bgmKey: 'bgmWorld1',
 
-  // setExit(740, 195). Top-right of the upper exit ledge (topmost-solid
-  // y=235 at x=700..780).
-  exit: { x: 740, y: 195 },
+    // setEntrance(0, 390). Avatar drops from upper-left, lands on the
+    // left ledge (topmost-solid y=440 at x=0..50).
+    spawn: { x: 30, y: 0 },
 
-  // From super.addGraph(0, 0, 308, 200, 400, 300, 300, 100, 200, 430, 0, 200, 438, 1, 20):
-  //   graphX=308, graphY=200, scale(maxValue)=400, width=300, height=300,
-  //   offset=100, orbX=200, orbY=430 (Flash top-left), originX=200,
-  //   originY=438 (Flash top-left)
-  //
-  // Origin Y in our port: bottom-anchor; the middle platform's
-  // topmost-solid y at x=200 is 498 (measured via pngjs sweep).
-  orbs: [
-    {
-      origin: { x: 200, y: 498 },
-      // Orb sits in cradle: ORIGIN.y - cradle.lift = 498 - 12 = 486
-      orb: { x: 200, y: 486 },
-      graph: {
-        x: 308,
-        y: 200,
-        width: 300,
-        height: 300,
-        maxValue: 400,
-        yOffset: 100,
+    // setExit(740, 195). Top-right of the upper exit ledge.
+    exit: { x: 740, y: 195 },
+
+    // From super.addGraph(0, 0, 308, 200, 400, 300, 300, 100, 200, 430, 0, 200, 438, 1, 20):
+    //   graphX=308, graphY=200, maxValue=400, w/h=300, yOffset=100,
+    //   orbX=200, origin=200 (Flash y=438 → port y=498).
+    orbs: [
+      {
+        origin: { x: 200, y: 498 },
+        orb: { x: 200, y: 486 },
+        graph: {
+          x: 308,
+          y: 200,
+          width: 300,
+          height: 300,
+          maxValue: 400,
+          yOffset: 100,
+        },
+        cradle: { lift: 12, halfWidth: 18 },
       },
-      cradle: {
-        lift: 12,
-        halfWidth: 18,
-      },
-    },
-  ],
+    ],
 
-  // Sun centroid in `leveld1_bg.png`, measured by pngjs sweep of pure-white
-  // pixels in the upper-left quadrant.
-  sunCentroid: { x: 118, y: 109 },
+    sunCentroid: { x: 118, y: 109 },
 
-  // (omit showHelpPrompts → defaults false; the player has learned D
-  // and SPACE in displacement0.)
+    spikes,
 
-  // Legacy displacement1.mxml: `super.nextLvl = 'd2';`.
-  nextLevel: DISPLACEMENT2,
+    nextLevel: displacement2,
+  };
 };

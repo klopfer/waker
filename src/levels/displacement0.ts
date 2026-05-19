@@ -5,77 +5,59 @@
 // measurements of `levelTD_ground.png` for ORIGIN_Y. See
 // `docs/calibration.md` §7 for the full table + sourcing.
 
-import type { LevelConfig } from '../game/Level.js';
-import { DISPLACEMENT1 } from './displacement1.js';
+import type { LevelBuilder, LevelConfig } from '../game/Level.js';
+import type { SpikeConfig } from '../game/Spike.js';
+import { displacement1 } from './displacement1.js';
 
-export const DISPLACEMENT0: LevelConfig = {
-  bgKey: 'bgWorld1_t',
-  groundKey: 'levelTD_collision',
-  bgmKey: 'bgmWorld1',
+export const displacement0: LevelBuilder = (difficulty): LevelConfig => {
+  // Per legacy displacement0.mxml: hard mode adds one stationary spike
+  // at (540, 440) — on the painted ground roughly between the orb
+  // stand and the exit path. Medium/easy have no spikes.
+  const spikes: SpikeConfig[] = [];
+  if (difficulty === 3) {
+    spikes.push({ x: 540, y: 440 });
+  }
 
-  // setEntrance(0, 467) — Flash top-left marker, not the avatar's feet.
-  // SPAWN.x=30 puts the avatar above the very-bottom cloud bank (topmost-
-  // solid y=520 at x=0..50); SPAWN.y=0 lets gravity drop the player in.
-  spawn: { x: 30, y: 0 },
+  return {
+    bgKey: 'bgWorld1_t',
+    groundKey: 'levelTD_collision',
+    bgmKey: 'bgmWorld1',
 
-  // setExit(750, 174). exit.png is 40×40; explicit w/h omitted, defaults
-  // in Level constructor.
-  exit: { x: 750, y: 174 },
+    // setEntrance(0, 467) — Flash top-left marker, not the avatar's feet.
+    // SPAWN.x=30 puts the avatar above the very-bottom cloud bank;
+    // SPAWN.y=0 lets gravity drop the player in.
+    spawn: { x: 30, y: 0 },
 
-  // From super.addGraph(0, 0, 800-110-200, 134, 550, 200, 200, 70, 300, 290, 0, 300, 273, 0, 0):
-  //   graphX=490, graphY=134, scale(maxValue)=550, width=200, height=200,
-  //   offset=70, orbX=300, orbY=290 (Flash top-left), originX=300, originY=273 (Flash top-left)
-  //
-  // Origin Y in our port (bottom-anchor, anchor (0.5, 1)): the painted
-  // floor at x=300 has topmost-solid y=333 (measured by pngjs sweep of
-  // levelTD_ground.png). The origin sits with its bottom on the floor.
-  //
-  // Orb Y in our port: ORIGIN.y - cradle.lift = 333 - 12 = 321 — the
-  // top of the cradle shelf.
-  orbs: [
-    {
-      origin: { x: 300, y: 333 },
-      orb: { x: 300, y: 321 },
-      graph: {
-        x: 490,
-        y: 134,
-        width: 200,
-        height: 200,
-        maxValue: 550,
-        // Legacy spec was yOffset=70. Reduced to 55 so the value=0
-        // curve line sits at world y=289 (band 282-296) — high enough
-        // that the avatar standing on the orb stand (body top y=298)
-        // fits cleanly underneath. The legacy game had slightly
-        // different avatar proportions; with our HEIGHT=35 + stand
-        // y=333 geometry, yOffset=70 left the curve overlapping the
-        // avatar's body by 13 px, which used to be hacked around by a
-        // larger BODY.SIDE_TOP_MARGIN. With margin tightened back to 4
-        // (so displacement3's "draw too low → trapped" puzzle works),
-        // displacement0 needs the curve nudged up to compensate.
-        yOffset: 55,
+    // setExit(750, 174). exit.png is 40×40.
+    exit: { x: 750, y: 174 },
+
+    orbs: [
+      {
+        // Origin Y in our port (bottom-anchor): the painted floor at
+        // x=300 has topmost-solid y=333 (measured by pngjs sweep).
+        origin: { x: 300, y: 333 },
+        // Orb Y = ORIGIN.y - cradle.lift = 333 - 12 = 321.
+        orb: { x: 300, y: 321 },
+        graph: {
+          x: 490,
+          y: 134,
+          width: 200,
+          height: 200,
+          maxValue: 550,
+          // Legacy spec was yOffset=70. Reduced to 55 so the value=0
+          // curve sits at world y=289 — high enough that the avatar
+          // standing on the orb stand (body top y=298) clears it
+          // naturally. See docs/calibration.md §9 v16.
+          yOffset: 55,
+        },
+        cradle: { lift: 12, halfWidth: 18 },
       },
-      // Cradle: a thin orb-only horizontal shelf that holds the orb 12 px
-      // above the painted floor at level start. See docs/calibration.md §6.1.
-      cradle: {
-        lift: 12,
-        halfWidth: 18,
-      },
-    },
-  ],
+    ],
 
-  // Painted-sun centroid in `levelTD_bg.png`, measured by a pngjs sweep
-  // of pure-white pixels in the upper-left region.
-  sunCentroid: { x: 207, y: 102 },
+    sunCentroid: { x: 207, y: 102 },
 
-  // (omit showHelpPrompts → defaults false; the bg already paints D / ↑ /
-  // SPACEBAR / flag glyphs so we don't want procedural prompts on top.)
+    spikes,
 
-  // No spikes on easy/medium difficulty in the legacy game. The hard-mode
-  // addSpike(540, 440, ...) from displacement0.mxml will land back here
-  // when the difficulty selector is wired up in Phase 5. displacement0
-  // also has no switches or moving platforms in the legacy game.
-
-  // Legacy displacement0.mxml: `super.nextLvl = 'd1';`. SPACE on the win
-  // overlay advances to displacement1.
-  nextLevel: DISPLACEMENT1,
+    nextLevel: displacement1,
+  };
 };
