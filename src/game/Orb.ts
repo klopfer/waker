@@ -5,13 +5,20 @@ import type { GroundProvider } from './Movements.js';
 
 export type OrbState = 'in_world' | 'held';
 
+/** Avatar motion state passed to an orb's value provider each tick. */
+export interface OrbValueInput {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
+
 /**
- * Maps the avatar's current state (and stored extras like an origin marker)
- * to the value the paired graph should plot this tick. For displacement
- * orbs the original game returns |avatar.x - origin.x|; for velocity orbs
- * it returns avatar's vx.
+ * Maps the avatar's current motion state to the value the paired graph
+ * should plot this tick. Displacement orbs return |avatar.x - origin.x|;
+ * velocity orbs return avatar.vx.
  */
-export type OrbValueProvider = (avatarX: number, avatarY: number) => number;
+export type OrbValueProvider = (input: OrbValueInput) => number;
 
 export interface OrbOptions {
   initialX: number;
@@ -107,7 +114,8 @@ export class Orb {
     this.container.y = Math.round(this.y);
   }
 
-  update(avatarX: number, avatarY: number, ground: GroundProvider): void {
+  update(input: OrbValueInput, ground: GroundProvider): void {
+    const { x: avatarX, y: avatarY } = input;
     this.coreSprite.rotation += CORE_ROTATION_PER_TICK;
     this.pulsePhase += PULSE_RATE;
     this.glow.outerStrength =
@@ -118,7 +126,7 @@ export class Orb {
       this.y = avatarY + ORB_HELD_OFFSET_Y;
       this.container.x = Math.round(this.x);
       this.container.y = Math.round(this.y);
-      this.pairedGraph.tick(this.valueProvider(avatarX, avatarY));
+      this.pairedGraph.tick(this.valueProvider(input));
       return;
     }
 

@@ -49,8 +49,12 @@ export interface LevelConfig {
    */
   orbs: readonly OrbSetupConfig[];
 
-  /** Painted-sun centroid for the procedural sun-pulse halo overlay. */
-  sunCentroid: { x: number; y: number };
+  /**
+   * Painted-sun centroid for the procedural sun-pulse halo overlay.
+   * Omit on levels whose bg has no distinct sun disc (e.g. world 2's
+   * twilight scenes) — the pulse is then skipped entirely.
+   */
+  sunCentroid?: { x: number; y: number };
 
   /**
    * Show the runtime procedural D / SPACE key prompts. Default false:
@@ -108,6 +112,13 @@ export interface SwitchWithPlatformsConfig {
 
 /** One orb + its paired graph + origin marker + stand-cradle. */
 export interface OrbSetupConfig {
+  /**
+   * What the orb's graph plots. 'displacement' (default) plots
+   * |avatarX - origin.x|; 'velocity' plots avatar.vx. Velocity orbs
+   * still have an origin marker (where the orb rests), but its x is
+   * not used for the plotted value.
+   */
+  valueMode?: 'displacement' | 'velocity';
   /** Origin marker: where the orb's displacement is measured FROM. */
   origin: { x: number; y: number };
   /** Initial orb position (typically directly above origin in the cradle). */
@@ -156,6 +167,11 @@ const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
 
 const ORIGIN_MAX_GLOW_STRENGTH = 4;
+// Pixel radius over which the origin-marker proximity glow falls off.
+// A fixed pixel range (not the graph's maxValue) so it works for both
+// displacement orbs (maxValue ≈ pixels) and velocity orbs (maxValue is
+// in velocity units, far too small to use as a pixel range).
+const ORIGIN_GLOW_RANGE_PX = 250;
 const EXIT_W_DEFAULT = 40;
 const EXIT_H_DEFAULT = 40;
 
@@ -224,7 +240,7 @@ export class Level {
 
   private readonly bgSprite: Sprite;
   private readonly groundSprite: Sprite;
-  private readonly sunPulse: Graphics;
+  private readonly sunPulse: Graphics | null;
   private readonly graphLayer: Container;
   private readonly exitSprite: Sprite;
   private readonly exitGlow: GlowFilter;
@@ -289,11 +305,15 @@ export class Level {
     this.bgSprite = new Sprite(tex.bg);
     deps.app.stage.addChild(this.bgSprite);
 
-    this.sunPulse = new Graphics().circle(0, 0, 1).fill(SUN_COLOR);
-    this.sunPulse.blendMode = 'add';
-    this.sunPulse.x = cfg.sunCentroid.x;
-    this.sunPulse.y = cfg.sunCentroid.y;
-    deps.app.stage.addChild(this.sunPulse);
+    if (cfg.sunCentroid) {
+      this.sunPulse = new Graphics().circle(0, 0, 1).fill(SUN_COLOR);
+      this.sunPulse.blendMode = 'add';
+      this.sunPulse.x = cfg.sunCentroid.x;
+      this.sunPulse.y = cfg.sunCentroid.y;
+      deps.app.stage.addChild(this.sunPulse);
+    } else {
+      this.sunPulse = null;
+    }
 
     this.groundSprite = new Sprite(tex.ground);
     deps.app.stage.addChild(this.groundSprite);
@@ -355,12 +375,16 @@ export class Level {
       deps.app.stage.addChild(originSprite);
 
       const originX = setup.origin.x;
+      const valueProvider =
+        setup.valueMode === 'velocity'
+          ? (input: { vx: number }): number => input.vx
+          : (input: { x: number }): number => Math.abs(input.x - originX);
       const orb = new Orb({
         initialX: setup.orb.x,
         initialY: setup.orb.y,
         texture: tex.orb,
         pairedGraph: graph,
-        valueProvider: (avatarX) => Math.abs(avatarX - originX),
+        valueProvider,
       });
       deps.app.stage.addChild(orb.container);
 
@@ -594,7 +618,15 @@ export class Level {
     });
 
     for (const orb of this.orbs) {
-      orb.update(this.body.state.x, this.body.state.y, this.orbGround);
+      orb.update(
+        {
+          x: this.body.state.x,
+          y: this.body.state.y,
+          vx: this.body.state.vx,
+          vy: this.body.state.vy,
+        },
+        this.orbGround,
+      );
     }
 
     // GraphTone — state-driven, frequency tracks value during draw.
@@ -737,7 +769,12 @@ export class Level {
     if (shouldPlay && !this.graphTone.isPlaying) this.graphTone.start();
     else if (!shouldPlay && this.graphTone.isPlaying) this.graphTone.stop();
     if (shouldPlay && heldBundle) {
-      const value = Math.abs(this.body.state.x - heldBundle.setup.origin.x);
+      // Tone tracks the plotted value: |vx| for velocity orbs,
+      // |x - origin.x| for displacement orbs.
+      const value =
+        heldBundle.setup.valueMode === 'velocity'
+          ? Math.abs(this.body.state.vx)
+          : Math.abs(this.body.state.x - heldBundle.setup.origin.x);
       this.graphTone.setNormalized(Math.min(1, value / heldBundle.setup.graph.maxValue));
     }
   }
@@ -747,7 +784,7 @@ export class Level {
     // the avatar, falling off across its own graph's maxValue range.
     for (const b of this.orbBundles) {
       const distToOrigin = Math.abs(this.body.state.x - b.setup.origin.x);
-      const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / b.setup.graph.maxValue));
+      const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / ORIGIN_GLOW_RANGE_PX));
       b.originGlow.outerStrength = proximity * ORIGIN_MAX_GLOW_STRENGTH;
     }
 
@@ -755,11 +792,13 @@ export class Level {
     this.promptPhase += PROMPT_BOB_RATE;
     this.exitGlow.outerStrength = 1.5 + Math.sin(this.promptPhase * 0.5) * 1.0;
 
-    // Sun pulse — scale + alpha on the pre-drawn 1-px disc.
-    this.sunPhase += SUN_PULSE_RATE;
-    const sunSin = Math.sin(this.sunPhase);
-    this.sunPulse.scale.set(SUN_PULSE_BASE_RADIUS + sunSin * SUN_PULSE_AMPLITUDE);
-    this.sunPulse.alpha = SUN_PULSE_BASE_ALPHA + sunSin * SUN_PULSE_ALPHA_AMPLITUDE;
+    // Sun pulse — scale + alpha on the pre-drawn 1-px disc (if present).
+    if (this.sunPulse) {
+      this.sunPhase += SUN_PULSE_RATE;
+      const sunSin = Math.sin(this.sunPhase);
+      this.sunPulse.scale.set(SUN_PULSE_BASE_RADIUS + sunSin * SUN_PULSE_AMPLITUDE);
+      this.sunPulse.alpha = SUN_PULSE_BASE_ALPHA + sunSin * SUN_PULSE_ALPHA_AMPLITUDE;
+    }
 
     // Bg horizontal sway.
     this.bgSwayPhase += BG_SWAY_RATE;
@@ -883,13 +922,13 @@ export class Level {
     // re-addChild it cleanly.
     const owned: (Container | Sprite | Graphics | Text)[] = [
       this.bgSprite,
-      this.sunPulse,
       this.groundSprite,
       this.graphLayer,
       this.exitSprite,
       this.winOverlay,
       this.tickReadout,
     ];
+    if (this.sunPulse) owned.push(this.sunPulse);
     for (const b of this.orbBundles) {
       owned.push(b.originSprite, b.orb.container);
     }
