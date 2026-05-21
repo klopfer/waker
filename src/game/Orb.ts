@@ -32,11 +32,16 @@ export interface OrbOptions {
 // so that the avatar can pick up the orb the moment its body box visually
 // touches the orb, not when their center is on top of it.
 const ORB_PICKUP_RADIUS = 75;
-// Pixel offset above avatar.y where the held orb's BOTTOM sits. Negative =
-// above. With both orb and avatar anchored bottom-center, -75 puts the
-// black glyph just above the head of the displayed avatar (~50 px tall at
-// scale 0.3).
-const ORB_HELD_OFFSET_Y = -75;
+// Pixel offset above avatar.y (the feet) where the held orb's BOTTOM sits.
+// Negative = above. The original game pins the inventory orb at the
+// avatar's head (`invOrb.y = player.y` in game.mxml) — it rides on the
+// head, it does not float above it. The visible avatar is ~34 px tall at
+// AVATAR_SCALE = 0.25 (native 136 px char × 0.25), so -38 places the orb
+// glyph just on top of the head. (The old -75 was calibrated for the
+// retired AVATAR_SCALE = 0.3 / ~50 px avatar and left the orb floating a
+// full body-height above the head — on velocity0 it lined up with the
+// platform on the level above.)
+const ORB_HELD_OFFSET_Y = -38;
 const ORB_GRAVITY = 2;
 const ORB_MAX_FALL = 12;
 
