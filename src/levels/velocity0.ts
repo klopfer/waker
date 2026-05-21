@@ -21,6 +21,7 @@
 import { obstaclesForDifficulty } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
+import { velocity1 } from './velocity1.js';
 
 export const velocity0: LevelBuilder = (difficulty): LevelConfig => {
   // Per legacy velocity0.mxml: hard mode adds two vertically-moving
@@ -117,6 +118,6 @@ export const velocity0: LevelBuilder = (difficulty): LevelConfig => {
 
     spikes,
 
-    // nextLevel: velocity1 — wired once velocity1 is built.
+    nextLevel: velocity1,
   };
 };

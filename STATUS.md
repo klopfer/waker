@@ -23,11 +23,13 @@ tutorial); beating the exit advances on SPACE to `displacement1` → `2`
 → `3`. After d3 the SPACE press currently restarts d3 (legacy next is
 `cutsceneVelocity`, not wired yet).
 
-**World 2 (velocity) started**: `velocity0` is playable and calibrated
-(reach it via the `V0` debug picker button). It is **not yet chained**
-from d3 — and v1/v2/v3 aren't built. Velocity orbs plot the avatar's
-`vx`, use the gold/red `velOrb` art, and have no origin holder (they
-rest on the ground).
+**World 2 (velocity) in progress**: `velocity0` (calibrated) →
+`velocity1` are built and chained (`V0`/`V1` debug picker buttons).
+World 2 is **not yet chained from d3**; v2/v3 aren't built. Velocity
+orbs plot the avatar's `vx`, use the gold/red `velOrb` art, and have no
+origin holder (they rest on the ground). velocity1 is a first-pass port
+(loads cleanly; reachability/spike timing pending playtest) and is the
+first level with a **per-difficulty collision swap** (hard vs easy PNG).
 
 Controls:
 
@@ -40,8 +42,9 @@ Controls:
 Plus three debug UIs on screen:
 - Bottom-right: `♪ MUSIC` / `♪ SFX` mute toggles (Pixi-side, will move
   to the HTML overlay in Phase 5).
-- Bottom-left: `DEBUG: [D0] [D1] [D2] [D3] [V0]` level picker buttons
-  (jump to any level for testing; **temporary**, remove before release).
+- Bottom-left: `DEBUG: [D0] [D1] [D2] [D3] [V0] [V1]` level picker
+  buttons (jump to any level for testing; **temporary**, remove before
+  release).
 - Bottom-left next to picker: `DIFF: EASY/MEDIUM/HARD` button that
   cycles difficulty and reloads the current level — used to verify
   hard-mode spike placements without waiting for the Phase 5 menu.
@@ -85,7 +88,7 @@ Mapped against the plan's `§14 Module porting order`:
 | 10 | `Switch.ts`, `MovingPlatform.ts`, `Spike.ts` | ✅ done (D1+D2); D3 polish (squish pushback + hit flash) still pending |
 | 11 | `Level.ts` (base class) + `LevelConfig` data | ✅ done — multi-orb refactor; per-level files are pure data literals |
 | 12 | `Movements.ts` | ✅ done + extensively calibrated (v1–v18) — see `docs/calibration.md` §9 |
-| 13 | Per-level files in `src/levels/` | 🟡 5 of 11 wired (d0, d1, d2, d3, **v0**); velocity1–3, mixed*, cutscenes pending |
+| 13 | Per-level files in `src/levels/` | 🟡 6 of 11 wired (d0, d1, d2, d3, **v0, v1**); velocity2–3, mixed*, cutscenes pending |
 | 14 | `LevelManager.ts` | ✅ done — handles win-overlay SPACE transitions + debug `advanceTo` for the level picker |
 | 15 | HUD (in-game pause/hint/HUD) | ⏳ — `src/ui/MuteControls.ts` + `LevelPicker.ts` are Pixi-side placeholders; Phase 5 moves to HTML overlay |
 | 16 | Menus (Menu, Options, Instructions, Credits) | ⏳ |
@@ -209,13 +212,12 @@ Suggested order — feel free to deviate.
 - **E1 displacement1** ✅ done
 - **E2 displacement2 + 3 + multi-orb** ✅ done
 - **E3 velocity world ⚙️ in progress.** `valueMode: 'velocity'` flag
-  done; `velocity0` shipped + calibrated. **Next: velocity1, 2, 3**,
-  then chain d3 → v0.
-  - **velocity1** (`legacy/src/levels/velocity1.mxml`) — `bgWorld2_2`;
-    ground `levelv1_collision` (hard) vs `levelv1_easy_collision`
-    (easy/medium) — note the per-difficulty collision swap, a first
-    for the port (so far difficulty only added spikes). 1 velocity
-    graph `addGraph(1,0,340,227,15,180,180,4,380,440,…)`. nextLvl=v2.
+  done; `velocity0` (calibrated) + `velocity1` (first-pass) shipped and
+  chained. **Next: velocity2, 3**, then chain d3 → v0.
+  - **velocity1** ✅ built + chained from v0. First per-difficulty
+    collision swap (`groundKey` branches on difficulty inside the
+    `LevelBuilder`). Pending playtest calibration (orb/exit
+    reachability, hard spike-sweep timing). See calibration §7.
   - **velocity2** (`leveltv_collision`, `bgWorld2_t`) — 1 velocity
     graph w/ deadzones, scale=22; hard=7 spikes / medium=2 / easy=0.
     nextLvl=v3.
@@ -274,7 +276,7 @@ levels. What's still absent, roughly in dependency order:
 | Feature | Where it lives in the plan | Notes |
 | --- | --- | --- |
 | **Remaining levels** | §14 item 13 | velocity1–3, mixed0–3 (7 levels). Pure data + calibration; engine should not need changes except possibly velocity2 graph deadzones. |
-| **Per-difficulty collision swap** | (new, velocity1) | velocity1 is the first level that loads a *different collision PNG* per difficulty (`levelv1_collision` vs `levelv1_easy_collision`). `LevelConfig.groundKey` will need to be difficulty-aware — easiest via the `LevelBuilder(difficulty)` already in place (just return a different `groundKey`). |
+| ~~Per-difficulty collision swap~~ ✅ | (velocity1) | **Done.** velocity1 returns a different `groundKey` per difficulty inside its `LevelBuilder` (`levelv1_collision` hard vs `levelv1_easy_collision` easy/med). The swap drives both the visible ground and the pixel collision. Pattern available for any future level. |
 | **Cutscenes** | §14 item 13 / Phase 5, plan §432 | `intro`, `pre_world1/2`, `levelcomplete`, `ending`. Drop-in `<video>` over the canvas. Cutscene "levels" (`introCutScene`, `cutsceneDisplacement/Velocity/Mixed`, `gameending`) are slots in the level chain. Needed to connect worlds the "real" way. |
 | **Main menu + level select** | §14 item 16 / Phase 5 | Replaces the temporary Pixi level/diff pickers. Plain HTML+CSS overlay (decision D4). Includes the Ctrl+Shift+F12-style debug jump if we want parity. |
 | **Options / Instructions / Credits** | §14 item 16 / Phase 5 | HTML overlay screens. |

@@ -494,7 +494,32 @@ world-2 art (`velOrb`, gold/red) instead of the world-1 blue `disOrb`.
 | `orbs[1]` (upper) | origin/orb `{x:660, y:322/308}`, graph `{x:200,y:122,w:200,h:200,maxValue:20,yOffset:20}` | Rests on the x=660 platform. Velocity, maxValue 20. |
 | held-orb offset | `ORB_HELD_OFFSET_Y = -38` (in `Orb.ts`) | Lowered from -75 (retired scale-0.3 value) so the carried orb rides on the head, not a body-height above it. Original pins it at `invOrb.y = player.y`. Global — affects both worlds. |
 | spikes (hard only) | 2 horizontal sweeps at (640,177) and (400,128) | Easy/medium: none. |
-| `nextLevel` | unset | Legacy next is velocity1; wired once v1 is built. |
+| `nextLevel` | `velocity1` | Chained 2026-05-20. |
+
+---
+
+### velocity1 (world 2 — `src/levels/velocity1.ts`)
+
+**First per-difficulty COLLISION SWAP.** Single velocity orb. Hard uses
+`levelv1_collision`; easy/medium use `levelv1_easy_collision` (adds a
+stepping platform at x≈600 + an extra ledge to make reaching the graph
+platform easier). Implemented as a one-line branch on `groundKey` inside
+the `LevelBuilder(difficulty)` — the swap drives BOTH the visible ground
+silhouette and the pixel collision (they're the same PNG).
+
+| Quantity | Value | Notes |
+| --- | --- | --- |
+| BG / ground | `bgWorld2_2` / `levelv1_collision` (hard) \| `levelv1_easy_collision` (easy+med) | Masks 800×600. Shared: bottom floor y≈501; mid platform x≈300–500 top y=407; stepping plats x≈200 top 444 / x≈600 top 431; top ceiling band y≈200; exit shelf x≈700–799 top y=200. Hard adds a top-left ledge y≈138–160; easy adds a platform x≈600 y≈352–366. |
+| `spawn` | `{x:20, y:90}` | Legacy `setEntrance(0,90)`; inset from x=0 so the body clears the left wall. Drops onto the hard ledge (y=138) or left ceiling block (y=200). |
+| `exit` | `{x:755, y:160}` | High right; 40-px portal bottom rests on the x≈700–799 ceiling block (top y=200). Reached via the drawn velocity curve. |
+| `orbs[0]` | velocity; origin/orb `{x:380, y:407/405}`, graph `{x:340,y:227,w:180,h:180,maxValue:15,yOffset:4}` | `addGraph(1,0,340,227,15,180,180,4,380,440,…)`. Legacy orby=440 falls onto the mid platform (top y=407); orb placed at 405 to settle cleanly. No origin holder (velocity). |
+| graph obstacles | `numberObs` 2 (hard) / 1 (med) / 0 (easy), seed 411 | From the trailing `addGraph(…,50,2/1/0)` arg. `obstaclesForDifficulty({340,227,180,180}, 411, 2, count)`. |
+| spikes (hard only) | 2 fast horizontal sweeps: (100,480) left-first + (100,180) right-first, both turn 0→780, speed 10 | `addSpike(100,480,…)` + `addSpike(100,180,…)`. Easy/medium: none. |
+| `nextLevel` | unset | Legacy next is velocity2; wired once v2 is built. |
+
+**⚠️ Calibration pending playtest:** orb reachability (floor→x=200 plat
+→mid plat hop chain), exit reachability via the drawn curve, and the
+hard spike-sweep timing are first-pass translations and may need tuning.
 
 ---
 
