@@ -475,6 +475,29 @@ Easy-mode.
 
 ---
 
+### velocity0 (world 2 tutorial — `src/levels/velocity0.ts`)
+
+**First VELOCITY-world level.** Two orbs, both `valueMode: 'velocity'`
+— the paired graph plots the avatar's `vx` (horizontal speed), not
+displacement from an origin. Velocity orbs have **no origin holder /
+cradle**: they rest directly on the painted floor (matching the
+original — `OrbSetupConfig.cradle` is omitted and `Level` skips the
+origin sprite for `valueMode === 'velocity'`). They also use the
+world-2 art (`velOrb`, gold/red) instead of the world-1 blue `disOrb`.
+
+| Quantity | Value | Notes |
+| --- | --- | --- |
+| BG / ground | `bgWorld2_1` / `levelv4_collision` | Alpha mask `collision/levelv4_ground.png` (800×600). Full-height screen-edge walls: x≈0–15 solid, x≈780–799 solid (see §9 v19). |
+| `spawn` | `{x:40, y:30}` | Top-left; drops to the bottom floor (top ≈ y=482). |
+| `exit` | `{x:735, y:159}` | Upper-right. |
+| `orbs[0]` (lower) | origin/orb `{x:90, y:482/470}`, graph `{x:440,y:211,w:200,h:200,maxValue:80,yOffset:20}` | **⚠️ orb x deviates from legacy 30 → 90.** Legacy x=30 jams the orb against the left wall; nudged right to match the original's resting spot. Velocity, maxValue 80. |
+| `orbs[1]` (upper) | origin/orb `{x:660, y:322/308}`, graph `{x:200,y:122,w:200,h:200,maxValue:20,yOffset:20}` | Rests on the x=660 platform. Velocity, maxValue 20. |
+| held-orb offset | `ORB_HELD_OFFSET_Y = -38` (in `Orb.ts`) | Lowered from -75 (retired scale-0.3 value) so the carried orb rides on the head, not a body-height above it. Original pins it at `invOrb.y = player.y`. Global — affects both worlds. |
+| spikes (hard only) | 2 horizontal sweeps at (640,177) and (400,128) | Easy/medium: none. |
+| `nextLevel` | unset | Legacy next is velocity1; wired once v1 is built. |
+
+---
+
 ## 8. Methodology for porting a new level
 
 Each new level should follow this checklist. Most of the work is data
@@ -553,6 +576,31 @@ breaking normal walking.
 | 17 | `SIDE_TOP_MARGIN` 8 → 10; displacement3 g1 `yOffset` 90 → 60 → 75 | v16's margin=8 was still too strict — borderline overlap cases (curve clipping the top ~5 px of head) read as stuck. Bumped to 10. Plus several rounds of d3 g1 yOffset tuning: 90 (legacy spec, "just barely" reachable) → 60 (too lenient, trap never fired) → 75 (substantial trap V<~95 + comfortable orb-2 jump). |
 | 18 | NEW `SIDE_BOTTOM_INSET` = 4; re-added `isWallAt` overlap rule (`topY ≥ bottomY - HEIGHT → wall`); `pushOutFromWall*` clamp pushback to original x (no MAX_PUSH=30 teleport) | The REAL fix for d3 stuck. Painted floors are anti-aliased: at x=163 the cloud's "top" is y=501 (alpha=75 above is below threshold), at x=175 (right body edge) the same edge band is y=500 (alpha=133 above threshold). Sample at y=500 hit the cloud's own anti-alias band at the next column, combined with a curve overhead providing wall=true → side-push false-fired. Inset lifts the lowest sample firmly above any anti-alias band. With the false-positive shielded, the overlap-wall rule can come back and make d3's trap actually work. Found via on-screen debug HUD that dumped per-tick side-collision state (since removed). |
 
+### v19: velocity world (world-2 screen-edge walls)
+
+World 2's collision masks have **full-height walls at the screen edges**
+(velocity0: x≈0–15 and x≈780–799 solid top-to-bottom) with a **curved
+floor leading up to them**. This geometry exposed two latent
+side-collision bugs that displacement (whose floors mostly meet the
+walls flat) never hit.
+
+| v | What changed | Why |
+| --- | --- | --- |
+| 19a | 3-sample ground catch (§5.4) now **rejects floor samples more than `STEP_UP` above the feet** (`cand >= searchFromY - STEP_UP`). | `PixelGround.groundYBelow` scans UP to a solid band's top when the search start is already inside solid. A body-edge sample (`x ± HALF_WIDTH`) landing inside a full-height edge wall returned the wall's top (y≈0). `min()` over the 3 samples picked it and snapped the avatar to the top of the wall — it "climbed" the edge to the screen top. A real floor to land on is never `STEP_UP` above the feet; higher = wall. |
+| 19b | NEW step-up gate: `leadingEdgeHeadBlocked()`. Step-up fires only if the leading edge's **head band** (top `HEAD_PROBE_DEPTH=4` px of the body, `HALF_WIDTH` ahead) is clear. | Step-up commits `x = state.x + vx` and SKIPS side-push. On a sloped/curved approach to a wall, step-up fired every tick and carried the body straight INTO the wall (only the tail showing; or stuck high on the wall; or phasing through steep player-drawn curve segments) — side-push never ran, and the minX cap then prevented extraction. A walkable slope only puts solid near the feet at the leading edge; a wall (or near-vertical curve) puts solid up at head height. So if the head is blocked ahead, the surface is a wall → suppress step-up → side-push stops the body flush at the wall face. |
+
+Both fixes are in `Movements.ts` and covered by regression tests in
+`tests/game/Movements.test.ts` (`does not climb a full-height edge
+wall…`, `does not burrow into a wall reached by walking up a slope`).
+The second test was verified to FAIL with the gate disabled.
+
+The boundary clamp at the screen edges (`Level.tick`: clamp x to
+`[8, 792]`, zero `vx`) is faithful to the legacy hard-stop
+(`movements.mxml` lines 800–811: `x>750 → x=750, vx=0, ax=0`) — the
+original does NOT bounce, it stops. The clamp alone could not fix the
+above because they are vertical snaps / step-up bypasses, not horizontal
+exits.
+
 ### Key lessons
 
 1. **Anchor matters more than scale.** Half the head-bump bugs came
@@ -605,6 +653,18 @@ breaking normal walking.
     push iterates up to `MAX_PUSH=30` px and can teleport the avatar
     back 30 px when walking into a long wall. With the cap, the move
     just doesn't happen — no movement, no teleport. v18.
+12. **Step-up must not bypass wall collision.** Any code path that
+    commits a horizontal position while skipping side-push (here:
+    step-up) will burrow the avatar into walls on sloped approaches.
+    Gate it: a wall and a walkable slope are distinguishable at the
+    LEADING EDGE — a slope only puts solid near the feet, a wall puts
+    solid up at head height a half-body-width ahead. v19b.
+13. **A side-sample inside a full-height column reads as a floor at
+    y≈0.** `groundYBelow`'s "scan up to band top when inside solid"
+    semantic (needed for snapping onto platform tops) returns the
+    column's TOP, which for an edge wall is the screen top. Any `min()`
+    over multiple samples must reject candidates implausibly far above
+    the feet. v19a.
 
 ### Update protocol
 
