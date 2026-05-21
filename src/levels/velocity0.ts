@@ -78,12 +78,16 @@ export const velocity0: LevelBuilder = (difficulty): LevelConfig => {
     //   addGraph(1, 0, 200, 122, 20, 200, 200, 20, 660, 280, ...)
     // graph args: type=1(velocity), ratio, x, y, scale(=maxValue),
     //   w, h, offset(=yOffset), orbx, orby.
+    // Velocity orbs have no origin holder/cradle — they rest directly on
+    // the ground (gravity settles them onto the floor at level start).
     orbs: [
       {
         valueMode: 'velocity',
-        // orb 1 at legacy (30, 440); rests on the bottom floor (top y=471).
-        origin: { x: 30, y: 471 },
-        orb: { x: 30, y: 459 },
+        // Lower orb: legacy x=30 placed it tight against the left wall;
+        // nudged right to ~90 to match the original's resting spot and
+        // clear of the wall. Rests on the bottom floor (top ≈ y=482).
+        origin: { x: 90, y: 482 },
+        orb: { x: 90, y: 470 },
         graph: {
           x: 440,
           y: 211,
@@ -92,13 +96,12 @@ export const velocity0: LevelBuilder = (difficulty): LevelConfig => {
           maxValue: 80,
           yOffset: 20,
         },
-        cradle: { lift: 12, halfWidth: 18 },
       },
       {
         valueMode: 'velocity',
-        // orb 2 at legacy (660, 280); rests on the x=660 platform (top y=322).
+        // Upper orb at legacy (660, 280); rests on the x=660 platform.
         origin: { x: 660, y: 322 },
-        orb: { x: 660, y: 310 },
+        orb: { x: 660, y: 308 },
         graph: {
           x: 200,
           y: 122,
@@ -107,7 +110,6 @@ export const velocity0: LevelBuilder = (difficulty): LevelConfig => {
           maxValue: 20,
           yOffset: 20,
         },
-        cradle: { lift: 12, halfWidth: 18 },
       },
     ],
 

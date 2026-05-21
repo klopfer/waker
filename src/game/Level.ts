@@ -132,8 +132,12 @@ export interface OrbSetupConfig {
     maxValue: number;
     yOffset: number;
   };
-  /** Thin orb-only shelf that holds the orb above the origin marker. */
-  cradle: {
+  /**
+   * Thin orb-only shelf that holds the orb above the origin marker.
+   * Displacement orbs only — velocity orbs rest on real ground and omit
+   * this (and the origin holder).
+   */
+  cradle?: {
     lift: number;
     halfWidth: number;
     thickness?: number;
@@ -156,6 +160,7 @@ interface LevelTextures {
   bg: Texture;
   ground: Texture;
   orb: Texture;
+  velOrb: Texture;
   origin: Texture;
   graphBg: Texture;
   exit: Texture;
@@ -221,9 +226,11 @@ interface OrbBundle {
   readonly setup: OrbSetupConfig;
   readonly orb: Orb;
   readonly graph: Graph;
-  readonly cradle: CurveGround;
-  readonly originSprite: Sprite;
-  readonly originGlow: GlowFilter;
+  // Velocity orbs have no origin holder / cradle (they rest on real
+  // ground), so these are absent for valueMode === 'velocity'.
+  readonly cradle: CurveGround | null;
+  readonly originSprite: Sprite | null;
+  readonly originGlow: GlowFilter | null;
 }
 
 export class Level {
@@ -280,16 +287,17 @@ export class Level {
 
   /** Async factory — loads textures + pixel ground from manifest keys, then constructs. */
   static async load(cfg: LevelConfig, deps: LevelDeps): Promise<Level> {
-    const [bg, ground, orb, origin, graphBg, exit] = await Promise.all([
+    const [bg, ground, orb, velOrb, origin, graphBg, exit] = await Promise.all([
       deps.assets.image(cfg.bgKey),
       deps.assets.image(cfg.groundKey),
       deps.assets.image('disOrb'),
+      deps.assets.image('velOrb'),
       deps.assets.image('displaceOrigin'),
       deps.assets.image('graphBGD'),
       deps.assets.image('exit'),
     ]);
     const pixelGround = await loadPixelGround(deps.assets.url(cfg.groundKey));
-    return new Level(cfg, deps, { bg, ground, orb, origin, graphBg, exit }, pixelGround);
+    return new Level(cfg, deps, { bg, ground, orb, velOrb, origin, graphBg, exit }, pixelGround);
   }
 
   private constructor(
@@ -333,21 +341,29 @@ export class Level {
     // ── Build one bundle per orb setup ──
     const bundles: OrbBundle[] = [];
     for (const setup of cfg.orbs) {
-      const cradleThickness = setup.cradle.thickness ?? 2;
-      const cradle = new CurveGround(
-        [
-          {
-            x: setup.origin.x - setup.cradle.halfWidth,
-            y: setup.origin.y - setup.cradle.lift + cradleThickness / 2,
-          },
-          {
-            x: setup.origin.x + setup.cradle.halfWidth,
-            y: setup.origin.y - setup.cradle.lift + cradleThickness / 2,
-          },
-        ],
-        cradleThickness,
-      );
-      this.orbGround.add(cradle);
+      const isVelocity = setup.valueMode === 'velocity';
+
+      // Displacement orbs rest in an origin holder on a thin cradle shelf.
+      // Velocity orbs (world 2) have no holder — they just sit on the real
+      // ground/platform — so skip both the cradle and the origin marker.
+      let cradle: CurveGround | null = null;
+      if (!isVelocity && setup.cradle) {
+        const cradleThickness = setup.cradle.thickness ?? 2;
+        cradle = new CurveGround(
+          [
+            {
+              x: setup.origin.x - setup.cradle.halfWidth,
+              y: setup.origin.y - setup.cradle.lift + cradleThickness / 2,
+            },
+            {
+              x: setup.origin.x + setup.cradle.halfWidth,
+              y: setup.origin.y - setup.cradle.lift + cradleThickness / 2,
+            },
+          ],
+          cradleThickness,
+        );
+        this.orbGround.add(cradle);
+      }
 
       const graph = new Graph({
         graphX: setup.graph.x,
@@ -360,29 +376,35 @@ export class Level {
       });
       this.graphLayer.addChild(graph.container);
 
-      const originSprite = new Sprite(tex.origin);
-      originSprite.anchor.set(0.5, 1);
-      originSprite.x = setup.origin.x;
-      originSprite.y = setup.origin.y;
-      const originGlow = new GlowFilter({
-        color: 0xffffaa,
-        distance: 20,
-        outerStrength: 0,
-        innerStrength: 0,
-        quality: 0.3,
-      });
-      originSprite.filters = [originGlow];
-      deps.app.stage.addChild(originSprite);
+      let originSprite: Sprite | null = null;
+      let originGlow: GlowFilter | null = null;
+      if (!isVelocity) {
+        originSprite = new Sprite(tex.origin);
+        originSprite.anchor.set(0.5, 1);
+        originSprite.x = setup.origin.x;
+        originSprite.y = setup.origin.y;
+        originGlow = new GlowFilter({
+          color: 0xffffaa,
+          distance: 20,
+          outerStrength: 0,
+          innerStrength: 0,
+          quality: 0.3,
+        });
+        originSprite.filters = [originGlow];
+        deps.app.stage.addChild(originSprite);
+      }
 
       const originX = setup.origin.x;
       const valueProvider =
-        setup.valueMode === 'velocity'
+        isVelocity
           ? (input: { vx: number }): number => input.vx
           : (input: { x: number }): number => Math.abs(input.x - originX);
       const orb = new Orb({
         initialX: setup.orb.x,
         initialY: setup.orb.y,
-        texture: tex.orb,
+        // Velocity orbs get the world-2 gold/red art; displacement orbs
+        // the world-1 blue orb.
+        texture: isVelocity ? tex.velOrb : tex.orb,
         pairedGraph: graph,
         valueProvider,
       });
@@ -783,6 +805,7 @@ export class Level {
     // Origin proximity glow — each origin glows based on distance from
     // the avatar, falling off across its own graph's maxValue range.
     for (const b of this.orbBundles) {
+      if (!b.originGlow) continue; // velocity orbs have no origin marker
       const distToOrigin = Math.abs(this.body.state.x - b.setup.origin.x);
       const proximity = Math.max(0, Math.min(1, 1 - distToOrigin / ORIGIN_GLOW_RANGE_PX));
       b.originGlow.outerStrength = proximity * ORIGIN_MAX_GLOW_STRENGTH;
@@ -930,7 +953,8 @@ export class Level {
     ];
     if (this.sunPulse) owned.push(this.sunPulse);
     for (const b of this.orbBundles) {
-      owned.push(b.originSprite, b.orb.container);
+      if (b.originSprite) owned.push(b.originSprite);
+      owned.push(b.orb.container);
     }
     if (this.promptD) owned.push(this.promptD);
     if (this.promptSpacebar) owned.push(this.promptSpacebar);

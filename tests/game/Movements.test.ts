@@ -155,6 +155,31 @@ describe('Movements.step', () => {
     expect(s.x - BODY.HALF_WIDTH).toBeGreaterThanOrEqual(100);
   });
 
+  it('does not climb a full-height edge wall via the side ground-samples', () => {
+    // Regression: velocity0's screen-edge walls are solid full-height
+    // columns. PixelGround.groundYBelow scans UP to a band's top when the
+    // search start is already inside solid, so a side-sample (x ± HALF_WIDTH)
+    // landing inside the wall returns the wall's top (y≈0). The 3-sample
+    // ground catch took min() of those, snapping the avatar to the top of
+    // the wall — letting it "climb" the edge to the screen top. The fix
+    // rejects samples more than STEP_UP above the feet.
+    const WALL_RIGHT = 16;
+    const FLOOR_Y = 482;
+    const edgeWall: GroundProvider = {
+      groundYBelow: (x: number, searchFromY: number) => {
+        if (Math.floor(x) < WALL_RIGHT) return 0; // full-height wall: band top
+        return searchFromY <= FLOOR_Y ? FLOOR_Y : Number.POSITIVE_INFINITY;
+      },
+      solidAt: (x: number, y: number) => (Math.floor(x) < WALL_RIGHT ? true : y >= FLOOR_Y),
+    };
+    let s = start({ x: 60, y: FLOOR_Y });
+    for (let i = 0; i < 60; i++) s = step(s, { ...NEUTRAL, moveLeft: true }, edgeWall);
+    // Stays on the floor — never snapped up the wall (pre-fix: y ≈ 0).
+    expect(s.y).toBe(FLOOR_Y);
+    // Stopped by the wall, body never pushed through it.
+    expect(s.x - BODY.HALF_WIDTH).toBeGreaterThanOrEqual(WALL_RIGHT - 1);
+  });
+
   it('a thin platform overhead does not bump the avatar if their center is clear', () => {
     // Platform at y in [80, 100], x in [200, 400]. Floor at y=300.
     // Avatar at x=180 — body right edge x=195 (inside the platform's x range

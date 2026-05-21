@@ -481,12 +481,22 @@ export function step(
     // Search-from y uses min(state.y, y) so both descending and
     // ascending crossings are caught (combined with CurveGround's
     // inside-band semantic).
+    //
+    // REJECT samples more than STEP_UP *above* the search origin. When a
+    // sample column is a full-height wall (e.g. the level's screen-edge
+    // walls), the search start is already inside solid, so
+    // PixelGround.groundYBelow scans UP to the band's top and returns y≈0.
+    // Un-guarded, min() would pick that phantom floor and snap the avatar
+    // to the top of the wall — making it "climb" the edge walls up to the
+    // screen top. A real floor to land on / step onto is never more than
+    // STEP_UP above the feet; anything higher is a wall, not a step.
     const searchFromY = Math.min(state.y, y);
-    const groundY = Math.min(
-      ground.groundYBelow(x - BODY.HALF_WIDTH, searchFromY),
-      ground.groundYBelow(x, searchFromY),
-      ground.groundYBelow(x + BODY.HALF_WIDTH, searchFromY),
-    );
+    const minFloorY = searchFromY - PHYSICS.STEP_UP;
+    let groundY = Number.POSITIVE_INFINITY;
+    for (const sampleX of [x - BODY.HALF_WIDTH, x, x + BODY.HALF_WIDTH]) {
+      const cand = ground.groundYBelow(sampleX, searchFromY);
+      if (cand >= minFloorY && cand < groundY) groundY = cand;
+    }
     if (y >= groundY) {
       y = groundY;
       if (vy > 0) vy = 0;

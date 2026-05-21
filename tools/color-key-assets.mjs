@@ -67,6 +67,23 @@ const TARGETS = [
     label: 'displacement origin (stand)',
   },
   {
+    // Velocity orb core: gold/red disc on a pure-white square field. The
+    // glyph is saturated gold (#aa870f) + red, none near-white, so
+    // NEAR_WHITE selects only the white frame + its antialiased gray ramp.
+    file: 'src/assets/graph/velocityOrb/justORB.png',
+    key: [0xff, 0xff, 0xff],
+    tolerance: 30,
+    predicate: NEAR_WHITE,
+    label: 'velocity orb core',
+  },
+  {
+    file: 'src/assets/graph/velocityOrb/orbEFFECT.png',
+    key: [0xff, 0xff, 0xff],
+    tolerance: 30,
+    predicate: NEAR_WHITE,
+    label: 'velocity orb effect',
+  },
+  {
     // Exit portal: comes out of JPEXS as a 40×40 PNG with a pure-white
     // square frame around the portal silhouette. The actual portal art
     // is dark-black + saturated pink + saturated green, so NEAR_WHITE
