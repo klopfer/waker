@@ -180,6 +180,37 @@ describe('Movements.step', () => {
     expect(s.x - BODY.HALF_WIDTH).toBeGreaterThanOrEqual(WALL_RIGHT - 1);
   });
 
+  it('does not burrow into a wall reached by walking up a slope', () => {
+    // Regression (velocity0): a gentle, walkable slope leads up to a
+    // full-height wall (the screen-edge walls have a curved floor in front
+    // of them). Pre-fix, step-up fired each tick climbing the slope and
+    // SKIPPED side-push, so the avatar's body burrowed into the wall until
+    // only its tail showed / it got stuck high on the wall. The head-gate
+    // suppresses step-up at the wall so side-push stops the body flush.
+    const WALL_X = 200;
+    const slopeY = (x: number) => 500 - Math.max(0, Math.min(100, x - 100)) * 0.3;
+    const slopeIntoWall: GroundProvider = {
+      groundYBelow: (x: number, searchFromY: number) => {
+        const ix = Math.floor(x);
+        if (ix >= WALL_X) return searchFromY <= 600 ? 0 : Number.POSITIVE_INFINITY;
+        return searchFromY <= 600 ? slopeY(ix) : Number.POSITIVE_INFINITY;
+      },
+      solidAt: (x: number, y: number) => {
+        const ix = Math.floor(x);
+        if (ix >= WALL_X) return y >= 0 && y <= 600;
+        return y >= slopeY(ix) && y <= 600;
+      },
+    };
+    let s = start({ x: 110, y: slopeY(110) });
+    for (let i = 0; i < 60; i++) s = step(s, { ...NEUTRAL, moveRight: true }, slopeIntoWall);
+    // Body's right edge stops at the wall face, never crossing into it.
+    expect(s.x + BODY.HALF_WIDTH).toBeLessThanOrEqual(WALL_X);
+    // Climbed the slope toward the wall (didn't stall at the start).
+    expect(s.x).toBeGreaterThan(150);
+    // Never climbed the full-height wall toward the top of the screen.
+    expect(s.y).toBeGreaterThan(400);
+  });
+
   it('a thin platform overhead does not bump the avatar if their center is clear', () => {
     // Platform at y in [80, 100], x in [200, 400]. Floor at y=300.
     // Avatar at x=180 — body right edge x=195 (inside the platform's x range
