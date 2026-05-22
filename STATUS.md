@@ -1,6 +1,6 @@
 # Session handoff status
 
-Last updated: 2026-05-20. Pick this up cold by reading top-to-bottom.
+Last updated: 2026-05-22. Pick this up cold by reading top-to-bottom.
 
 This file is the "what to do next" doc. It captures live context that
 isn't in the plan or the calibration doc — recent decisions, next
@@ -23,13 +23,24 @@ tutorial); beating the exit advances on SPACE to `displacement1` → `2`
 → `3`. After d3 the SPACE press currently restarts d3 (legacy next is
 `cutsceneVelocity`, not wired yet).
 
-**World 2 (velocity) in progress**: `velocity0` (calibrated) →
-`velocity1` are built and chained (`V0`/`V1` debug picker buttons).
-World 2 is **not yet chained from d3**; v2/v3 aren't built. Velocity
-orbs plot the avatar's `vx`, use the gold/red `velOrb` art, and have no
-origin holder (they rest on the ground). velocity1 is a first-pass port
-(loads cleanly; reachability/spike timing pending playtest) and is the
-first level with a **per-difficulty collision swap** (hard vs easy PNG).
+**World 2 (velocity) in progress**: `velocity0` and `velocity1` are
+built, chained, and **playtested working** (`V0`/`V1` debug picker
+buttons) — including walking on / being stopped by the drawn graph
+curve. World 2 is **not yet chained from d3**; v2/v3 aren't built.
+Velocity orbs plot the avatar's `vx`, use the gold/red `velOrb` art, and
+have no origin holder. velocity1 is the first level with a
+**per-difficulty collision swap** (hard vs easy PNG). v0's background is
+a cool blue/lavender velocity scene (`bgWorld2_1`=`levelv1_bg`) — that's
+faithful to the original (confirmed), not a bug.
+
+**Collision note (2026-05-22):** the "avatar walks through steep
+drawn-curve walls" report was chased hard. Outcome: the capsule
+`solidAt` (`f8118ef`) already stops *near-vertical* drawn walls (the real
+case); a slope-analysis rework (`d4e5823`) regressed displacement
+(clouds-above mis-read as walls) and was **reverted** (`8734235`). No
+collision rework shipped. See `docs/collision-model.md` for the full
+legacy-vs-port collision analysis and why the original has no
+wall-vs-ramp logic.
 
 Controls:
 
@@ -343,6 +354,7 @@ Stuff to think about before the relevant phase, not now:
 | `README.md` | "What is this project" — public-facing, mostly stable. |
 | `flash-to-html5-conversion-plan.md` | The full conversion plan (7 phases, module porting order, decisions log). |
 | `docs/calibration.md` | All physics + scaling constants, derivations, history. **Read this before tuning anything** in `Movements.ts` or per-level constants. |
+| `docs/collision-model.md` | Legacy vs. port avatar↔terrain collision (edge-point pixel push-out vs. groundYBelow + slope analysis). **Read before reworking collision** — explains why the original has no wall-vs-ramp logic. |
 | `CLAUDE.md` | Per-session conventions for Claude Code (style, do/don't, glossary). |
 | **`STATUS.md`** (this file) | Live "what to do next" context. Update when you finish a chunk. |
 
