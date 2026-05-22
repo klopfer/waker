@@ -18,17 +18,27 @@ npm install   # if first time
 npm run dev   # http://localhost:5173
 ```
 
-**World 1 is complete and chained**: boots into `displacement0` (the
-tutorial); beating the exit advances on SPACE to `displacement1` → `2`
-→ `3`. After d3 the SPACE press currently restarts d3 (legacy next is
-`cutsceneVelocity`, not wired yet).
+**Boots into the main menu** (`guiMenuBG` with Start / Instructions /
+Settings / Credits). Start → intro video (first time) → the level chain
+starting at `cutsceneDisplacement`. Instructions / Credits / Settings
+open over the menu; click or Esc closes them. The full menu flow is
+browser-verified (commit `78b1373`).
+
+**World 1 is complete and chained**: `cutsceneDisplacement` →
+`displacement0` (the tutorial) → `1` → `2` → `3`; beating the exit
+advances on SPACE. After d3 the chain runs `cutsceneVelocity` → World 2.
 
 **World 2 (velocity) complete (build)**: `velocity0`→`1`→`2`→`3` are all
 built and chained (`V0`–`V3` debug picker buttons). v0/v1 playtested
 working; **v2/v3 are first-pass, pending playtest**. velocity3 is the
-first MIXED-type level (a velocity orb + a displacement orb). World 2 is
-**not yet chained from d3**, and v3→`cutsceneMixed` is unwired (the
-cutscene/chain framework is the next task).
+first MIXED-type level (a velocity orb + a displacement orb). After v3
+the chain runs `cutsceneMixed`, whose `nextLevel` is **unset** (the
+mixed world isn't built yet — SPACE there currently dead-ends).
+
+**Cutscenes** are no-orb "walk-across" levels (flat floor; auto-advance
+on reaching the exit, no win overlay). `cutsceneDisplacement` /
+`cutsceneVelocity` / `cutsceneMixed` are wired into the chain; `CD` /
+`CV` / `CM` debug-picker buttons jump to each.
 Velocity orbs plot the avatar's `vx`, use the gold/red `velOrb` art, and
 have no origin holder. velocity1 is the first level with a
 **per-difficulty collision swap** (hard vs easy PNG). v0's background is
@@ -60,10 +70,11 @@ Plus three debug UIs on screen:
   release).
 - Bottom-left next to picker: `DIFF: EASY/MEDIUM/HARD` button that
   cycles difficulty and reloads the current level — used to verify
-  hard-mode spike placements without waiting for the Phase 5 menu.
+  hard-mode spike placements (the menu's Settings screen now does this
+  too, but the button stays for quick in-game switching).
 
-**Tests**: `npm run test` → 137/137 passing.
-**Build**: `npm run build` → ~668 KB bundle / 283 KB gzipped.
+**Tests**: `npm run test` → 138/138 passing.
+**Build**: `npm run build` → ~676 KB bundle / 285 KB gzipped.
 
 ---
 
@@ -78,8 +89,8 @@ status:
 | 1 | Vite + PixiJS scaffold + smoke test | ✅ done |
 | 2 | JPEXS asset extraction + curation | ✅ done — 181 manifest entries, ~14 MB committed |
 | 3 | Engine layer (FixedStep, Input, HitTest, Audio, GraphTone, AssetLoader, MovieClipShim) | ✅ done — 8/8 modules + avatar |
-| 4 | **Game logic port** | 🟡 in progress — world 1 complete, worlds 2+3 pending |
-| 5 | UI port (menu, options, HUD) | ⏳ |
+| 4 | **Game logic port** | 🟡 in progress — worlds 1+2 complete + chained (incl. cutscenes); world 3 (mixed) pending |
+| 5 | UI port (menu, options, HUD) | 🟡 in progress — main menu + instructions/credits/settings + intro video + boot flow done; pause menu + studio splash + ending video pending |
 | 6 | Testing + polish (cross-browser, mobile, perf) | ⏳ |
 | 7 | Release prep | ⏳ |
 
@@ -101,11 +112,11 @@ Mapped against the plan's `§14 Module porting order`:
 | 10 | `Switch.ts`, `MovingPlatform.ts`, `Spike.ts` | ✅ done (D1+D2); D3 polish (squish pushback + hit flash) still pending |
 | 11 | `Level.ts` (base class) + `LevelConfig` data | ✅ done — multi-orb refactor; per-level files are pure data literals |
 | 12 | `Movements.ts` | ✅ done + extensively calibrated (v1–v18) — see `docs/calibration.md` §9 |
-| 13 | Per-level files in `src/levels/` | 🟡 8 of 11 wired (d0–d3, **v0–v3**); mixed0–3 + cutscenes pending |
-| 14 | `LevelManager.ts` | ✅ done — handles win-overlay SPACE transitions + debug `advanceTo` for the level picker |
-| 15 | HUD (in-game pause/hint/HUD) | ⏳ — `src/ui/MuteControls.ts` + `LevelPicker.ts` are Pixi-side placeholders; Phase 5 moves to HTML overlay |
-| 16 | Menus (Menu, Options, Instructions, Credits) | ⏳ |
-| 17 | `Woosh2.mxml` (splash + intro cutscene gate) → main.ts | ⏳ |
+| 13 | Per-level files in `src/levels/` | 🟡 8 of 11 + 3 cutscenes wired (d0–d3, **v0–v3**, cutsceneDisplacement/Velocity/Mixed); mixed0–3 pending |
+| 14 | `LevelManager.ts` | ✅ done — win-overlay SPACE transitions, cutscene auto-advance, debug `advanceTo`; `start()` disposes the old level + starts new audio |
+| 15 | HUD (in-game pause/hint/HUD) | 🟡 menu chrome is HTML now; in-game pause menu (Esc during play) + `MuteControls`/`LevelPicker` Pixi placeholders still pending |
+| 16 | Menus (Menu, Options, Instructions, Credits) | ✅ done — `src/ui/{MainMenu,ImageScreen,DifficultyScreen}.ts` HTML overlay; settings = difficulty selector |
+| 17 | `Woosh2.mxml` (splash + intro cutscene gate) → main.ts | 🟡 boot → menu → Start → intro video → chain done (`src/ui/IntroVideo.ts`); studio splash logos + ending video pending |
 | 18 | Delete vendored `gs/` (TweenMax) | n/a — not imported |
 
 ---
@@ -207,6 +218,35 @@ cluster of side-collision bugs the world-2 geometry exposed.
 
 ---
 
+## 3.2 What the 2026-05-22 session accomplished
+
+Finished World 2 (build), added the cutscene scene-type + full level
+chain, and built the Phase 5 menu system + boot flow.
+
+**Shipped (newest first):**
+
+- **Menu system + boot flow** (`78b1373`) — boots into the main menu
+  instead of auto-loading a level. `src/ui/MainMenu.ts` (4 image
+  buttons w/ mouse-over swaps), `ImageScreen.ts` (Instructions +
+  Credits full-screen images), `DifficultyScreen.ts` (settings =
+  Easy/Medium/Hard selector), `IntroVideo.ts` (intro.mp4 after the
+  Start gesture). Overlays stacked by z-index (menu 1, screens 10,
+  intro 20). Browser-verified: menu render, all four buttons, Esc +
+  backdrop close, difficulty art swap, Start→intro→chain.
+- **Cutscene scene-type + chain** (`c12459b`) — `LevelConfig.isCutScene`
+  marks no-orb walk-across levels that auto-advance on exit (no win
+  overlay/SFX). `cutsceneDisplacement/Velocity/Mixed` wired into the
+  chain: cD→d0…d3→cV→v0…v3→cM (mixed unbuilt, dead-ends at cM).
+- **velocity2 + velocity3** — World 2 complete (build). v3 is the
+  first mixed-type level (velocity + displacement orb). Pending
+  playtest calibration.
+
+**Known follow-ups:** pause menu (Esc during play does nothing yet),
+studio splash logos (gambit/poof) + ending video, mixed world
+(mixed0–3) to give cutsceneMixed a destination, v2/v3 playtest pass.
+
+---
+
 ## 4. Next steps (priority order)
 
 Suggested order — feel free to deviate.
@@ -290,10 +330,10 @@ levels. What's still absent, roughly in dependency order:
 | --- | --- | --- |
 | **Remaining levels** | §14 item 13 | velocity1–3, mixed0–3 (7 levels). Pure data + calibration; engine should not need changes except possibly velocity2 graph deadzones. |
 | ~~Per-difficulty collision swap~~ ✅ | (velocity1) | **Done.** velocity1 returns a different `groundKey` per difficulty inside its `LevelBuilder` (`levelv1_collision` hard vs `levelv1_easy_collision` easy/med). The swap drives both the visible ground and the pixel collision. Pattern available for any future level. |
-| **Cutscenes** | §14 item 13 / Phase 5, plan §432 | `intro`, `pre_world1/2`, `levelcomplete`, `ending`. Drop-in `<video>` over the canvas. Cutscene "levels" (`introCutScene`, `cutsceneDisplacement/Velocity/Mixed`, `gameending`) are slots in the level chain. Needed to connect worlds the "real" way. |
-| **Main menu + level select** | §14 item 16 / Phase 5 | Replaces the temporary Pixi level/diff pickers. Plain HTML+CSS overlay (decision D4). Includes the Ctrl+Shift+F12-style debug jump if we want parity. |
-| **Options / Instructions / Credits** | §14 item 16 / Phase 5 | HTML overlay screens. |
-| **Pause menu (Esc)** | §14 item 5 (`game/PauseMenuController`) | Esc is captured by Input but does nothing yet. |
+| ~~Cutscenes (chain framework)~~ ✅ | §14 item 13 / Phase 5, plan §432 | **Done.** `isCutScene` walk-across levels + intro `<video>`. Still missing: the `pre_world1/2` static-screen variant, `levelcomplete`/`ending` MP4s, studio splash logos. |
+| ~~Main menu~~ ✅ | §14 item 16 / Phase 5 | **Done** (`MainMenu.ts`, HTML overlay). Debug Pixi level/diff pickers still present for testing; remove before release. |
+| ~~Options / Instructions / Credits~~ ✅ | §14 item 16 / Phase 5 | **Done** (`ImageScreen.ts` + `DifficultyScreen.ts`). |
+| **Pause menu (Esc)** | §14 item 5 (`game/PauseMenuController`) | Esc currently only closes open menu screens; no in-game pause/resume/quit menu yet (legacy `gui.mxml`). |
 | **In-game HUD / hint signs / win animation** | §14 item 15 | Hint signs + the win animation stay as Pixi children (decision D4); only the menu chrome is DOM. |
 | **Splash / intro gate** | §14 item 17 (`Woosh2.mxml` → `main.ts`) | Title → splash → intro cutscene → first level. Ported LAST. |
 | **Settings persistence** | Phase 5 | Difficulty, mute, progress (localStorage). Currently in-memory only. |
@@ -383,8 +423,8 @@ git pull
 npm install               # if dependencies changed
 npm run typecheck
 npm run lint
-npm run test              # should be 137/137
-npm run dev               # confirm world 1 still plays end-to-end
+npm run test              # should be 138/138
+npm run dev               # confirm boot → menu → chain still plays
 ```
 
 If all 5 pass and the level chain plays (use the debug level picker
