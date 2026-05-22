@@ -253,12 +253,16 @@ chain, and built the Phase 5 menu system + boot flow.
   Cutscenes advance instantly; terminal levels keep the SPACE-restart
   fallback. `IntroVideo.ts` → reusable `VideoOverlay.ts`.
 
-- **Cutscene narration + d0 spawn lock** (`f7d2281`) — cutscenes now play
-  their voice-over (`Audio.playVo` one-shot; `LevelConfig.voKey`): voCS1
-  (skyintro) on cutsceneDisplacement, voCS2 (earthintro) on
-  cutsceneVelocity, voCS3 (starintro) on cutsceneMixed, all over the
-  `bgmCutscene01` music; the VO keeps playing into the next level so the
-  story is told. Added `LevelConfig.lockInputUntilGrounded` (set on d0):
+- **Cutscene narration + d0 spawn lock** (`f7d2281`, `7c783e9`) — cutscenes
+  play their voice-over (`Audio.playVo` one-shot, de-duped by key;
+  `LevelConfig.voKey`): voCS1 (skyintro) for world 1, voCS2 (earthintro)
+  for world 2, voCS3 (starintro) for world 3, over the `bgmCutscene01`
+  music. Timing matches the legacy: the world-1 narration starts on the
+  (silent) intro video (`main.ts` `audio.playVo('voCS1')`), continues
+  seamlessly through the walk-across cutscene (same track, not restarted),
+  and is cut the moment gameplay begins (`Level.startAudio` calls
+  `stopVo()` on any non-cutscene level). Added
+  `LevelConfig.lockInputUntilGrounded` (set on d0):
   the avatar drops straight down from spawn (movement input ignored, vx
   pinned 0) until it lands, so an arrow held over from the walk-across
   cutscene no longer drifts it onto an upper platform.
