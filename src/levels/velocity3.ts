@@ -14,6 +14,7 @@
 import { obstaclesForDifficulty } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
+import { cutsceneMixed } from './cutsceneMixed.js';
 
 export const velocity3: LevelBuilder = (difficulty): LevelConfig => {
   const spikes: SpikeConfig[] = [];
@@ -102,7 +103,6 @@ export const velocity3: LevelBuilder = (difficulty): LevelConfig => {
 
     spikes,
 
-    // nextLevel: cutsceneMixed — not built yet (cutscene/chain framework
-    // is the next task), so SPACE on win restarts for now.
+    nextLevel: cutsceneMixed,
   };
 };

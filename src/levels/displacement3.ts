@@ -22,6 +22,7 @@
 import { obstaclesForDifficulty } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
+import { cutsceneVelocity } from './cutsceneVelocity.js';
 
 export const displacement3: LevelBuilder = (difficulty): LevelConfig => {
   // Per legacy displacement3.mxml: hard mode adds two moving spikes.
@@ -136,8 +137,6 @@ export const displacement3: LevelBuilder = (difficulty): LevelConfig => {
 
     spikes,
 
-    // Legacy next is `cutsceneVelocity` — that machinery (step F) isn't
-    // here yet. Leaving nextLevel unset means SPACE on the win overlay
-    // restarts displacement3.
+    nextLevel: cutsceneVelocity,
   };
 };

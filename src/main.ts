@@ -22,6 +22,9 @@ import { velocity0 } from './levels/velocity0.js';
 import { velocity1 } from './levels/velocity1.js';
 import { velocity2 } from './levels/velocity2.js';
 import { velocity3 } from './levels/velocity3.js';
+import { cutsceneDisplacement } from './levels/cutsceneDisplacement.js';
+import { cutsceneVelocity } from './levels/cutsceneVelocity.js';
+import { cutsceneMixed } from './levels/cutsceneMixed.js';
 import { makeDifficultyPicker } from './ui/DifficultyPicker.js';
 import { makeLevelPicker } from './ui/LevelPicker.js';
 import { makeMuteControls } from './ui/MuteControls.js';
@@ -133,6 +136,9 @@ async function main(): Promise<void> {
     { label: 'V1', builder: velocity1 },
     { label: 'V2', builder: velocity2 },
     { label: 'V3', builder: velocity3 },
+    { label: 'CD', builder: cutsceneDisplacement },
+    { label: 'CV', builder: cutsceneVelocity },
+    { label: 'CM', builder: cutsceneMixed },
   ]);
   picker.x = 8;
   picker.y = STAGE_HEIGHT - 30;

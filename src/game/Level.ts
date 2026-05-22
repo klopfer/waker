@@ -34,6 +34,15 @@ export interface LevelConfig {
   groundKey: string;
   bgmKey: string;
 
+  /**
+   * Cutscene interstitial (pre-world card / intro / ending). The avatar
+   * simply walks across a flat floor to the exit; there are no orbs/graph,
+   * no hint prompts, and touching the exit advances to `nextLevel`
+   * IMMEDIATELY (no "Level Complete / press SPACE" overlay). Matches the
+   * legacy `Settings.isItACutScene` levels. `orbs` should be `[]`.
+   */
+  isCutScene?: boolean;
+
   /** Avatar spawn — usually high above the floor; gravity catches them. */
   spawn: { x: number; y: number };
 
@@ -510,7 +519,10 @@ export class Level {
     // (orb/sun/exit pulse, bg sway) still tick below so the scene
     // doesn't go static behind the overlay.
     if (this.levelComplete) {
-      if (this.deps.input.wasPressed('Space')) {
+      // Cutscenes auto-advance the moment the exit is reached (no overlay,
+      // no SPACE wait); regular levels wait for SPACE on the win overlay.
+      const advance = this.cfg.isCutScene || this.deps.input.wasPressed('Space');
+      if (advance) {
         if (this.onWinSpacePressed) this.onWinSpacePressed();
         else this.reset();
       }
@@ -657,8 +669,12 @@ export class Level {
     // Win check (after avatar/orb update so the position is final).
     if (this.avatarOverlapsExit()) {
       this.levelComplete = true;
-      this.winOverlay.visible = true;
-      this.deps.audio.playSfx('sfxWin', this.deps.assets.url('sfxWin'));
+      if (!this.cfg.isCutScene) {
+        // Cutscenes advance silently next tick; regular levels show the
+        // "Level Complete / press SPACE" overlay and play the win sting.
+        this.winOverlay.visible = true;
+        this.deps.audio.playSfx('sfxWin', this.deps.assets.url('sfxWin'));
+      }
       if (this.graphTone?.isPlaying) this.graphTone.stop();
     }
 
