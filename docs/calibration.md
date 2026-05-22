@@ -626,6 +626,19 @@ original does NOT bounce, it stops. The clamp alone could not fix the
 above because they are vertical snaps / step-up bypasses, not horizontal
 exits.
 
+### v20: drawn-curve walls (CurveGround capsule)
+
+Reported on velocity1: the avatar walked straight through a near-vertical
+segment of a player-drawn velocity curve (a "wall" drawn by accelerating
+sharply).
+
+| v | What changed | Why |
+| --- | --- | --- |
+| 20 | `CurveGround.solidAt` now uses true **point-to-segment (capsule) distance** instead of the `|y - lineY(x)| ≤ half` vertical band. | The vertical-band test only reported solid within ±half of the interpolated line at each column. For a near-vertical segment the line's y sweeps from feet-level to above the head over ~2 px of x, so the band is a thin diagonal. The avatar's discrete leading-edge samples (every `SAMPLE_STEP`, advancing 6–12 px/tick) landed in the gap above/below the band and tunneled under the segment (often ending up beneath an elevated plateau). The capsule fills a steep segment's full vertical extent into a proper ~`thickness`-wide wall, so `anySolidAlongVerticalEdge` / the head-gate stop the avatar. Gentle/horizontal segments: capsule ≈ the old band (+ rounded endcaps), so walking on curves is unchanged. `groundYBelow` is left as-is (it returns the line top for landing/walking, which is still correct). |
+
+Regression test: `tests/game/CurveGround.test.ts` "solidAt fills a
+near-vertical segment into a wall (no tunneling)".
+
 ### Key lessons
 
 1. **Anchor matters more than scale.** Half the head-bump bugs came

@@ -55,6 +55,31 @@ describe('CurveGround', () => {
     expect(c.solidAt(50, 200)).toBe(false);
   });
 
+  it('solidAt fills a near-vertical segment into a wall (no tunneling)', () => {
+    // Regression: a "wall" the player draws by accelerating sharply is a
+    // near-vertical polyline segment. The old `|y - lineY(x)|` band only
+    // reported solid within ±7 of the interpolated line — a thin diagonal
+    // whose y swept from feet to above the head over ~2 px of x, so the
+    // avatar's discrete leading-edge samples landed in the gap and walked
+    // straight through it. The capsule (point-to-segment) distance fills
+    // the segment's full vertical extent.
+    //   segment (300,400) → (305,250): 150 px tall over 5 px of x.
+    const c = new CurveGround(
+      [
+        { x: 300, y: 400 },
+        { x: 305, y: 250 },
+      ],
+      14,
+    );
+    // Solid all the way up the wall near its x-span (avatar body height
+    // would overlap → side-collision stops it).
+    for (const y of [260, 300, 340, 380, 400]) {
+      expect(c.solidAt(302, y)).toBe(true);
+    }
+    // Still hollow well away from the segment in x.
+    expect(c.solidAt(340, 300)).toBe(false);
+  });
+
   it('groundYBelow + solidAt are consistent: feet land on the top of the solid band', () => {
     // Curve at line_y=100, thickness=14. solidAt true for y in [93, 107].
     // groundYBelow returns the topmost-solid (93), so an avatar landing at
