@@ -31,13 +31,22 @@ export class LevelManager {
     return this.currentDifficulty;
   }
 
-  /** Load the initial level. Difficulty defaults to 1 (easy). */
+  /**
+   * Load a level as the starting scene. Difficulty defaults to 1 (easy).
+   * Safe to call repeatedly (e.g. each time the player picks Start on the
+   * menu): the current level, if any, is disposed first.
+   */
   async start(initial: LevelBuilder, deps: LevelDeps, difficulty: Difficulty = 1): Promise<void> {
+    const old = this.current;
+    this.current = null;
+    old?.dispose();
     this.deps = deps;
     this.currentDifficulty = difficulty;
     this.currentBuilder = initial;
     const cfg = initial(difficulty);
-    this.current = await Level.load(cfg, deps);
+    const next = await Level.load(cfg, deps);
+    next.startAudio();
+    this.current = next;
     this.wireTransition(cfg);
   }
 

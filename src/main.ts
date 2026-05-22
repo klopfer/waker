@@ -28,6 +28,10 @@ import { cutsceneMixed } from './levels/cutsceneMixed.js';
 import { makeDifficultyPicker } from './ui/DifficultyPicker.js';
 import { makeLevelPicker } from './ui/LevelPicker.js';
 import { makeMuteControls } from './ui/MuteControls.js';
+import { makeMainMenu } from './ui/MainMenu.js';
+import { makeImageScreen } from './ui/ImageScreen.js';
+import { makeDifficultyScreen } from './ui/DifficultyScreen.js';
+import { makeIntroVideo } from './ui/IntroVideo.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
@@ -110,8 +114,10 @@ async function main(): Promise<void> {
   app.stage.addChild(label);
 
   // ── Level manager handles initial load + transitions on win ──
+  // No level is started until the player picks "Start" on the menu; the
+  // sim loop's levels.tick() is a no-op while no level is loaded.
   const levels = new LevelManager();
-  await levels.start(displacement0, { app, assets, avatar, audio, input });
+  const deps = { app, assets, avatar, audio, input };
 
   // ── Mute controls (TEMPORARY Pixi-side UI, see ui/MuteControls.ts) ──
   // Bottom-right corner; clear of the centered debug tick readout below
@@ -162,7 +168,71 @@ async function main(): Promise<void> {
     for (let i = 0; i < steps; i++) levels.tick();
   });
 
-  console.log('Waker ready: displacement0 → displacement1 wired up.');
+  // ── Menu / app flow (HTML overlay) ──
+  // boot → main menu → Start → (intro video, first time) → the level chain
+  // starting at cutsceneDisplacement. Instructions / Credits / Settings
+  // open over the menu; Esc closes whichever screen is open.
+  const uiRoot = document.getElementById('ui-root');
+  if (!uiRoot) throw new Error('#ui-root not found');
+
+  const intro = makeIntroVideo(assets);
+  const instructions = makeImageScreen(assets, 'guiInstructionScreen', () => menu.show());
+  const credits = makeImageScreen(assets, 'guiCreditsScreen', () => menu.show());
+  const settings = makeDifficultyScreen(
+    assets,
+    () => levels.difficulty,
+    (d) => void levels.setDifficulty(d),
+    () => menu.show(),
+  );
+
+  let introSeen = false;
+  const startChain = (): void => {
+    void levels.start(cutsceneDisplacement, deps, levels.difficulty);
+  };
+
+  const menu = makeMainMenu(assets, {
+    onPlay: () => {
+      menu.hide();
+      if (introSeen) {
+        startChain();
+      } else {
+        introSeen = true;
+        intro.play(startChain);
+      }
+    },
+    onInstructions: () => instructions.show(),
+    onSettings: () => settings.show(),
+    onCredits: () => credits.show(),
+  });
+
+  // All overlays share #ui-root and toggle `display`. Stack them with
+  // explicit z-index instead of relying on DOM order: the menu sits at the
+  // base, the sub-screens (instructions/credits/settings) paint on top of
+  // it when shown, and the intro video is above everything.
+  menu.el.style.zIndex = '1';
+  for (const s of [instructions.el, credits.el, settings.el]) s.style.zIndex = '10';
+  intro.el.style.zIndex = '20';
+  for (const el of [menu.el, instructions.el, credits.el, settings.el, intro.el]) {
+    uiRoot.appendChild(el);
+  }
+  menu.show();
+
+  // Esc closes whichever menu screen is open.
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape') return;
+    if (instructions.visible) {
+      instructions.hide();
+      menu.show();
+    } else if (credits.visible) {
+      credits.hide();
+      menu.show();
+    } else if (settings.visible) {
+      settings.hide();
+      menu.show();
+    }
+  });
+
+  console.log('Waker ready: boot → menu → chain.');
 }
 
 void main();
