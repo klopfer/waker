@@ -35,6 +35,23 @@ export interface LevelConfig {
   bgmKey: string;
 
   /**
+   * Optional one-shot voice-over (cutscene narration) manifest key. Played
+   * once when the level's audio starts, over the looping BGM, at SFX
+   * volume. Left running across the transition so a long narration started
+   * in a cutscene keeps telling the story into the next level.
+   */
+  voKey?: string;
+
+  /**
+   * Ignore movement input (and pin vx=0) until the avatar first touches the
+   * ground. Used on the tutorial (d0): the player usually arrives from the
+   * walk-across cutscene still holding an arrow, which would drift the
+   * falling avatar onto an upper platform. With this set the avatar drops
+   * straight down from spawn and controls engage once it lands.
+   */
+  lockInputUntilGrounded?: boolean;
+
+  /**
    * Cutscene interstitial (pre-world card / intro / ending). The avatar
    * simply walks across a flat floor to the exit; there are no orbs/graph,
    * no hint prompts, and touching the exit advances to `nextLevel`
@@ -293,6 +310,7 @@ export class Level {
   private firstDropped = false;
   private levelComplete = false;
   private completeFired = false;
+  private spawnInputLocked = false;
   private promptPhase = 0;
   private sunPhase = 0;
   private bgSwayPhase = 0;
@@ -486,6 +504,7 @@ export class Level {
 
     // ── Body (avatar physics state) ──
     this.body = new Body({ x: cfg.spawn.x, y: cfg.spawn.y, onGround: false });
+    this.spawnInputLocked = !!cfg.lockInputUntilGrounded;
     deps.avatar.setPosition(this.body.state.x, this.body.state.y);
     deps.app.stage.addChild(deps.avatar.container);
 
@@ -546,6 +565,22 @@ export class Level {
         this.deps.input.wasPressed('Space') || this.deps.input.wasPressed('ArrowUp'),
     };
 
+    // Spawn input-lock (tutorial d0): ignore movement and pin vx=0 until
+    // the avatar lands, so an arrow held over from the walk-across cutscene
+    // doesn't drift it onto an upper platform — it drops straight down,
+    // then controls engage. Cleared the moment it touches ground.
+    if (this.spawnInputLocked) {
+      if (this.body.state.onGround) {
+        this.spawnInputLocked = false;
+      } else {
+        moveInputs.moveLeft = false;
+        moveInputs.moveRight = false;
+        moveInputs.sprint = false;
+        moveInputs.jumpPressed = false;
+        this.body.state.vx = 0;
+      }
+    }
+
     // D key: pickup OR drop.
     if (this.deps.input.wasPressed('KeyD')) this.handleDKey();
 
@@ -579,6 +614,7 @@ export class Level {
       this.body.state.vx = 0;
       this.body.state.vy = 0;
       this.body.state.onGround = false;
+      this.spawnInputLocked = !!this.cfg.lockInputUntilGrounded;
     }
 
     // Jump / land SFX.
@@ -749,6 +785,7 @@ export class Level {
     this.firstDropped = false;
     this.levelComplete = false;
     this.completeFired = false;
+    this.spawnInputLocked = !!this.cfg.lockInputUntilGrounded;
 
     for (const spike of this.spikes) spike.reset();
     for (const sw of this.switches) sw.reset();
@@ -951,6 +988,9 @@ export class Level {
       octaves: GRAPH_TONE_OCTAVES,
     });
     this.deps.audio.playBgm(this.cfg.bgmKey, this.deps.assets.url(this.cfg.bgmKey));
+    if (this.cfg.voKey) {
+      this.deps.audio.playVo(this.deps.assets.url(this.cfg.voKey));
+    }
   }
 
   /**

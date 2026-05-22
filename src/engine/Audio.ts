@@ -14,6 +14,7 @@ export class Audio {
   private readonly sfxCache = new Map<AudioId, Howl>();
   private bgm: Howl | null = null;
   private bgmKey: AudioId | null = null;
+  private vo: Howl | null = null;
 
   constructor(initial: Partial<AudioConfig> = {}) {
     this.cfg = {
@@ -40,6 +41,7 @@ export class Audio {
 
   setSfxMute(mute: boolean): void {
     this.cfg.sfxMute = mute;
+    if (this.vo) this.vo.volume(this.effectiveVoVolume());
   }
 
   setBgmMute(mute: boolean): void {
@@ -71,6 +73,32 @@ export class Audio {
     this.bgmKey = key;
   }
 
+  /**
+   * Play a one-shot voice-over (cutscene narration). Plays at SFX volume
+   * and obeys the SFX mute flag (matching the legacy soundManager, where
+   * VO rode the SFX channel). A new VO stops any previous one. Unlike BGM
+   * it is NOT looped and is deliberately left running across level
+   * transitions so a long narration started in a cutscene keeps telling
+   * the story into the level that follows.
+   */
+  playVo(src: string | string[]): void {
+    this.stopVo();
+    const h = new Howl({
+      src: typeof src === 'string' ? [src] : src,
+      loop: false,
+      volume: this.effectiveVoVolume(),
+    });
+    h.play();
+    this.vo = h;
+  }
+
+  stopVo(): void {
+    if (!this.vo) return;
+    this.vo.stop();
+    this.vo.unload();
+    this.vo = null;
+  }
+
   stopBgm(fadeMs = 250): void {
     const h = this.bgm;
     if (!h) return;
@@ -86,12 +114,17 @@ export class Audio {
 
   dispose(): void {
     this.stopBgm(0);
+    this.stopVo();
     for (const h of this.sfxCache.values()) h.unload();
     this.sfxCache.clear();
   }
 
   private effectiveBgmVolume(): number {
     return this.cfg.bgmMute ? 0 : this.cfg.bgmVolume;
+  }
+
+  private effectiveVoVolume(): number {
+    return this.cfg.sfxMute ? 0 : this.cfg.sfxVolume;
   }
 }
 

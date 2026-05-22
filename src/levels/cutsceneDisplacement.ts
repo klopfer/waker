@@ -16,6 +16,9 @@ export const cutsceneDisplacement: LevelBuilder = (): LevelConfig => ({
   bgKey: 'preDisplacementCutScene',
   groundKey: 'cutScene_collision',
   bgmKey: 'bgmCutscene01',
+  // Narration over the music (legacy cutScene01 → voCS1). Keeps playing
+  // into displacement0 so the story is actually told.
+  voKey: 'voCS1',
   spawn: { x: 20, y: 460 },
   exit: { x: 700, y: 479 },
   orbs: [],

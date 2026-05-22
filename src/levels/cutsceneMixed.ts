@@ -3,8 +3,8 @@
 //
 // nextLevel is UNSET until the mixed world (mixed0–3) is built — for now
 // reaching the exit just restarts this card (a clean "end of what's
-// built" placeholder). bgmKey is bgmWorld2 as a placeholder (no world-3
-// BGM wired yet).
+// built" placeholder). Music + narration mirror legacy
+// (currentMusic = "cutScene03" → bgmCutscene01 music + voCS3 narration).
 
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 
@@ -12,7 +12,8 @@ export const cutsceneMixed: LevelBuilder = (): LevelConfig => ({
   isCutScene: true,
   bgKey: 'preMixedCutScene',
   groundKey: 'cutScene_collision',
-  bgmKey: 'bgmWorld2',
+  bgmKey: 'bgmCutscene01',
+  voKey: 'voCS3',
   spawn: { x: 20, y: 460 },
   exit: { x: 700, y: 479 },
   orbs: [],

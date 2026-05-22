@@ -23,6 +23,12 @@ export const displacement0: LevelBuilder = (difficulty): LevelConfig => {
     groundKey: 'levelTD_collision',
     bgmKey: 'bgmWorld1',
 
+    // The player usually arrives from the walk-across cutscene still
+    // holding an arrow. Lock movement until the avatar lands so it drops
+    // straight down from spawn (and the player learns to climb) instead of
+    // drifting onto an upper platform.
+    lockInputUntilGrounded: true,
+
     // setEntrance(0, 467) — Flash top-left marker, not the avatar's feet.
     // SPAWN.x=30 puts the avatar above the very-bottom cloud bank;
     // SPAWN.y=0 lets gravity drop the player in.
