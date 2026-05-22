@@ -60,6 +60,14 @@ export interface LevelConfig {
    */
   isCutScene?: boolean;
 
+  /**
+   * Optional caption shown centered near the top during a cutscene. Used
+   * to teach a control the next world needs — e.g. the pre-velocity
+   * walk-across tells the player to hold SHIFT to sprint, which is
+   * essential for plotting velocity graphs.
+   */
+  cutSceneHint?: string;
+
   /** Avatar spawn — usually high above the floor; gravity catches them. */
   spawn: { x: number; y: number };
 
@@ -288,6 +296,7 @@ export class Level {
   private readonly exitGlow: GlowFilter;
   private readonly promptD: Container | null;
   private readonly promptSpacebar: Container | null;
+  private readonly cutSceneHintText: Text | null;
   private readonly spikes: readonly Spike[];
   private readonly switches: readonly Switch[];
   private readonly platforms: readonly MovingPlatform[];
@@ -479,6 +488,29 @@ export class Level {
     } else {
       this.promptD = null;
       this.promptSpacebar = null;
+    }
+
+    // ── Cutscene caption (e.g. "Hold SHIFT to sprint!") ──
+    if (cfg.cutSceneHint) {
+      const hint = new Text({
+        text: cfg.cutSceneHint,
+        style: {
+          fill: 0xffffff,
+          fontFamily: "'Comic Sans MS', sans-serif",
+          fontSize: 30,
+          fontWeight: '700',
+          align: 'center',
+          stroke: { color: 0x1a2230, width: 6 },
+        },
+      });
+      hint.anchor.set(0.5, 0.5);
+      hint.x = STAGE_WIDTH / 2;
+      hint.y = 140;
+      hint.zIndex = 900;
+      deps.app.stage.addChild(hint);
+      this.cutSceneHintText = hint;
+    } else {
+      this.cutSceneHintText = null;
     }
 
     // ── Spikes ──
@@ -911,6 +943,11 @@ export class Level {
     const bgOffset = Math.sin(this.bgSwayPhase) * BG_SWAY_AMPLITUDE;
     this.bgSprite.x = bgOffset;
     this.groundSprite.x = bgOffset;
+
+    // Cutscene caption — gentle pulse to draw the eye.
+    if (this.cutSceneHintText) {
+      this.cutSceneHintText.alpha = 0.8 + Math.sin(this.promptPhase) * 0.2;
+    }
   }
 
   private tickPrompts(): void {
@@ -1050,6 +1087,7 @@ export class Level {
     }
     if (this.promptD) owned.push(this.promptD);
     if (this.promptSpacebar) owned.push(this.promptSpacebar);
+    if (this.cutSceneHintText) owned.push(this.cutSceneHintText);
     for (const s of this.spikes) owned.push(s.container);
     for (const p of this.platforms) owned.push(p.container);
     for (const sw of this.switches) owned.push(sw.container);

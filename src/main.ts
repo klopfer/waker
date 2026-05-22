@@ -45,6 +45,12 @@ const AVATAR_SCALE = 0.25;
 const BGM_VOLUME = 0.4;
 const SFX_VOLUME = 0.6;
 
+// Master switch for the development chrome: the top controls banner and the
+// bottom-row mute toggles + level/difficulty pickers. Leave ON for now.
+// Before flipping this OFF we need the in-game pause menu (Esc → options:
+// mute + difficulty) so players retain those controls without the debug UI.
+const SHOW_DEBUG_UI = true;
+
 const GAME_KEYS = [
   'ArrowLeft',
   'ArrowRight',
@@ -98,69 +104,62 @@ async function main(): Promise<void> {
   const avatar = await Avatar.preload(AVATAR_SCALE);
   const sim = new FixedStep({ hz: SIM_HZ });
 
-  // ── Top-of-screen instructions banner (could move into Level if it
-  //    starts becoming level-specific, but for now it's a generic
-  //    "what are the controls" thing) ──
-  const label = new Text({
-    text:
-      'Waker — displacement0 (tutorial): orb pickup + graph drawing\n' +
-      'arrows: walk   |   S/shift: sprint   |   space/up: jump   |   D: pick up / drop orb   |   R: restart',
-    style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, align: 'center' },
-  });
-  label.anchor.set(0.5, 0);
-  label.x = STAGE_WIDTH / 2;
-  label.y = 12;
-  label.zIndex = 1000;
-  app.stage.addChild(label);
-
   // ── Level manager handles initial load + transitions on win ──
   // No level is started until the player picks "Start" on the menu; the
   // sim loop's levels.tick() is a no-op while no level is loaded.
   const levels = new LevelManager();
   const deps = { app, assets, avatar, audio, input };
 
-  // ── Mute controls (TEMPORARY Pixi-side UI, see ui/MuteControls.ts) ──
-  // Bottom-right corner; clear of the centered debug tick readout below
-  // and the graph rect above. Added AFTER LevelManager so the controls
-  // draw on top of any level-owned objects in that corner.
-  const mute = makeMuteControls(audio);
-  mute.x = STAGE_WIDTH - mute.width - 8;
-  mute.y = STAGE_HEIGHT - 30;
-  mute.zIndex = 1000;
-  app.stage.addChild(mute);
+  // ── Development chrome (gated by SHOW_DEBUG_UI) ──
+  // Top controls banner + bottom-row mute toggles + level/difficulty
+  // pickers. All TEMPORARY: the mute/difficulty controls move into the
+  // in-game pause menu, and the pickers go away entirely, before release.
+  if (SHOW_DEBUG_UI) {
+    const label = new Text({
+      text:
+        'Waker — displacement0 (tutorial): orb pickup + graph drawing\n' +
+        'arrows: walk   |   S/shift: sprint   |   space/up: jump   |   D: pick up / drop orb   |   R: restart',
+      style: { fill: 0xffffff, fontFamily: 'monospace', fontSize: 13, align: 'center' },
+    });
+    label.anchor.set(0.5, 0);
+    label.x = STAGE_WIDTH / 2;
+    label.y = 12;
+    label.zIndex = 1000;
+    app.stage.addChild(label);
 
-  // ── TEMPORARY level picker (debug only) ──
-  // Bottom-LEFT corner so it stays clear of the mute toggles on the
-  // right. Remove this + src/ui/LevelPicker.ts once the proper menu /
-  // difficulty selector lands in Phase 5.
-  const picker = makeLevelPicker(levels, [
-    { label: 'D0', builder: displacement0 },
-    { label: 'D1', builder: displacement1 },
-    { label: 'D2', builder: displacement2 },
-    { label: 'D3', builder: displacement3 },
-    { label: 'V0', builder: velocity0 },
-    { label: 'V1', builder: velocity1 },
-    { label: 'V2', builder: velocity2 },
-    { label: 'V3', builder: velocity3 },
-    { label: 'CD', builder: cutsceneDisplacement },
-    { label: 'CV', builder: cutsceneVelocity },
-    { label: 'CM', builder: cutsceneMixed },
-  ]);
-  picker.x = 8;
-  picker.y = STAGE_HEIGHT - 30;
-  picker.zIndex = 1000;
-  app.stage.addChild(picker);
+    // Mute toggles, bottom-right.
+    const mute = makeMuteControls(audio);
+    mute.x = STAGE_WIDTH - mute.width - 8;
+    mute.y = STAGE_HEIGHT - 30;
+    mute.zIndex = 1000;
+    app.stage.addChild(mute);
 
-  // ── TEMPORARY difficulty picker (debug only) ──
-  // Single button that cycles EASY → MEDIUM → HARD → EASY and reloads
-  // the current level at the new difficulty (so per-difficulty content
-  // like hard-mode spikes becomes visible for placement verification).
-  // To the right of the level picker.
-  const diffPicker = makeDifficultyPicker(levels);
-  diffPicker.x = picker.x + picker.width + 12;
-  diffPicker.y = STAGE_HEIGHT - 30;
-  diffPicker.zIndex = 1000;
-  app.stage.addChild(diffPicker);
+    // Level picker, bottom-left.
+    const picker = makeLevelPicker(levels, [
+      { label: 'D0', builder: displacement0 },
+      { label: 'D1', builder: displacement1 },
+      { label: 'D2', builder: displacement2 },
+      { label: 'D3', builder: displacement3 },
+      { label: 'V0', builder: velocity0 },
+      { label: 'V1', builder: velocity1 },
+      { label: 'V2', builder: velocity2 },
+      { label: 'V3', builder: velocity3 },
+      { label: 'CD', builder: cutsceneDisplacement },
+      { label: 'CV', builder: cutsceneVelocity },
+      { label: 'CM', builder: cutsceneMixed },
+    ]);
+    picker.x = 8;
+    picker.y = STAGE_HEIGHT - 30;
+    picker.zIndex = 1000;
+    app.stage.addChild(picker);
+
+    // Difficulty cycler, to the right of the level picker.
+    const diffPicker = makeDifficultyPicker(levels);
+    diffPicker.x = picker.x + picker.width + 12;
+    diffPicker.y = STAGE_HEIGHT - 30;
+    diffPicker.zIndex = 1000;
+    app.stage.addChild(diffPicker);
+  }
 
   // ── Sim loop ──
   app.ticker.add(({ deltaMS }) => {

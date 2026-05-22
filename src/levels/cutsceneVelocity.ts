@@ -11,6 +11,9 @@ export const cutsceneVelocity: LevelBuilder = (): LevelConfig => ({
   groundKey: 'cutScene_collision',
   bgmKey: 'bgmCutscene01',
   voKey: 'voCS2',
+  // The velocity world needs speed to plot meaningful vx graphs, so teach
+  // sprinting on the way in.
+  cutSceneHint: 'Hold SHIFT to sprint!',
   spawn: { x: 20, y: 460 },
   exit: { x: 700, y: 479 },
   orbs: [],
