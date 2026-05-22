@@ -241,9 +241,23 @@ chain, and built the Phase 5 menu system + boot flow.
   first mixed-type level (velocity + displacement orb). Pending
   playtest calibration.
 
+- **Menu/cutscene polish** (`8ee82d2`) — post-menu fixes: (1) the DIFF
+  readout now live-updates via `LevelManager.onDifficultyChange()` (was
+  stale after the options screen changed it); (2) options screen got
+  Music / Sound-Effects ON/OFF toggles wired to `Audio` mute (ports
+  `soundOptions.mxml`); (3) `cutsceneDisplacement` plays the narrated
+  `bgmCutscene01` story track (was silent `bgmWorld1`); (4) **win flow
+  reworked** — Level fires a single `onComplete`; LevelManager presents
+  the `levelcomplete.mp4` "wisp obtained" animation (silent video +
+  `sfxWin`) via `winPresenter`, then auto-advances (click/space skips).
+  Cutscenes advance instantly; terminal levels keep the SPACE-restart
+  fallback. `IntroVideo.ts` → reusable `VideoOverlay.ts`.
+
 **Known follow-ups:** pause menu (Esc during play does nothing yet),
 studio splash logos (gambit/poof) + ending video, mixed world
 (mixed0–3) to give cutsceneMixed a destination, v2/v3 playtest pass.
+cutsceneVelocity/Mixed still use world BGM (legacy `cutScene02` track
+wasn't extracted — only `bgmCutscene01` exists).
 
 ---
 
