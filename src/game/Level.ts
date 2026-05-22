@@ -231,6 +231,15 @@ const LAND_SFX_VARIANTS = ['sfxLand01', 'sfxLand02', 'sfxLand03', 'sfxLand04', '
 const GRAPH_TONE_BASE_HZ = 220;
 const GRAPH_TONE_OCTAVES = 2;
 
+// Velocity-orb tone shaping. |vx| jitters hard as the avatar accelerates,
+// brakes and turns while drawing, so a raw map sounds like a shrill TV
+// test pattern. Smooth it with an exponential moving average and keep it in
+// the lower part of the pitch range so the velocity graph sounds soothing
+// rather than piercing. Displacement orbs (smooth, position-based) keep the
+// full, immediate mapping.
+const VEL_TONE_SMOOTHING = 0.2; // EMA weight per tick toward the new value
+const VEL_TONE_RANGE = 0.55; // fraction of the octave span velocity may use
+
 // Inset from the bottom of the avatar bbox used in moving-platform squish
 // detection. Without this, body.step's ground-snap leaves the avatar's
 // feet at the platform's top y — and a horizontal platform's overlap check
@@ -311,6 +320,7 @@ export class Level {
   private levelComplete = false;
   private completeFired = false;
   private spawnInputLocked = false;
+  private velToneT = 0; // smoothed normalized value for the velocity tone
   private promptPhase = 0;
   private sunPhase = 0;
   private bgSwayPhase = 0;
@@ -855,16 +865,22 @@ export class Level {
     // at most one orb can be held; the rest are inactive for audio.
     const heldBundle = this.orbBundles.find((b) => b.orb.state === 'held');
     const shouldPlay = !!heldBundle && heldBundle.graph.state === 'drawing';
-    if (shouldPlay && !this.graphTone.isPlaying) this.graphTone.start();
+    const justStarted = shouldPlay && !this.graphTone.isPlaying;
+    if (justStarted) this.graphTone.start();
     else if (!shouldPlay && this.graphTone.isPlaying) this.graphTone.stop();
     if (shouldPlay && heldBundle) {
-      // Tone tracks the plotted value: |vx| for velocity orbs,
-      // |x - origin.x| for displacement orbs.
-      const value =
-        heldBundle.setup.valueMode === 'velocity'
-          ? Math.abs(this.body.state.vx)
-          : Math.abs(this.body.state.x - heldBundle.setup.origin.x);
-      this.graphTone.setNormalized(Math.min(1, value / heldBundle.setup.graph.maxValue));
+      const maxValue = heldBundle.setup.graph.maxValue;
+      if (heldBundle.setup.valueMode === 'velocity') {
+        // Smoothed + lowered: |vx| is jittery, so EMA it and keep the tone
+        // in the lower part of the range (see VEL_TONE_* above).
+        const raw = Math.min(1, Math.abs(this.body.state.vx) / maxValue);
+        this.velToneT = justStarted ? raw : this.velToneT + (raw - this.velToneT) * VEL_TONE_SMOOTHING;
+        this.graphTone.setNormalized(this.velToneT * VEL_TONE_RANGE);
+      } else {
+        // Displacement orbs track |x - origin.x|: smooth already, full range.
+        const value = Math.abs(this.body.state.x - heldBundle.setup.origin.x);
+        this.graphTone.setNormalized(Math.min(1, value / maxValue));
+      }
     }
   }
 
