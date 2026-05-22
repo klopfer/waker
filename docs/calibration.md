@@ -639,30 +639,6 @@ sharply).
 Regression test: `tests/game/CurveGround.test.ts` "solidAt fills a
 near-vertical segment into a wall (no tunneling)".
 
-### v21: wall-vs-ramp discriminator rework (drawn-curve walls)
-
-Reported on velocity1: the avatar walked through a steep/near-vertical
-segment of a player-drawn velocity curve. Root cause analysis (after
-several false starts — see the session log) found the side-collision
-could not tell a **gentle rising ramp** from a **wall**, and the
-stop-gap "head-gate" added in v19b was speed-dependent (it probed at
-`x ± vx`, so it classified the same slope differently at walk vs sprint
-and *floated* the avatar above the curve, defeating every slope cap).
-
-| v | What changed | Why |
-| --- | --- | --- |
-| 21 | Reworked `isWallAt` to classify by **continuity from the feet**: if the leading edge isn't solid at feet level, the solid above is the avatar's floor RISING (a ramp) — wall iff its LOCAL slope (gradient ±`SLOPE_PROBE_DX` around the edge, so it's speed/position-independent) exceeds `MAX_WALK_SLOPE=3` or it's taller than `STEP_UP`; if the edge IS solid at feet, a separate bar/wall sits above the floor and blocks iff it reaches the body (`anySolidAlongVerticalEdge`). `side-push` now calls `isWallAt` directly (no `anySolidAlongVerticalEdge` precheck — that skipped the steep ramps, which sit above the mid-body band). step-up is gated by `isWallAt` at the leading edge. The speed-dependent head-gate (`leadingEdgeHeadBlocked`, `HEAD_PROBE_DEPTH`) is removed. | A walkable slope and a wall are only distinguishable by whether the solid is the avatar's own floor rising (continuous from the feet, gentle) vs. a separate surface in the body. The local-slope measure is speed-independent; classifying the rising-floor case by slope lets gentle ramps through and stops steep curve segments via the existing side-push, with no float and no head-gate. |
-
-Locked by `tests/game/WallVsRamp.test.ts` (slope sweep walk+sprint, full
-wall, overhead bar, d3-style low bar).
-
-**Known boundary limitations (documented, not yet fixed):** a curve
-segment right at slope ≈ 4 (between the 3.0 walk threshold and the ≥6
-guaranteed-wall band) can still be climbed at walk speed; and sprinting
-into a *moderately* steep-but-walkable ramp (slope ~1.8–2.5) from a
-low-speed approach can stall (a pre-existing behavior). Neither affects
-the reported case (near-vertical walls, slope ≫ 6, are stopped).
-
 ### Key lessons
 
 1. **Anchor matters more than scale.** Half the head-bump bugs came
