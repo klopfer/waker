@@ -21,6 +21,15 @@ export class LevelManager {
   private currentBuilder: LevelBuilder | null = null;
   private currentDifficulty: Difficulty = 1; // 1 = easy, 2 = medium, 3 = hard
   private deps: LevelDeps | null = null;
+  private readonly difficultyListeners = new Set<() => void>();
+
+  /**
+   * When set, called once per non-cutscene level completion to present
+   * the "wisp obtained" sequence; the manager passes a `done` callback
+   * that advances to the next level. If unset, levels advance straight
+   * away (used in tests / headless). See main.ts for the video wiring.
+   */
+  winPresenter: ((done: () => void) => void) | null = null;
 
   /** True if there's an active level being driven by tick(). */
   get hasLevel(): boolean {
@@ -29,6 +38,22 @@ export class LevelManager {
 
   get difficulty(): Difficulty {
     return this.currentDifficulty;
+  }
+
+  /**
+   * Subscribe to difficulty changes (the options screen and the in-game
+   * difficulty readout both need to reflect external changes). Returns
+   * an unsubscribe function.
+   */
+  onDifficultyChange(cb: () => void): () => void {
+    this.difficultyListeners.add(cb);
+    return () => this.difficultyListeners.delete(cb);
+  }
+
+  private setDifficultyValue(d: Difficulty): void {
+    if (this.currentDifficulty === d) return;
+    this.currentDifficulty = d;
+    for (const cb of this.difficultyListeners) cb();
   }
 
   /**
@@ -41,7 +66,7 @@ export class LevelManager {
     this.current = null;
     old?.dispose();
     this.deps = deps;
-    this.currentDifficulty = difficulty;
+    this.setDifficultyValue(difficulty);
     this.currentBuilder = initial;
     const cfg = initial(difficulty);
     const next = await Level.load(cfg, deps);
@@ -82,23 +107,35 @@ export class LevelManager {
    */
   async setDifficulty(difficulty: Difficulty): Promise<void> {
     if (this.currentDifficulty === difficulty) return;
-    this.currentDifficulty = difficulty;
+    this.setDifficultyValue(difficulty);
     if (this.currentBuilder) {
       await this.advanceTo(this.currentBuilder);
     }
   }
 
-  /** Wire `cfg.nextLevel` onto the current Level's win-space hook. */
-  private wireTransition(cfg: { nextLevel?: LevelBuilder }): void {
+  /**
+   * Wire `cfg.nextLevel` onto the current Level's completion hook.
+   * - Terminal level (no nextLevel): leave `onComplete` null so the Level
+   *   falls back to its own "press SPACE to restart" overlay.
+   * - Cutscene: advance immediately on completion (no wisp screen).
+   * - Regular level: present the "wisp obtained" sequence (if a
+   *   `winPresenter` is wired), then advance when it finishes.
+   */
+  private wireTransition(cfg: { nextLevel?: LevelBuilder; isCutScene?: boolean }): void {
     const cur = this.current;
     if (!cur) return;
     if (!cfg.nextLevel) {
-      cur.onWinSpacePressed = null;
+      cur.onComplete = null;
       return;
     }
     const nextBuilder = cfg.nextLevel;
-    cur.onWinSpacePressed = (): void => {
-      void this.advanceTo(nextBuilder);
+    const advance = (): void => void this.advanceTo(nextBuilder);
+    cur.onComplete = (): void => {
+      if (!cfg.isCutScene && this.winPresenter) {
+        this.winPresenter(advance);
+      } else {
+        advance();
+      }
     };
   }
 }

@@ -31,7 +31,7 @@ import { makeMuteControls } from './ui/MuteControls.js';
 import { makeMainMenu } from './ui/MainMenu.js';
 import { makeImageScreen } from './ui/ImageScreen.js';
 import { makeDifficultyScreen } from './ui/DifficultyScreen.js';
-import { makeIntroVideo } from './ui/IntroVideo.js';
+import { makeVideoOverlay } from './ui/VideoOverlay.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
@@ -175,15 +175,26 @@ async function main(): Promise<void> {
   const uiRoot = document.getElementById('ui-root');
   if (!uiRoot) throw new Error('#ui-root not found');
 
-  const intro = makeIntroVideo(assets);
+  const intro = makeVideoOverlay(assets, 'introCutScene');
   const instructions = makeImageScreen(assets, 'guiInstructionScreen', () => menu.show());
   const credits = makeImageScreen(assets, 'guiCreditsScreen', () => menu.show());
   const settings = makeDifficultyScreen(
     assets,
+    audio,
     () => levels.difficulty,
     (d) => void levels.setDifficulty(d),
     () => menu.show(),
   );
+
+  // "Wisp obtained" level-complete animation. Silent (the win sting is
+  // played as an SFX inside Level); auto-advances when it ends. Wired as
+  // the LevelManager's win presenter so every non-cutscene level shows it
+  // before transitioning to the next.
+  const levelComplete = makeVideoOverlay(assets, 'levelCompleteClass', {
+    muted: true,
+    hint: 'click / space to continue ▶',
+  });
+  levels.winPresenter = (done): void => levelComplete.play(done);
 
   let introSeen = false;
   const startChain = (): void => {
@@ -211,8 +222,12 @@ async function main(): Promise<void> {
   // it when shown, and the intro video is above everything.
   menu.el.style.zIndex = '1';
   for (const s of [instructions.el, credits.el, settings.el]) s.style.zIndex = '10';
+  // Videos sit above everything. The level-complete video plays during
+  // gameplay (no menu visible) so its exact value vs. the intro doesn't
+  // matter, but keep both clear of the menu/screens.
   intro.el.style.zIndex = '20';
-  for (const el of [menu.el, instructions.el, credits.el, settings.el, intro.el]) {
+  levelComplete.el.style.zIndex = '20';
+  for (const el of [menu.el, instructions.el, credits.el, settings.el, intro.el, levelComplete.el]) {
     uiRoot.appendChild(el);
   }
   menu.show();

@@ -67,6 +67,10 @@ export function makeDifficultyPicker(levels: LevelManager): Container {
   };
   render(BG_ALPHA);
 
+  // Reflect difficulty changes made elsewhere (e.g. the options screen),
+  // not just clicks on this button.
+  levels.onDifficultyChange(() => render(BG_ALPHA));
+
   root.on('pointerover', () => render(BG_ALPHA_HOVER));
   root.on('pointerout', () => render(BG_ALPHA));
   root.on('pointerdown', () => {

@@ -279,17 +279,20 @@ export class Level {
   private avatarPlatform: MovingPlatform | null = null;
 
   /**
-   * Hook called when the player presses SPACE on the win overlay. If
-   * unset, falls back to reset() (single-level behavior). LevelManager
-   * sets this to advance to cfg.nextLevel.
+   * Hook called once when the player reaches the exit. LevelManager
+   * sets this to present the "wisp obtained" sequence (regular levels)
+   * or advance immediately (cutscenes). If unset (terminal level with no
+   * next), the Level falls back to its own "press SPACE to restart"
+   * overlay.
    */
-  onWinSpacePressed: (() => void) | null = null;
+  onComplete: (() => void) | null = null;
 
   private tickCount = 0;
   private firstRunTick: number | null = null;
   private firstJumped = false;
   private firstDropped = false;
   private levelComplete = false;
+  private completeFired = false;
   private promptPhase = 0;
   private sunPhase = 0;
   private bgSwayPhase = 0;
@@ -519,12 +522,13 @@ export class Level {
     // (orb/sun/exit pulse, bg sway) still tick below so the scene
     // doesn't go static behind the overlay.
     if (this.levelComplete) {
-      // Cutscenes auto-advance the moment the exit is reached (no overlay,
-      // no SPACE wait); regular levels wait for SPACE on the win overlay.
-      const advance = this.cfg.isCutScene || this.deps.input.wasPressed('Space');
-      if (advance) {
-        if (this.onWinSpacePressed) this.onWinSpacePressed();
-        else this.reset();
+      // Once complete, the level is frozen. With a transition wired
+      // (onComplete), advancing is driven externally — cutscenes advance
+      // instantly, regular levels after the "wisp obtained" presentation
+      // finishes. Only the terminal-level fallback (no onComplete) waits
+      // here for SPACE to restart.
+      if (!this.onComplete && this.deps.input.wasPressed('Space')) {
+        this.reset();
       }
       this.tickVisuals();
       this.deps.input.endTick();
@@ -667,15 +671,24 @@ export class Level {
     this.tickGraphTone();
 
     // Win check (after avatar/orb update so the position is final).
-    if (this.avatarOverlapsExit()) {
+    if (this.avatarOverlapsExit() && !this.completeFired) {
+      this.completeFired = true;
       this.levelComplete = true;
-      if (!this.cfg.isCutScene) {
-        // Cutscenes advance silently next tick; regular levels show the
-        // "Level Complete / press SPACE" overlay and play the win sting.
+      if (this.graphTone?.isPlaying) this.graphTone.stop();
+
+      if (this.onComplete) {
+        // Regular levels play the win sting (the "wisp obtained" video,
+        // wired by the manager, is silent); cutscenes advance silently.
+        if (!this.cfg.isCutScene) {
+          this.deps.audio.playSfx('sfxWin', this.deps.assets.url('sfxWin'));
+        }
+        this.onComplete();
+      } else if (!this.cfg.isCutScene) {
+        // Terminal level, no transition wired: fall back to the
+        // "Level Complete / press SPACE" overlay + win sting.
         this.winOverlay.visible = true;
         this.deps.audio.playSfx('sfxWin', this.deps.assets.url('sfxWin'));
       }
-      if (this.graphTone?.isPlaying) this.graphTone.stop();
     }
 
     // Per-tick visual updates.
@@ -735,6 +748,7 @@ export class Level {
     this.firstJumped = false;
     this.firstDropped = false;
     this.levelComplete = false;
+    this.completeFired = false;
 
     for (const spike of this.spikes) spike.reset();
     for (const sw of this.switches) sw.reset();

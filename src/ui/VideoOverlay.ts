@@ -1,21 +1,33 @@
-// Intro cutscene video (intro.mp4). Plays full-screen over the canvas;
-// click / Space / Escape skips it. `onDone` fires when it ends or is
-// skipped. Plain DOM <video>.
-//
-// In the legacy game the intro plays at boot before the menu; on the web,
-// audio can't autoplay before a user gesture, so the flow plays it after
-// the player clicks "Start" (which is the gesture that also unlocks the
-// video's sound).
+// Generic full-screen <video> overlay played over the canvas. Used for
+// the boot intro (intro.mp4) and the level-complete "wisp obtained"
+// animation (levelcomplete.mp4). `play(onDone)` shows it, plays from the
+// start, and fires `onDone` exactly once when the video ends or the user
+// skips (click / Space / Escape / Enter). Robust to autoplay refusal: it
+// retries muted, and if even that fails it finishes immediately so the
+// flow never wedges.
 
 import type { AssetLoader } from '../engine/AssetLoader.js';
 
-export interface IntroVideo {
+export interface VideoOverlay {
   readonly el: HTMLElement;
-  /** Show + play from the start; resolves (via onDone) when ended/skipped. */
+  /** Show + play from the start; fires onDone once when ended/skipped. */
   play(onDone: () => void): void;
 }
 
-export function makeIntroVideo(assets: AssetLoader): IntroVideo {
+export interface VideoOverlayOptions {
+  /** Mute the video element (e.g. when a separate SFX carries the sound). */
+  muted?: boolean;
+  /** Skip-hint caption shown bottom-right. */
+  hint?: string;
+}
+
+export function makeVideoOverlay(
+  assets: AssetLoader,
+  videoKey: string,
+  options: VideoOverlayOptions = {},
+): VideoOverlay {
+  const { muted = false, hint = 'click / space to skip ▶' } = options;
+
   const root = document.createElement('div');
   root.style.position = 'absolute';
   root.style.inset = '0';
@@ -23,17 +35,20 @@ export function makeIntroVideo(assets: AssetLoader): IntroVideo {
   root.style.background = '#000';
 
   const video = document.createElement('video');
-  video.src = assets.url('introCutScene');
+  video.src = assets.url(videoKey);
   video.style.position = 'absolute';
   video.style.inset = '0';
   video.style.width = '800px';
   video.style.height = '600px';
+  // Preserve aspect ratio (the level-complete clip is portrait-ish);
+  // letterbox on the black backdrop rather than stretch.
+  video.style.objectFit = 'contain';
   video.playsInline = true;
   video.preload = 'auto';
   root.appendChild(video);
 
   const skip = document.createElement('div');
-  skip.textContent = 'click / space to skip ▶';
+  skip.textContent = hint;
   skip.style.position = 'absolute';
   skip.style.right = '12px';
   skip.style.bottom = '8px';
@@ -64,10 +79,11 @@ export function makeIntroVideo(assets: AssetLoader): IntroVideo {
       done = onDone;
       root.style.display = 'block';
       video.currentTime = 0;
-      video.muted = false;
+      video.muted = muted;
       window.addEventListener('keydown', onKey);
-      // Try to play with sound (we're called from a click gesture); if the
-      // browser still refuses, fall back to muted so the visuals play.
+      // Called from a user gesture, so playing with sound usually works;
+      // if the browser still refuses, retry muted, then give up and
+      // finish so the flow never wedges.
       void video.play().catch(() => {
         video.muted = true;
         void video.play().catch(() => finish());

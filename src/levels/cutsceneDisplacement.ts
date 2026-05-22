@@ -3,6 +3,10 @@
 // advances to displacement0. Mirrors legacy cutsceneDisplacement.mxml
 // (Settings.isItACutScene = true, setBG(preDisplacementCutScene),
 // setGround(cutScene_collision), entrance (0,460), exit (700,479)).
+//
+// The legacy initLvl() sets `soundManager.currentMusic = "cutScene01"` —
+// the narrated story track — not the world BGM. We mirror that with the
+// `bgmCutscene01` key so the walk-across plays its little story.
 
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import { displacement0 } from './displacement0.js';
@@ -11,7 +15,7 @@ export const cutsceneDisplacement: LevelBuilder = (): LevelConfig => ({
   isCutScene: true,
   bgKey: 'preDisplacementCutScene',
   groundKey: 'cutScene_collision',
-  bgmKey: 'bgmWorld1',
+  bgmKey: 'bgmCutscene01',
   spawn: { x: 20, y: 460 },
   exit: { x: 700, y: 479 },
   orbs: [],
