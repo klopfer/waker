@@ -23,10 +23,12 @@ tutorial); beating the exit advances on SPACE to `displacement1` → `2`
 → `3`. After d3 the SPACE press currently restarts d3 (legacy next is
 `cutsceneVelocity`, not wired yet).
 
-**World 2 (velocity) in progress**: `velocity0` and `velocity1` are
-built, chained, and **playtested working** (`V0`/`V1` debug picker
-buttons) — including walking on / being stopped by the drawn graph
-curve. World 2 is **not yet chained from d3**; v2/v3 aren't built.
+**World 2 (velocity) complete (build)**: `velocity0`→`1`→`2`→`3` are all
+built and chained (`V0`–`V3` debug picker buttons). v0/v1 playtested
+working; **v2/v3 are first-pass, pending playtest**. velocity3 is the
+first MIXED-type level (a velocity orb + a displacement orb). World 2 is
+**not yet chained from d3**, and v3→`cutsceneMixed` is unwired (the
+cutscene/chain framework is the next task).
 Velocity orbs plot the avatar's `vx`, use the gold/red `velOrb` art, and
 have no origin holder. velocity1 is the first level with a
 **per-difficulty collision swap** (hard vs easy PNG). v0's background is
@@ -53,7 +55,7 @@ Controls:
 Plus three debug UIs on screen:
 - Bottom-right: `♪ MUSIC` / `♪ SFX` mute toggles (Pixi-side, will move
   to the HTML overlay in Phase 5).
-- Bottom-left: `DEBUG: [D0] [D1] [D2] [D3] [V0] [V1]` level picker
+- Bottom-left: `DEBUG: [D0] [D1] [D2] [D3] [V0] [V1] [V2] [V3]` level picker
   buttons (jump to any level for testing; **temporary**, remove before
   release).
 - Bottom-left next to picker: `DIFF: EASY/MEDIUM/HARD` button that
@@ -99,7 +101,7 @@ Mapped against the plan's `§14 Module porting order`:
 | 10 | `Switch.ts`, `MovingPlatform.ts`, `Spike.ts` | ✅ done (D1+D2); D3 polish (squish pushback + hit flash) still pending |
 | 11 | `Level.ts` (base class) + `LevelConfig` data | ✅ done — multi-orb refactor; per-level files are pure data literals |
 | 12 | `Movements.ts` | ✅ done + extensively calibrated (v1–v18) — see `docs/calibration.md` §9 |
-| 13 | Per-level files in `src/levels/` | 🟡 6 of 11 wired (d0, d1, d2, d3, **v0, v1**); velocity2–3, mixed*, cutscenes pending |
+| 13 | Per-level files in `src/levels/` | 🟡 8 of 11 wired (d0–d3, **v0–v3**); mixed0–3 + cutscenes pending |
 | 14 | `LevelManager.ts` | ✅ done — handles win-overlay SPACE transitions + debug `advanceTo` for the level picker |
 | 15 | HUD (in-game pause/hint/HUD) | ⏳ — `src/ui/MuteControls.ts` + `LevelPicker.ts` are Pixi-side placeholders; Phase 5 moves to HTML overlay |
 | 16 | Menus (Menu, Options, Instructions, Credits) | ⏳ |

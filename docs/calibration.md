@@ -515,11 +515,46 @@ silhouette and the pixel collision (they're the same PNG).
 | `orbs[0]` | velocity; origin/orb `{x:380, y:407/405}`, graph `{x:340,y:227,w:180,h:180,maxValue:15,yOffset:4}` | `addGraph(1,0,340,227,15,180,180,4,380,440,…)`. Legacy orby=440 falls onto the mid platform (top y=407); orb placed at 405 to settle cleanly. No origin holder (velocity). |
 | graph obstacles | `numberObs` 2 (hard) / 1 (med) / 0 (easy), seed 411 | From the trailing `addGraph(…,50,2/1/0)` arg. `obstaclesForDifficulty({340,227,180,180}, 411, 2, count)`. |
 | spikes (hard only) | 2 fast horizontal sweeps: (100,480) left-first + (100,180) right-first, both turn 0→780, speed 10 | `addSpike(100,480,…)` + `addSpike(100,180,…)`. Easy/medium: none. |
-| `nextLevel` | unset | Legacy next is velocity2; wired once v2 is built. |
+| `nextLevel` | `velocity2` | Chained. |
 
 **⚠️ Calibration pending playtest:** orb reachability (floor→x=200 plat
 →mid plat hop chain), exit reachability via the drawn curve, and the
 hard spike-sweep timing are first-pass translations and may need tuning.
+
+---
+
+### velocity2 (world 2 — `src/levels/velocity2.ts`)
+
+One large VELOCITY orb; the graph fills most of the screen.
+
+| Quantity | Value | Notes |
+| --- | --- | --- |
+| BG / ground | `bgWorld2_t` (pale) / `leveltv_collision` | Left staircase ledges (91/212/332) + bottom floor ~455–520; right staircase + exit ledge ~94. |
+| `spawn` | `{x:20, y:40}` | Legacy `setEntrance(0,40)`; drops onto the left staircase. |
+| `exit` | `{x:760, y:53}` | Rests on the x≈760 ledge (top y≈94). |
+| `orbs[0]` | velocity; origin/orb `{x:20, y:455/443}`, graph `{x:160,y:11,w:480,h:480,maxValue:22,yOffset:60}` | `addGraph(1,0,160,11,22,480,480,60,0,420,…)`. Legacy orbx=0 → inset to 20; rests on the bottom-left floor. |
+| graph obstacles | `numberObs` 5 (hard) / 2 (med) / 0 (easy), seed 421 | **⚠️ legacy DEADZONES not modelled** — obstacles placed without the two exclusion rects; may need a deadzone feature or hand-placement. |
+| spikes | hard: full-height vertical sweeps at x=160,250,340,420,510,615 + 1 horizontal sweep; medium: vertical at x=250,510; easy: none | `addSpike(…,true,false,…,7,465,10)` rows + `addSpike(160,465,true,true,…,160,615,6)`. |
+| `nextLevel` | `velocity3` | Chained. |
+
+### velocity3 (world 2 — `src/levels/velocity3.ts`)
+
+**First MIXED-type level: a velocity orb AND a displacement orb.** Three-
+way per-difficulty collision swap.
+
+| Quantity | Value | Notes |
+| --- | --- | --- |
+| BG / ground | `bgWorld2_3` (red) / `levelv3_collision` \| `_medium` \| `_easy` | Bottom floor top y=520 (x≤490); high right platform top y≈260; exit ledge at x=490 top y=60. |
+| `spawn` | `{x:20, y:467}` | Legacy `setEntrance(0,467)`; on the bottom floor. |
+| `exit` | `{x:490, y:19}` | High; rests on the x=490 ledge (top y=60). |
+| `orbs[0]` | **velocity**; origin/orb `{x:160, y:520/508}`, graph `{x:200,y:200,w:320,h:320,maxValue:21,yOffset:55}` | `addGraph(1,0,200,200,21,320,320,55,160,460,…)`. Rests on the bottom floor; no holder. |
+| `orbs[1]` | **displacement**; origin `{x:700,y:200}`, orb `{x:700,y:188}`, cradle `{12,18}`, graph `{x:540,y:30,w:230,h:230,maxValue:600,yOffset:80}` | `addGraph(0,0,540,30,600,230,230,80,700,193,0,700,200,…)`. Floats in a holder above the right platform (like d3 orb 2); displacement measured from x=700. |
+| graph obstacles | velocity graph `numberObs` 4 (hard) / 2 (med) / 0 (easy), seed 431 | Displacement graph: 0. |
+| spikes | hard: vertical sweep (510, y100–480) + static (640,170) & (705,170); medium: static (640,170); easy: none | `addSpike(510,480,true,false,…)` + static `addSpike(640/705,170,false,…)`. |
+| `nextLevel` | unset | Legacy next is `cutsceneMixed` (not built); SPACE restarts for now. |
+
+**⚠️ Calibration pending playtest** for both: orb/exit reachability, the
+v2 deadzone-less obstacle placement, and spike timing.
 
 ---
 

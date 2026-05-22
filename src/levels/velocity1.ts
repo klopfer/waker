@@ -21,6 +21,7 @@
 import { obstaclesForDifficulty } from '../game/GraphObstacles.js';
 import type { LevelBuilder, LevelConfig } from '../game/Level.js';
 import type { SpikeConfig } from '../game/Spike.js';
+import { velocity2 } from './velocity2.js';
 
 export const velocity1: LevelBuilder = (difficulty): LevelConfig => {
   const spikes: SpikeConfig[] = [];
@@ -105,6 +106,6 @@ export const velocity1: LevelBuilder = (difficulty): LevelConfig => {
 
     spikes,
 
-    // nextLevel: velocity2 — wired once velocity2 is built.
+    nextLevel: velocity2,
   };
 };

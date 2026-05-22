@@ -20,6 +20,8 @@ import { displacement2 } from './levels/displacement2.js';
 import { displacement3 } from './levels/displacement3.js';
 import { velocity0 } from './levels/velocity0.js';
 import { velocity1 } from './levels/velocity1.js';
+import { velocity2 } from './levels/velocity2.js';
+import { velocity3 } from './levels/velocity3.js';
 import { makeDifficultyPicker } from './ui/DifficultyPicker.js';
 import { makeLevelPicker } from './ui/LevelPicker.js';
 import { makeMuteControls } from './ui/MuteControls.js';
@@ -129,6 +131,8 @@ async function main(): Promise<void> {
     { label: 'D3', builder: displacement3 },
     { label: 'V0', builder: velocity0 },
     { label: 'V1', builder: velocity1 },
+    { label: 'V2', builder: velocity2 },
+    { label: 'V3', builder: velocity3 },
   ]);
   picker.x = 8;
   picker.y = STAGE_HEIGHT - 30;
