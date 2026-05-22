@@ -208,6 +208,12 @@ async function main(): Promise<void> {
         startChain();
       } else {
         introSeen = true;
+        // The story narration begins on the (silent) intro video and keeps
+        // playing into the walk-across cutscene, which requests the same
+        // 'voCS1' track (de-duped, so it doesn't restart). It is cut when
+        // displacement0 begins. The Start click is the gesture that unlocks
+        // audio. See cutsceneDisplacement.ts / Level.startAudio().
+        audio.playVo('voCS1', assets.url('voCS1'));
         intro.play(startChain);
       }
     },

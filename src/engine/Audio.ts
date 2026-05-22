@@ -15,6 +15,7 @@ export class Audio {
   private bgm: Howl | null = null;
   private bgmKey: AudioId | null = null;
   private vo: Howl | null = null;
+  private voKey: AudioId | null = null;
 
   constructor(initial: Partial<AudioConfig> = {}) {
     this.cfg = {
@@ -76,13 +77,17 @@ export class Audio {
   /**
    * Play a one-shot voice-over (cutscene narration). Plays at SFX volume
    * and obeys the SFX mute flag (matching the legacy soundManager, where
-   * VO rode the SFX channel). A new VO stops any previous one. Unlike BGM
-   * it is NOT looped and is deliberately left running across level
-   * transitions so a long narration started in a cutscene keeps telling
-   * the story into the level that follows.
+   * VO rode the SFX channel). Not looped. De-duped by `key`: re-requesting
+   * the VO that is already current is a no-op, so a narration started on
+   * the intro video keeps playing seamlessly through the walk-across
+   * cutscene that requests the same track (rather than restarting). Stays
+   * running across transitions until `stopVo()` (called when gameplay
+   * begins).
    */
-  playVo(src: string | string[]): void {
+  playVo(key: AudioId, src: string | string[]): void {
+    if (this.voKey === key) return;
     this.stopVo();
+    this.voKey = key;
     const h = new Howl({
       src: typeof src === 'string' ? [src] : src,
       loop: false,
@@ -93,6 +98,7 @@ export class Audio {
   }
 
   stopVo(): void {
+    this.voKey = null;
     if (!this.vo) return;
     this.vo.stop();
     this.vo.unload();

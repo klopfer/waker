@@ -989,7 +989,13 @@ export class Level {
     });
     this.deps.audio.playBgm(this.cfg.bgmKey, this.deps.assets.url(this.cfg.bgmKey));
     if (this.cfg.voKey) {
-      this.deps.audio.playVo(this.deps.assets.url(this.cfg.voKey));
+      // Cutscene narration: starts here, or continues seamlessly if the
+      // intro video already kicked off this same track (de-duped in Audio).
+      this.deps.audio.playVo(this.cfg.voKey, this.deps.assets.url(this.cfg.voKey));
+    } else if (!this.cfg.isCutScene) {
+      // Entering actual gameplay (e.g. d0) cuts any cutscene narration
+      // immediately, even if it hasn't finished.
+      this.deps.audio.stopVo();
     }
   }
 
