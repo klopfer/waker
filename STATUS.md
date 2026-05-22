@@ -25,8 +25,12 @@ open over the menu; click or Esc closes them. The full menu flow is
 browser-verified (commit `78b1373`).
 
 **World 1 is complete and chained**: `cutsceneDisplacement` →
-`displacement0` (the tutorial) → `1` → `2` → `3`; beating the exit
-advances on SPACE. After d3 the chain runs `cutsceneVelocity` → World 2.
+`displacement0` (the tutorial) → `1` → `2` → `3`. Beating the exit plays
+the "wisp obtained" `levelcomplete.mp4` cutscene (+ `sfxWin`), then
+auto-advances (click/space skips). After d3 the chain runs
+`cutsceneVelocity` → World 2. d0 has a spawn input-lock so the avatar
+drops straight down (no drift onto an upper platform) when arriving from
+the cutscene with an arrow held.
 
 **World 2 (velocity) complete (build)**: `velocity0`→`1`→`2`→`3` are all
 built and chained (`V0`–`V3` debug picker buttons). v0/v1 playtested
@@ -38,7 +42,12 @@ mixed world isn't built yet — SPACE there currently dead-ends).
 **Cutscenes** are no-orb "walk-across" levels (flat floor; auto-advance
 on reaching the exit, no win overlay). `cutsceneDisplacement` /
 `cutsceneVelocity` / `cutsceneMixed` are wired into the chain; `CD` /
-`CV` / `CM` debug-picker buttons jump to each.
+`CV` / `CM` debug-picker buttons jump to each. They carry **voice-over
+narration** (voCS1/2/3) over the `bgmCutscene01` music; the world-1
+narration starts on the intro video, continues through the walk-across,
+and is cut when d0 begins. `cutsceneVelocity` shows a pulsing **"Hold
+SHIFT to sprint!"** caption (`cutSceneHint`) — sprint is essential for
+plotting velocity graphs.
 Velocity orbs plot the avatar's `vx`, use the gold/red `velOrb` art, and
 have no origin holder. velocity1 is the first level with a
 **per-difficulty collision swap** (hard vs easy PNG). v0's background is
@@ -62,16 +71,17 @@ Controls:
 - `D`: pick up / drop the orb
 - `R`: restart current level (emergency escape if you wedge yourself)
 
-Plus three debug UIs on screen:
-- Bottom-right: `♪ MUSIC` / `♪ SFX` mute toggles (Pixi-side, will move
-  to the HTML overlay in Phase 5).
-- Bottom-left: `DEBUG: [D0] [D1] [D2] [D3] [V0] [V1] [V2] [V3]` level picker
-  buttons (jump to any level for testing; **temporary**, remove before
-  release).
+Plus the **development chrome**, all gated by `SHOW_DEBUG_UI` in
+`main.ts` (currently `true`; flip to `false` to hide it all). Before
+flipping it off we need the **in-game pause menu** (Esc → options) so
+players keep mute + difficulty without the debug UI.
+- Top: controls banner.
+- Bottom-right: `♪ MUSIC` / `♪ SFX` mute toggles (Pixi-side).
+- Bottom-left: `DEBUG: [D0..D3] [V0..V3] [CD] [CV] [CM]` level picker
+  (jump to any level for testing).
 - Bottom-left next to picker: `DIFF: EASY/MEDIUM/HARD` button that
-  cycles difficulty and reloads the current level — used to verify
-  hard-mode spike placements (the menu's Settings screen now does this
-  too, but the button stays for quick in-game switching).
+  cycles difficulty and reloads (the menu's Settings screen does this
+  too — and now also has Music/SFX toggles).
 
 **Tests**: `npm run test` → 138/138 passing.
 **Build**: `npm run build` → ~676 KB bundle / 285 KB gzipped.
@@ -115,8 +125,8 @@ Mapped against the plan's `§14 Module porting order`:
 | 13 | Per-level files in `src/levels/` | 🟡 8 of 11 + 3 cutscenes wired (d0–d3, **v0–v3**, cutsceneDisplacement/Velocity/Mixed); mixed0–3 pending |
 | 14 | `LevelManager.ts` | ✅ done — win-overlay SPACE transitions, cutscene auto-advance, debug `advanceTo`; `start()` disposes the old level + starts new audio |
 | 15 | HUD (in-game pause/hint/HUD) | 🟡 menu chrome is HTML now; in-game pause menu (Esc during play) + `MuteControls`/`LevelPicker` Pixi placeholders still pending |
-| 16 | Menus (Menu, Options, Instructions, Credits) | ✅ done — `src/ui/{MainMenu,ImageScreen,DifficultyScreen}.ts` HTML overlay; settings = difficulty selector |
-| 17 | `Woosh2.mxml` (splash + intro cutscene gate) → main.ts | 🟡 boot → menu → Start → intro video → chain done (`src/ui/IntroVideo.ts`); studio splash logos + ending video pending |
+| 16 | Menus (Menu, Options, Instructions, Credits) | ✅ done — `src/ui/{MainMenu,ImageScreen,DifficultyScreen}.ts` HTML overlay; settings = difficulty selector + Music/SFX on/off toggles |
+| 17 | `Woosh2.mxml` (splash + intro cutscene gate) → main.ts | 🟡 boot → menu → Start → intro video (`src/ui/VideoOverlay.ts`) → chain done; studio splash logos + ending video pending |
 | 18 | Delete vendored `gs/` (TweenMax) | n/a — not imported |
 
 ---
@@ -267,12 +277,50 @@ chain, and built the Phase 5 menu system + boot flow.
   pinned 0) until it lands, so an arrow held over from the walk-across
   cutscene no longer drifts it onto an upper platform.
 
-**Known follow-ups:** pause menu (Esc during play does nothing yet),
-studio splash logos (gambit/poof) + ending video, mixed world
-(mixed0–3) to give cutsceneMixed a destination, v2/v3 playtest pass.
+- **Narration timing + velocity tone + debug flag + sprint hint**
+  (`7c783e9`, `12536d5`, `5e55536`) — narration now starts on the intro
+  video and cuts at d0 (see above). Softened the velocity graph tone
+  (EMA-smoothed `|vx|`, capped to the lower ~55% of the pitch range —
+  `VEL_TONE_SMOOTHING`/`VEL_TONE_RANGE` in `Level.ts`) so it's soothing,
+  not a shrill TV-test-pattern. Added `SHOW_DEBUG_UI` (one switch for all
+  dev chrome) and `LevelConfig.cutSceneHint` ("Hold SHIFT to sprint!" on
+  `cutsceneVelocity`).
+
 All three narrated cutscenes share one music bed (`bgmCutscene01`) — the
 per-cutscene `cutScene02/03` *music* variants weren't extracted, but the
 distinct narration tracks (voCS1/2/3) are wired.
+
+---
+
+## 3.3 The home stretch — what's left
+
+Worlds 1 + 2 are complete and the whole framework (menu, options,
+cutscenes, narration, win cutscene, boot flow) is in. Remaining work,
+roughly in order:
+
+1. **Mixed world (mixed0–3)** — the last 4 gameplay levels. Pure data +
+   calibration (the engine already does mixed orb types; v3 proves it).
+   Read the legacy `mixed*.mxml`, translate to `LevelConfig`s, add picker
+   buttons. Then wire `cutsceneMixed.nextLevel = mixed0` and
+   `mixed3.nextLevel = gameending`.
+2. **Game ending** — after mixed3, play `ending.mp4` (`endingCutSceneClass`)
+   via the existing `VideoOverlay`, then return to the menu. (`bgmEndGame`
+   is the ending music.)
+3. **In-game pause menu (Esc → options)** — resume / restart / quit +
+   mute + difficulty, per legacy `gui.mxml`. **Prerequisite for hiding the
+   debug UI**, since today the only in-game mute/difficulty controls are
+   the debug chrome.
+4. **Flip `SHOW_DEBUG_UI` to `false`** once #3 lands; remove the
+   `LevelPicker`/`MuteControls`/`DifficultyPicker` placeholders.
+5. **Studio splash logos** (gambit → poof) at boot, before the menu
+   (legacy `Woosh2.mxml` runAnimation).
+6. **Playtest calibration** — v2/v3 (first-pass, untested) + mixed once
+   built: orb/exit reachability, spike timing, hard/medium/easy variants.
+7. **Phase 6/7** — cross-browser, perf/bundle, optional mobile, release.
+
+Nice-to-haves: D3 hazard polish (squish-pushback, spike hit-flash);
+per-cutscene music variants if the `cutScene02/03` tracks are ever
+extracted.
 
 ---
 

@@ -674,6 +674,15 @@ sharply).
 Regression test: `tests/game/CurveGround.test.ts` "solidAt fills a
 near-vertical segment into a wall (no tunneling)".
 
+### v21: velocity graph tone + d0 spawn lock (feel/audio, not collision)
+
+Two playtest-driven tweaks, both in `src/game/Level.ts`:
+
+| What | Value | Why |
+| --- | --- | --- |
+| **Velocity tone shaping** | `VEL_TONE_SMOOTHING = 0.2` (EMA weight/tick), `VEL_TONE_RANGE = 0.55` (fraction of the octave span). Base/octaves unchanged (`GRAPH_TONE_BASE_HZ = 220`, `GRAPH_TONE_OCTAVES = 2`). | The graph tone maps the plotted value → pitch. For velocity orbs the value is `\|vx\|`, which jitters as the avatar accelerates/brakes/turns; a raw map to the sine sweeping to ~880 Hz warbled like a shrill TV test pattern. EMA-smoothing the value + capping it to the lower 55% of the range (≈220–470 Hz) makes it glide and stay soothing. Displacement orbs (smooth, position-based) keep the full immediate mapping. |
+| **d0 spawn input-lock** | `LevelConfig.lockInputUntilGrounded` (set on `displacement0`). | The player arrives in d0 from the walk-across cutscene often still holding an arrow; the falling avatar would drift onto an upper platform. While airborne after spawn, movement input is ignored and `vx` pinned to 0, so it drops straight down; controls engage on landing. |
+
 ### Key lessons
 
 1. **Anchor matters more than scale.** Half the head-bump bugs came
