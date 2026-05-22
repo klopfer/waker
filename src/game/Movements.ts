@@ -58,6 +58,17 @@ export const PHYSICS = {
   //   level progression preserved.
   STEP_UP: 40,
   STEP_DOWN: 40,
+  // Steepest floor (rise/run) the avatar will WALK UP. A rising floor at
+  // the leading edge steeper than this is treated as a WALL (side-push
+  // stops the avatar) rather than a walkable ramp. This is the wall-vs-
+  // ramp threshold used by isWallAt.
+  //
+  // Calibrated between the steepest WALKABLE slope and the gentlest WALL:
+  //   - displacement curves at full run ≈ 1.8 (d3) / 1.4 (d0)  → walk
+  //   - velocity accel ramps ≈ 1.2                              → walk
+  //   - velocity braking / hard-stop segments ≈ 6+              → wall
+  // 3.0 sits well above every walkable slope, well below every wall.
+  MAX_WALK_SLOPE: 3.0,
 } as const;
 
 // Avatar collision box. Bottom-center is anchored at the body's (x, y).
@@ -120,22 +131,6 @@ export const BODY = {
   //        they walk a few px the curve clears. R hotkey is the
   //        escape for the V=0 exact-trap.
   SIDE_TOP_MARGIN: 10,
-  // Depth (px below the body's TOP) of the "is a wall ahead at head
-  // height" probe used to GATE step-up. A walkable slope, sampled at the
-  // leading edge HALF_WIDTH ahead, never puts solid this close to the top
-  // of the body (it would need a slope steeper than ~2.0 — effectively a
-  // vertical face). A real wall / near-vertical curve segment is solid
-  // here. So: if the head is blocked ahead, the surface is a wall, not a
-  // slope — suppress step-up and let side-push stop the avatar at the
-  // wall face instead of climbing/walking into it.
-  //
-  // Without this gate, step-up commits `x = state.x + vx` and skips
-  // side-push, so the avatar walks/climbs straight INTO walls on any
-  // sloped approach (the velocity-world screen-edge walls have a curved
-  // floor leading up to them; the avatar would burrow in until only its
-  // tail showed, get stuck high on the wall, or phase through steep
-  // player-drawn curve segments).
-  HEAD_PROBE_DEPTH: 4,
   // Inset from the BOTTOM of the body for side-collision samples. The
   // painted floors are RGBA with anti-aliased top edges; the alpha at
   // y=feet-1 can be above the binary threshold at one column (= solid)
@@ -249,27 +244,31 @@ function anySolidAlongTopEdge(
 // near feet level). For those cases the discriminator misclassified the
 // slope as a wall and side-push tripped, requiring the user to jump.
 //
-// New approach: query the topmost-solid at the edge (search from very
-// high). If that top is within STEP_UP of feet, it's reachable — treat
-// as slope/floor, don't push. If the top is higher than STEP_UP above
-// feet, it's a wall — push.
+// Wall vs ramp at the leading edge:
+//   topY = topmost solid at the edge.
+//   If the edge isn't solid at the feet → the avatar's floor rose away;
+//     the solid above is that floor RISING (a ramp). Wall iff its LOCAL
+//     slope (gradient just left/right of the edge — speed/position
+//     independent) is too steep to walk, or it's too tall to step up.
+//   If the edge IS solid at the feet → a floor continues there and the
+//     solid above it is a separate bar/wall; it blocks if it reaches into
+//     the body (an overhead bar clear of the body is walked under).
+const SLOPE_PROBE_DX = 4;
+
 function isWallAt(edgeX: number, bottomY: number, ground: GroundProvider): boolean {
   const topY = ground.groundYBelow(edgeX, bottomY - 1000);
   if (topY === Number.POSITIVE_INFINITY) return false;
-  if (topY >= bottomY) return false; // Obstacle is at or below feet — not a side wall.
-  return topY < bottomY - PHYSICS.STEP_UP || topY >= bottomY - BODY.HEIGHT;
-}
+  if (topY >= bottomY) return false; // Solid only at/below feet — floor / step-down.
 
-// True if there is solid at the leading edge within HEAD_PROBE_DEPTH of
-// the body's TOP. Used to distinguish a wall (solid up at head height
-// 12 px ahead) from a walkable slope (solid only near the feet). When
-// this is true the surface ahead is a wall — step-up must NOT fire.
-function leadingEdgeHeadBlocked(edgeX: number, bottomY: number, ground: GroundProvider): boolean {
-  const topY = bottomY - BODY.HEIGHT;
-  for (let y = topY; y <= topY + BODY.HEAD_PROBE_DEPTH; y += BODY.SAMPLE_STEP) {
-    if (ground.solidAt(edgeX, y)) return true;
+  if (!ground.solidAt(edgeX, bottomY)) {
+    const yL = ground.groundYBelow(edgeX - SLOPE_PROBE_DX, bottomY - 1000);
+    const yR = ground.groundYBelow(edgeX + SLOPE_PROBE_DX, bottomY - 1000);
+    const slopeL = yL === Number.POSITIVE_INFINITY ? 0 : Math.abs(topY - yL) / SLOPE_PROBE_DX;
+    const slopeR = yR === Number.POSITIVE_INFINITY ? 0 : Math.abs(topY - yR) / SLOPE_PROBE_DX;
+    const slope = Math.max(slopeL, slopeR);
+    return slope > PHYSICS.MAX_WALK_SLOPE || topY < bottomY - PHYSICS.STEP_UP;
   }
-  return ground.solidAt(edgeX, topY + BODY.HEAD_PROBE_DEPTH);
+  return anySolidAlongVerticalEdge(edgeX, bottomY, ground);
 }
 
 function pushOutFromWallRight(
@@ -281,10 +280,10 @@ function pushOutFromWallRight(
   let cur = x;
   for (let i = 0; i < BODY.MAX_PUSH; i++) {
     const edgeX = cur + BODY.HALF_WIDTH;
-    if (!anySolidAlongVerticalEdge(edgeX, bottomY, ground)) return cur;
-    // Solid edge found — but is it a WALL or just a slope/floor about to
-    // step up onto? If solid doesn't extend below feet, treat as slope
-    // and let the avatar pass (step-up will catch them next tick).
+    // isWallAt now classifies walls vs walkable ramps directly (and sees
+    // steep ramps that sit above the mid-body sample band), so it is the
+    // sole test — a separate anySolidAlongVerticalEdge precheck would skip
+    // exactly the steep rising floors we need to stop.
     if (!isWallAt(edgeX, bottomY, ground)) return cur;
     if (cur <= minX) return minX; // Don't teleport past the avatar's pre-move x.
     cur -= 1;
@@ -301,7 +300,6 @@ function pushOutFromWallLeft(
   let cur = x;
   for (let i = 0; i < BODY.MAX_PUSH; i++) {
     const edgeX = cur - BODY.HALF_WIDTH - 1;
-    if (!anySolidAlongVerticalEdge(edgeX, bottomY, ground)) return cur;
     if (!isWallAt(edgeX, bottomY, ground)) return cur;
     if (cur >= maxX) return maxX; // Don't teleport past the avatar's pre-move x.
     cur += 1;
@@ -408,12 +406,13 @@ export function step(
   // When step-up/down fires, we OWN the X/Y resolution for this tick —
   // skip side-push (the "wall" was actually a slope) and ground-snap
   // (we're already on the floor). steppedToFloor tracks this.
-  // Suppress step-up when a wall blocks the leading edge at head height:
-  // that surface is a wall, not a walkable slope, and must be handled by
-  // side-push (below) so the avatar stops at the wall face rather than
-  // committing `x = state.x + vx` and burrowing in.
+  // Suppress step-up when the leading edge is a WALL (a separate bar/wall,
+  // or a rising floor too steep to walk): step-up would commit
+  // `x = state.x + vx` and climb/burrow into it. Side-push (below) handles
+  // it instead. Walkable rising ramps are NOT walls (isWallAt), so step-up
+  // still climbs them.
   const leadingEdgeX = x + Math.sign(vx) * BODY.HALF_WIDTH;
-  const wallAhead = vx !== 0 && leadingEdgeHeadBlocked(leadingEdgeX, y, ground);
+  const wallAhead = vx !== 0 && isWallAt(leadingEdgeX, y, ground);
 
   let steppedToFloor = false;
   if (vx !== 0 && onGround && !wallAhead) {
