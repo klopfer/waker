@@ -35,9 +35,15 @@ the cutscene with an arrow held.
 **World 2 (velocity) complete (build)**: `velocity0`→`1`→`2`→`3` are all
 built and chained (`V0`–`V3` debug picker buttons). v0/v1 playtested
 working; **v2/v3 are first-pass, pending playtest**. velocity3 is the
-first MIXED-type level (a velocity orb + a displacement orb). After v3
-the chain runs `cutsceneMixed`, whose `nextLevel` is **unset** (the
-mixed world isn't built yet — SPACE there currently dead-ends).
+first MIXED-type level (a velocity orb + a displacement orb).
+
+**World 3 (mixed) complete (build)**: `mixed0`→`1`→`2`→`3` built and
+chained (`M0`–`M3` debug picker buttons). Browser-verified all four load
+cleanly on easy and hard. **First-pass calibration** — uses legacy
+coordinates verbatim; expect playtest tuning for orb/exit reachability,
+graph-obstacle placement, switch-platform geometry, and hard-mode sweep
+speeds. mixed3 (`Settings.gameEnds`) is terminal: `nextLevel` is unset
+until the `gameending` video lands.
 
 **Cutscenes** are no-orb "walk-across" levels (flat floor; auto-advance
 on reaching the exit, no win overlay). `cutsceneDisplacement` /
@@ -99,7 +105,7 @@ status:
 | 1 | Vite + PixiJS scaffold + smoke test | ✅ done |
 | 2 | JPEXS asset extraction + curation | ✅ done — 181 manifest entries, ~14 MB committed |
 | 3 | Engine layer (FixedStep, Input, HitTest, Audio, GraphTone, AssetLoader, MovieClipShim) | ✅ done — 8/8 modules + avatar |
-| 4 | **Game logic port** | 🟡 in progress — worlds 1+2 complete + chained (incl. cutscenes); world 3 (mixed) pending |
+| 4 | **Game logic port** | 🟡 nearly done — all 3 worlds + cutscenes built and chained; remaining: ending video, playtest calibration of v2/v3 + mixed |
 | 5 | UI port (menu, options, HUD) | 🟡 in progress — main menu + instructions/credits/settings + intro video + boot flow done; pause menu + studio splash + ending video pending |
 | 6 | Testing + polish (cross-browser, mobile, perf) | ⏳ |
 | 7 | Release prep | ⏳ |
@@ -122,7 +128,7 @@ Mapped against the plan's `§14 Module porting order`:
 | 10 | `Switch.ts`, `MovingPlatform.ts`, `Spike.ts` | ✅ done (D1+D2); D3 polish (squish pushback + hit flash) still pending |
 | 11 | `Level.ts` (base class) + `LevelConfig` data | ✅ done — multi-orb refactor; per-level files are pure data literals |
 | 12 | `Movements.ts` | ✅ done + extensively calibrated (v1–v18) — see `docs/calibration.md` §9 |
-| 13 | Per-level files in `src/levels/` | 🟡 8 of 11 + 3 cutscenes wired (d0–d3, **v0–v3**, cutsceneDisplacement/Velocity/Mixed); mixed0–3 pending |
+| 13 | Per-level files in `src/levels/` | ✅ 11/11 gameplay levels (d0–d3, v0–v3, **mixed0–3**) + 3 cutscenes wired; mixed3 is the terminal "gameEnds" level (nextLevel UNSET pending the ending video) |
 | 14 | `LevelManager.ts` | ✅ done — win-overlay SPACE transitions, cutscene auto-advance, debug `advanceTo`; `start()` disposes the old level + starts new audio |
 | 15 | HUD (in-game pause/hint/HUD) | 🟡 menu chrome is HTML now; in-game pause menu (Esc during play) + `MuteControls`/`LevelPicker` Pixi placeholders still pending |
 | 16 | Menus (Menu, Options, Instructions, Credits) | ✅ done — `src/ui/{MainMenu,ImageScreen,DifficultyScreen}.ts` HTML overlay; settings = difficulty selector + Music/SFX on/off toggles |
@@ -294,29 +300,25 @@ distinct narration tracks (voCS1/2/3) are wired.
 
 ## 3.3 The home stretch — what's left
 
-Worlds 1 + 2 are complete and the whole framework (menu, options,
-cutscenes, narration, win cutscene, boot flow) is in. Remaining work,
-roughly in order:
+All **11 gameplay levels** (d0–d3, v0–v3, mixed0–3) and the 3 cutscenes
+are built and chained; the menu / options / narration / win-cutscene /
+boot flow is in. Remaining work, roughly in order:
 
-1. **Mixed world (mixed0–3)** — the last 4 gameplay levels. Pure data +
-   calibration (the engine already does mixed orb types; v3 proves it).
-   Read the legacy `mixed*.mxml`, translate to `LevelConfig`s, add picker
-   buttons. Then wire `cutsceneMixed.nextLevel = mixed0` and
-   `mixed3.nextLevel = gameending`.
-2. **Game ending** — after mixed3, play `ending.mp4` (`endingCutSceneClass`)
-   via the existing `VideoOverlay`, then return to the menu. (`bgmEndGame`
-   is the ending music.)
-3. **In-game pause menu (Esc → options)** — resume / restart / quit +
+1. **Game ending** — after mixed3, play `ending.mp4`
+   (`endingCutSceneClass`) via the existing `VideoOverlay`, switch to
+   `bgmEndGame`, then return to the menu. Wire `mixed3.nextLevel`.
+2. **In-game pause menu (Esc → options)** — resume / restart / quit +
    mute + difficulty, per legacy `gui.mxml`. **Prerequisite for hiding the
    debug UI**, since today the only in-game mute/difficulty controls are
    the debug chrome.
-4. **Flip `SHOW_DEBUG_UI` to `false`** once #3 lands; remove the
+3. **Flip `SHOW_DEBUG_UI` to `false`** once #2 lands; remove the
    `LevelPicker`/`MuteControls`/`DifficultyPicker` placeholders.
-5. **Studio splash logos** (gambit → poof) at boot, before the menu
+4. **Studio splash logos** (gambit → poof) at boot, before the menu
    (legacy `Woosh2.mxml` runAnimation).
-6. **Playtest calibration** — v2/v3 (first-pass, untested) + mixed once
-   built: orb/exit reachability, spike timing, hard/medium/easy variants.
-7. **Phase 6/7** — cross-browser, perf/bundle, optional mobile, release.
+5. **Playtest calibration pass** — v2/v3 + all of mixed0–3 are first-pass
+   (untested in real play). Check orb/exit reachability, switch-platform
+   geometry, hard-mode sweep timing, graph-obstacle distribution.
+6. **Phase 6/7** — cross-browser, perf/bundle, optional mobile, release.
 
 Nice-to-haves: D3 hazard polish (squish-pushback, spike hit-flash);
 per-cutscene music variants if the `cutScene02/03` tracks are ever
