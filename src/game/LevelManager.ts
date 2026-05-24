@@ -31,6 +31,15 @@ export class LevelManager {
    */
   winPresenter: ((done: () => void) => void) | null = null;
 
+  /**
+   * When set, called when a `gameEnds` level (mixed3) completes — plays
+   * the ending cutscene video, then the `done` callback returns the
+   * player to the main menu. Takes precedence over `winPresenter` for
+   * the terminal level. If unset on a gameEnds level, falls back to
+   * the regular wisp animation.
+   */
+  endingPresenter: ((done: () => void) => void) | null = null;
+
   /** True if there's an active level being driven by tick(). */
   get hasLevel(): boolean {
     return this.current !== null;
@@ -38,6 +47,37 @@ export class LevelManager {
 
   get difficulty(): Difficulty {
     return this.currentDifficulty;
+  }
+
+  /**
+   * The builder for the level currently loaded (if any). Used by the
+   * pause menu's "Restart Level" to reload the same level + difficulty.
+   */
+  get builder(): LevelBuilder | null {
+    return this.currentBuilder;
+  }
+
+  /**
+   * Dispose the current level and clear all manager state. Used by the
+   * pause menu's "Quit to Menu" to fully tear down before the player
+   * picks Start again. Safe to call when no level is loaded.
+   */
+  quit(): void {
+    const old = this.current;
+    this.current = null;
+    this.currentBuilder = null;
+    old?.dispose();
+  }
+
+  /**
+   * Show/hide the per-level debug readout (bottom-center "tick / avatar="
+   * text). Remembered across level loads so newly-loaded levels inherit
+   * the current visibility.
+   */
+  private debugReadoutVisible = false;
+  setDebugReadoutVisible(visible: boolean): void {
+    this.debugReadoutVisible = visible;
+    this.current?.setDebugReadoutVisible(visible);
   }
 
   /**
@@ -71,6 +111,7 @@ export class LevelManager {
     const cfg = initial(difficulty);
     const next = await Level.load(cfg, deps);
     next.startAudio();
+    next.setDebugReadoutVisible(this.debugReadoutVisible);
     this.current = next;
     this.wireTransition(cfg);
   }
@@ -95,6 +136,7 @@ export class LevelManager {
     const cfg = builder(this.currentDifficulty);
     const next = await Level.load(cfg, this.deps);
     next.startAudio();
+    next.setDebugReadoutVisible(this.debugReadoutVisible);
     this.current = next;
     this.wireTransition(cfg);
   }
@@ -121,9 +163,25 @@ export class LevelManager {
    * - Regular level: present the "wisp obtained" sequence (if a
    *   `winPresenter` is wired), then advance when it finishes.
    */
-  private wireTransition(cfg: { nextLevel?: LevelBuilder; isCutScene?: boolean }): void {
+  private wireTransition(cfg: {
+    nextLevel?: LevelBuilder;
+    isCutScene?: boolean;
+    gameEnds?: boolean;
+  }): void {
     const cur = this.current;
     if (!cur) return;
+    // Terminal "game ends" level (mixed3): on completion, play the ending
+    // cutscene then return to the main menu. No nextLevel needed — the
+    // endingPresenter is responsible for the post-ending transition (the
+    // menu re-show is wired in main.ts).
+    if (cfg.gameEnds) {
+      const presenter = this.endingPresenter ?? this.winPresenter;
+      cur.onComplete = (): void => {
+        if (presenter) presenter(() => this.quit());
+        else this.quit();
+      };
+      return;
+    }
     if (!cfg.nextLevel) {
       cur.onComplete = null;
       return;

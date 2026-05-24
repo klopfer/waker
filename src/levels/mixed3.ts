@@ -87,6 +87,9 @@ export const mixed3: LevelBuilder = (difficulty): LevelConfig => {
 
     spikes,
 
-    // nextLevel: gameending — wired once the ending video is built.
+    // Legacy `Settings.gameEnds = true` — on completion LevelManager plays
+    // the ending cutscene (endingCutSceneClass / ending.mp4) then returns
+    // to the main menu.
+    gameEnds: true,
   };
 };

@@ -128,6 +128,14 @@ export interface LevelConfig {
    * Settings.LEVEL_DIFFICULTY at load time.
    */
   nextLevel?: LevelBuilder;
+
+  /**
+   * Terminal "end of game" level (mixed3). On completion, LevelManager
+   * uses its `endingPresenter` to play the ending cutscene, then quits
+   * back to the main menu. Mutually exclusive with `nextLevel`. Matches
+   * legacy `Settings.gameEnds = true`.
+   */
+  gameEnds?: boolean;
 }
 
 /**
@@ -567,7 +575,13 @@ export class Level {
     this.tickReadout.anchor.set(0.5, 1);
     this.tickReadout.x = STAGE_WIDTH / 2;
     this.tickReadout.y = STAGE_HEIGHT - 8;
+    this.tickReadout.visible = false; // Off by default; gated by debug-UI toggle.
     deps.app.stage.addChild(this.tickReadout);
+  }
+
+  /** Show/hide the tick + avatar coordinate readout (debug chrome). */
+  setDebugReadoutVisible(visible: boolean): void {
+    this.tickReadout.visible = visible;
   }
 
   /** Run one simulation tick. Called from the engine's FixedStep driver. */
