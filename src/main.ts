@@ -37,6 +37,7 @@ import { makeImageScreen } from './ui/ImageScreen.js';
 import { makeDifficultyScreen } from './ui/DifficultyScreen.js';
 import { makeVideoOverlay } from './ui/VideoOverlay.js';
 import { makePauseMenu } from './ui/PauseMenu.js';
+import { makeSplashScreens } from './ui/SplashScreens.js';
 
 const STAGE_WIDTH = 800;
 const STAGE_HEIGHT = 600;
@@ -194,6 +195,7 @@ async function main(): Promise<void> {
   const uiRoot = document.getElementById('ui-root');
   if (!uiRoot) throw new Error('#ui-root not found');
 
+  const splash = makeSplashScreens(assets, audio);
   const intro = makeVideoOverlay(assets, 'introCutScene');
   const instructions = makeImageScreen(assets, 'guiInstructionScreen', () => menu.show());
   const credits = makeImageScreen(assets, 'guiCreditsScreen', () => menu.show());
@@ -297,6 +299,8 @@ async function main(): Promise<void> {
   levelComplete.el.style.zIndex = '20';
   ending.el.style.zIndex = '20';
   pauseMenu.el.style.zIndex = '30';
+  // Splash sits on top of everything at boot, then yields to the menu.
+  splash.el.style.zIndex = '40';
   for (const el of [
     menu.el,
     instructions.el,
@@ -306,10 +310,12 @@ async function main(): Promise<void> {
     levelComplete.el,
     ending.el,
     pauseMenu.el,
+    splash.el,
   ]) {
     uiRoot.appendChild(el);
   }
-  menu.show();
+  // Boot flow: studio splash (gambit → poof) → main menu.
+  splash.play(() => menu.show());
 
   // Esc behavior depends on context:
   //  - A main-menu sub-screen open → close it (back to main menu).
