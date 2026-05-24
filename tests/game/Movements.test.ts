@@ -318,6 +318,140 @@ describe('Movements.step', () => {
     expect(landedOnPlatform).toBe(true);
   });
 
+  it('approaching a side wall at body height is symmetric L vs R', () => {
+    // Vertical strip at x ∈ [W_LEFT, W_RIGHT] solid at body height
+    // (between feet and head, in the side-push sample range). Avatar
+    // approaches the strip from each side; mirror invariant.
+    const FLOOR_Y = 500;
+    const W_LEFT = 200;
+    const W_RIGHT = 280;
+    const STRIP_TOP_Y = FLOOR_Y - 24; // = sideTopY+1 sample
+    const STRIP_BOT_Y = FLOOR_Y - 6;  // inside side-push range
+    const sideWall: GroundProvider = {
+      groundYBelow: (x: number, searchFromY: number) => {
+        const ix = Math.floor(x);
+        if (ix >= W_LEFT && ix <= W_RIGHT && searchFromY <= STRIP_TOP_Y) return STRIP_TOP_Y;
+        return searchFromY <= FLOOR_Y ? FLOOR_Y : Number.POSITIVE_INFINITY;
+      },
+      solidAt: (x: number, y: number) => {
+        const ix = Math.floor(x);
+        const iy = Math.floor(y);
+        if (iy >= FLOOR_Y) return true;
+        if (ix >= W_LEFT && ix <= W_RIGHT && iy >= STRIP_TOP_Y && iy <= STRIP_BOT_Y) return true;
+        return false;
+      },
+    };
+    let rightS: MovementState = { x: 150, y: FLOOR_Y, vx: 0, vy: 0, facingRight: true, onGround: true };
+    for (let i = 0; i < 60; i++) rightS = step(rightS, { ...NEUTRAL, moveRight: true }, sideWall);
+    let leftS: MovementState = { x: 330, y: FLOOR_Y, vx: 0, vy: 0, facingRight: false, onGround: true };
+    for (let i = 0; i < 60; i++) leftS = step(leftS, { ...NEUTRAL, moveLeft: true }, sideWall);
+    const rightFinalEdge = rightS.x + BODY.HALF_WIDTH;
+    const leftFinalEdge = leftS.x - BODY.HALF_WIDTH;
+    // Distance from each avatar's leading edge to the strip should match.
+    const rightGap = W_LEFT - rightFinalEdge;
+    const leftGap = leftFinalEdge - W_RIGHT;
+    expect(Math.abs(rightGap - leftGap)).toBeLessThanOrEqual(2);
+  });
+
+  it('walking off a narrow ledge is symmetric L vs R', () => {
+    // Narrow platform from x=[200, 280] at y=440, infinite floor at y=500.
+    // Walk off each edge; the avatar should descend symmetrically.
+    const PLATFORM_TOP = 440;
+    const FLOOR_Y = 500;
+    const P_LEFT = 200;
+    const P_RIGHT = 280;
+    const narrowLedge: GroundProvider = {
+      groundYBelow: (x: number, searchFromY: number) => {
+        const ix = Math.floor(x);
+        if (ix >= P_LEFT && ix <= P_RIGHT && searchFromY <= PLATFORM_TOP) return PLATFORM_TOP;
+        return searchFromY <= FLOOR_Y ? FLOOR_Y : Number.POSITIVE_INFINITY;
+      },
+      solidAt: (x: number, y: number) => {
+        const ix = Math.floor(x);
+        const iy = Math.floor(y);
+        if (iy >= FLOOR_Y) return true;
+        if (ix >= P_LEFT && ix <= P_RIGHT && iy >= PLATFORM_TOP) return true;
+        return false;
+      },
+    };
+    let rightS: MovementState = { x: 240, y: PLATFORM_TOP, vx: 0, vy: 0, facingRight: true, onGround: true };
+    for (let i = 0; i < 40; i++) rightS = step(rightS, { ...NEUTRAL, moveRight: true }, narrowLedge);
+    let leftS: MovementState = { x: 240, y: PLATFORM_TOP, vx: 0, vy: 0, facingRight: false, onGround: true };
+    for (let i = 0; i < 40; i++) leftS = step(leftS, { ...NEUTRAL, moveLeft: true }, narrowLedge);
+    // Both should have walked off and landed on the floor.
+    expect(rightS.y).toBe(FLOOR_Y);
+    expect(leftS.y).toBe(FLOOR_Y);
+    expect(rightS.onGround).toBe(true);
+    expect(leftS.onGround).toBe(true);
+    const rightDist = rightS.x - 240;
+    const leftDist = 240 - leftS.x;
+    expect(Math.abs(rightDist - leftDist)).toBeLessThanOrEqual(2);
+  });
+
+  it('walking left vs right under an overhead curve is symmetric', () => {
+    // mixed1 stuck-near-door symptom: a player-drawn curve creates a
+    // narrow passage just above the platform top. Walking LEFT→RIGHT
+    // under it works; walking RIGHT→LEFT through the SAME geometry gets
+    // wedged. If the physics has a direction-asymmetric bug, this test
+    // (mirrored geometry, mirrored motion) will diverge.
+    //
+    // Floor: solid at y >= FLOOR_Y for all x.
+    // Curve: a solid horizontal strip 12 px wide at head height,
+    //   spanning x ∈ [PASSAGE_X_MIN, PASSAGE_X_MAX]. The strip's top is
+    //   STRIP_TOP_Y, bottom is STRIP_BOT_Y. STRIP_BOT_Y sits just below
+    //   the avatar's body top (= FLOOR_Y - BODY.HEIGHT) so it counts as
+    //   head-height contact but does not fully block the body.
+    const FLOOR_Y = 500;
+    const STRIP_TOP_Y = FLOOR_Y - BODY.HEIGHT - 6;
+    const STRIP_BOT_Y = FLOOR_Y - BODY.HEIGHT + 2;
+    const PASSAGE_X_MIN = 200;
+    const PASSAGE_X_MAX = 280;
+    const wedge: GroundProvider = {
+      groundYBelow: (x: number, searchFromY: number) => {
+        const ix = Math.floor(x);
+        if (
+          ix >= PASSAGE_X_MIN &&
+          ix <= PASSAGE_X_MAX &&
+          searchFromY <= STRIP_TOP_Y
+        ) {
+          return STRIP_TOP_Y;
+        }
+        return searchFromY <= FLOOR_Y ? FLOOR_Y : Number.POSITIVE_INFINITY;
+      },
+      solidAt: (x: number, y: number) => {
+        const ix = Math.floor(x);
+        const iy = Math.floor(y);
+        if (iy >= FLOOR_Y) return true;
+        if (
+          ix >= PASSAGE_X_MIN &&
+          ix <= PASSAGE_X_MAX &&
+          iy >= STRIP_TOP_Y &&
+          iy <= STRIP_BOT_Y
+        ) {
+          return true;
+        }
+        return false;
+      },
+    };
+
+    // Start at x=150 (clear of the strip on the LEFT), walk right.
+    let rightS: MovementState = { x: 150, y: FLOOR_Y, vx: 0, vy: 0, facingRight: true, onGround: true };
+    for (let i = 0; i < 60; i++) rightS = step(rightS, { ...NEUTRAL, moveRight: true }, wedge);
+    const rightFinalX = rightS.x;
+
+    // Start at x=330 (clear of the strip on the RIGHT), walk left.
+    let leftS: MovementState = { x: 330, y: FLOOR_Y, vx: 0, vy: 0, facingRight: false, onGround: true };
+    for (let i = 0; i < 60; i++) leftS = step(leftS, { ...NEUTRAL, moveLeft: true }, wedge);
+    const leftFinalX = leftS.x;
+
+    // Mirror: distance traveled from the start should be the same magnitude.
+    const rightDist = rightFinalX - 150;
+    const leftDist = 330 - leftFinalX;
+    // Allow 2 px slack (axis sampling can stop at slightly different
+    // sub-pixel positions). Anything more is a real direction asymmetry.
+    expect(Math.abs(rightDist - leftDist)).toBeLessThanOrEqual(2);
+  });
+
   it('full jump arc returns to ground after some ticks', () => {
     let s = start();
     s = step(s, { ...NEUTRAL, jumpPressed: true }, ground);

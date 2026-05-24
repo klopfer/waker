@@ -309,6 +309,70 @@ function pushOutFromWallLeft(
   return cur;
 }
 
+// ---------------------------------------------------------------------------
+// DIAGNOSTIC: log when side-push actually blocks the avatar (vx forced to 0).
+//
+// Opt-in from devtools console:   window.__wakerWallBlock = true
+// Disable:                        window.__wakerWallBlock = false
+//
+// De-duped by direction + rounded position so standing against a wall logs
+// once, not every tick. Captures both the head-probe column and the
+// side-push column (off by 1 for leftward motion) to make any
+// direction-specific divergence visible in the raw output.
+// TODO: remove after mixed1 wedge diagnosis.
+const wallBlockDebugState = { lastSig: '' };
+
+function dumpWallBlock(
+  dir: 'right' | 'left',
+  attemptedX: number,
+  pushedX: number,
+  bottomY: number,
+  ground: GroundProvider,
+  wallAhead: boolean,
+): void {
+  if (typeof globalThis === 'undefined') return;
+  if (!(globalThis as { __wakerWallBlock?: boolean }).__wakerWallBlock) return;
+  const sig = `${dir}:${Math.round(attemptedX)}:${Math.round(bottomY)}`;
+  if (wallBlockDebugState.lastSig === sig) return;
+  wallBlockDebugState.lastSig = sig;
+
+  const headEdgeX = dir === 'right' ? attemptedX + BODY.HALF_WIDTH : attemptedX - BODY.HALF_WIDTH;
+  const sideEdgeX = dir === 'right' ? attemptedX + BODY.HALF_WIDTH : attemptedX - BODY.HALF_WIDTH - 1;
+  const topY = bottomY - BODY.HEIGHT;
+  const sampleY = (label: string, y: number) => ({
+    label,
+    y: Math.round(y),
+    headCol: ground.solidAt(headEdgeX, y),
+    sideCol: ground.solidAt(sideEdgeX, y),
+  });
+  const snap = {
+    dir,
+    pos: { x: Math.round(attemptedX), y: Math.round(bottomY) },
+    pushedTo: Math.round(pushedX),
+    wallAhead,
+    headEdgeX: Math.round(headEdgeX),
+    sideEdgeX: Math.round(sideEdgeX),
+    isWallAtHead: isWallAt(headEdgeX, bottomY, ground),
+    isWallAtSide: isWallAt(sideEdgeX, bottomY, ground),
+    samples: [
+      sampleY('head_top', topY),
+      sampleY('head+2', topY + 2),
+      sampleY('head+4', topY + 4),
+      sampleY('mid', bottomY - 18),
+      sampleY('feet-24', bottomY - 24),
+      sampleY('feet-12', bottomY - 12),
+      sampleY('feet-5', bottomY - 5),
+      sampleY('feet-1', bottomY - 1),
+    ],
+    groundYAtHead: ground.groundYBelow(headEdgeX, bottomY - 1000),
+    groundYAtSide: ground.groundYBelow(sideEdgeX, bottomY - 1000),
+  };
+  // Emit as a single JSON string so text-copy from devtools captures
+  // every field (object-style logs collapse to {…} in the clipboard).
+  console.log('[wall-block] ' + JSON.stringify(snap));
+}
+// ---------------------------------------------------------------------------
+
 function pushDownFromCeiling(x: number, bottomY: number, ground: GroundProvider): number {
   let cur = bottomY;
   for (let i = 0; i < BODY.MAX_PUSH; i++) {
@@ -463,10 +527,22 @@ export function step(
         Math.abs(midFloorY - expectedMid) <= continuityTolerance;
 
       if (isContinuous) {
-        y = newFloorY;
-        vy = 0;
-        onGround = true;
-        steppedToFloor = true;
+        // Verify the destination is body-clear in the direction of motion.
+        // Without this, step-up can slide the avatar UNDER an overhanging
+        // mass: the leading-edge head probe says "clear ahead," but the
+        // body's interior / opposite-edge columns end up inside the
+        // overhang. Repeated step-ups deposit the avatar fully under the
+        // overhang, where both side-pushes fire and the avatar is wedged.
+        // This was the mixed1 stuck-near-door bug.
+        const wouldBeWedged = vx > 0
+          ? pushOutFromWallRight(x, newFloorY, ground, x) !== x
+          : pushOutFromWallLeft(x, newFloorY, ground, x) !== x;
+        if (!wouldBeWedged) {
+          y = newFloorY;
+          vy = 0;
+          onGround = true;
+          steppedToFloor = true;
+        }
       }
     } else if (newFloorY > state.y && newFloorY <= state.y + PHYSICS.STEP_DOWN) {
       // Step DOWN — only for small drops. Larger drops fall through to
@@ -486,12 +562,14 @@ export function step(
       // would push the avatar BACK by the full MAX_PUSH=30 each tick.
       const pushed = pushOutFromWallRight(x, y, ground, state.x);
       if (pushed !== x) {
+        dumpWallBlock('right', x, pushed, y, ground, wallAhead);
         x = pushed;
         vx = 0;
       }
     } else if (vx < 0) {
       const pushed = pushOutFromWallLeft(x, y, ground, state.x);
       if (pushed !== x) {
+        dumpWallBlock('left', x, pushed, y, ground, wallAhead);
         x = pushed;
         vx = 0;
       }
