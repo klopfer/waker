@@ -19,6 +19,15 @@ export interface VideoOverlayOptions {
   muted?: boolean;
   /** Skip-hint caption shown bottom-right. */
   hint?: string;
+  /**
+   * How the video fills the 800×600 stage. Default 'cover' — scales to
+   * fill the full stage, cropping the overflow (which is what the legacy
+   * Flash MovieClip-in-stage rendering effectively did for the
+   * level-complete and ending clips, both natively portrait-aspect at
+   * ~856×966). Use 'contain' for content where every pixel matters and
+   * letterboxing is acceptable.
+   */
+  fit?: 'cover' | 'contain';
 }
 
 export function makeVideoOverlay(
@@ -26,7 +35,7 @@ export function makeVideoOverlay(
   videoKey: string,
   options: VideoOverlayOptions = {},
 ): VideoOverlay {
-  const { muted = false, hint = 'click / space to skip ▶' } = options;
+  const { muted = false, hint = 'click / space to skip ▶', fit = 'cover' } = options;
 
   const root = document.createElement('div');
   root.style.position = 'absolute';
@@ -40,9 +49,15 @@ export function makeVideoOverlay(
   video.style.inset = '0';
   video.style.width = '800px';
   video.style.height = '600px';
-  // Preserve aspect ratio (the level-complete clip is portrait-ish);
-  // letterbox on the black backdrop rather than stretch.
-  video.style.objectFit = 'contain';
+  // `cover` (default) fills the stage by scaling the native frame so the
+  // shorter side matches and the longer side overflows (then gets clipped
+  // by the container). For the portrait level-complete / ending clips
+  // (~856×966), this matches the legacy Flash MovieClip-in-stage behavior
+  // — content beyond the stage rect was clipped by the stage, not
+  // letterboxed — and gives a substantially larger animation area than
+  // `contain` (which letterboxed the portrait source inside the landscape
+  // stage). Use `contain` only when every pixel matters.
+  video.style.objectFit = fit;
   video.playsInline = true;
   video.preload = 'auto';
   root.appendChild(video);
