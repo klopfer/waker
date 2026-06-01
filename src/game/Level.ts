@@ -173,6 +173,23 @@ export interface OrbSetupConfig {
     height: number;
     maxValue: number;
     yOffset: number;
+    /**
+     * How the graph-tone pitch is normalized while drawing this orb's
+     * graph. Default 'value' — pitch tracks `value/maxValue`, so pitch
+     * maxes when `value === maxValue`. With non-zero `yOffset` that puts
+     * the line below the visual top of the graph by `yOffset`, so the
+     * pitch maxes out before the line reaches the top.
+     *
+     * Set to 'line-y' to normalize against the line's visual position
+     * instead: pitch maxes only when the line reaches `localY = 0`
+     * (the top edge of the graph rect), accounting for `yOffset`. The
+     * value=0 → pitch=0 anchor is preserved, so the resting audio is
+     * unchanged. Opt in on graphs where the visible-line/pitch lag is
+     * audibly off (d3 and the mixed-world displacement orbs).
+     *
+     * Velocity orbs are unaffected (they use a separate code path).
+     */
+    pitchMapping?: 'value' | 'line-y';
   };
   /**
    * Thin orb-only shelf that holds the orb above the origin marker.
@@ -255,6 +272,32 @@ const GRAPH_TONE_OCTAVES = 2;
 // full, immediate mapping.
 const VEL_TONE_SMOOTHING = 0.2; // EMA weight per tick toward the new value
 const VEL_TONE_RANGE = 0.55; // fraction of the octave span velocity may use
+
+/**
+ * Map a displacement orb's current `value` to a normalized pitch [0, 1].
+ *
+ * 'value' mode (default, legacy behavior): `value / maxValue` — pitch
+ * maxes at `value === maxValue`.
+ *
+ * 'line-y' mode: pitch maxes when the line reaches the visual top of the
+ * graph (`localY === 0`). The line's localY = `(h/2) - (value/maxValue)*(h/2) + yOffset`,
+ * so `localY === 0` when `value === maxValue * (h/2 + yOffset) / (h/2)`. Using
+ * `valueAtTop` as the divisor keeps the value=0 → pitch=0 anchor and pushes
+ * the pitch=1 cap up to where the line actually reaches the top edge.
+ *
+ * Exported for direct testing in Movements.test.ts companion tests.
+ */
+export function graphTonePitch(
+  value: number,
+  graph: { maxValue: number; height: number; yOffset: number; pitchMapping?: 'value' | 'line-y' },
+): number {
+  if (graph.pitchMapping === 'line-y') {
+    const half = graph.height / 2;
+    const valueAtTop = (graph.maxValue * (half + graph.yOffset)) / half;
+    return Math.max(0, Math.min(1, value / valueAtTop));
+  }
+  return Math.max(0, Math.min(1, value / graph.maxValue));
+}
 
 // Inset from the bottom of the avatar bbox used in moving-platform squish
 // detection. Without this, body.step's ground-snap leaves the avatar's
@@ -925,7 +968,7 @@ export class Level {
       } else {
         // Displacement orbs track |x - origin.x|: smooth already, full range.
         const value = Math.abs(this.body.state.x - heldBundle.setup.origin.x);
-        this.graphTone.setNormalized(Math.min(1, value / maxValue));
+        this.graphTone.setNormalized(graphTonePitch(value, heldBundle.setup.graph));
       }
     }
   }

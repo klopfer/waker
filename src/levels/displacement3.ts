@@ -115,6 +115,10 @@ export const displacement3: LevelBuilder = (difficulty): LevelConfig => {
           // SIDE_TOP_MARGIN=10 + isWallAt overlap rule (v18), the
           // trap range is V<~95. See docs/calibration.md §9 v17–v18.
           yOffset: 75,
+          // Pitch tracks the line's visual y so it doesn't max out
+          // before the line reaches the visual top (yOffset puts the
+          // value=maxValue line ~75px below the top here).
+          pitchMapping: 'line-y',
         },
         cradle: { lift: 12, halfWidth: 18 },
       },
@@ -128,6 +132,7 @@ export const displacement3: LevelBuilder = (difficulty): LevelConfig => {
           height: 180,
           maxValue: 300,
           yOffset: 90,
+          pitchMapping: 'line-y',
         },
         cradle: { lift: 12, halfWidth: 18 },
       },
