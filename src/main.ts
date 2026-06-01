@@ -244,12 +244,17 @@ async function main(): Promise<void> {
         startChain();
       } else {
         introSeen = true;
-        // The story narration begins on the (silent) intro video and keeps
-        // playing into the walk-across cutscene, which requests the same
-        // 'voCS1' track (de-duped, so it doesn't restart). It is cut when
-        // displacement0 begins. The Start click is the gesture that unlocks
-        // audio. See cutsceneDisplacement.ts / Level.startAudio().
-        audio.playVo('voCS1', assets.url('voCS1'));
+        // Two different narration tracks across the boot sequence:
+        //   - intro video: `voIntro` (gameintro.mp3) — narrates the
+        //     intro animation we play here.
+        //   - walk-across cutscene: `voCS1` (skyintro.mp3) — narrates the
+        //     walk to d0. Started by Level.startAudio() via voKey.
+        //   - d0 onward: VO is stopped (Level.startAudio() on the first
+        //     non-cutscene level calls stopVo).
+        // Audio.playVo() auto-stops the previous key when switching, so
+        // the intro→walk-across transition cleanly hands off. The Start
+        // click is the gesture that unlocks audio.
+        audio.playVo('voIntro', assets.url('voIntro'));
         intro.play(startChain);
       }
     },

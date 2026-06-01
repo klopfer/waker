@@ -273,11 +273,12 @@ chain, and built the Phase 5 menu system + boot flow.
   play their voice-over (`Audio.playVo` one-shot, de-duped by key;
   `LevelConfig.voKey`): voCS1 (skyintro) for world 1, voCS2 (earthintro)
   for world 2, voCS3 (starintro) for world 3, over the `bgmCutscene01`
-  music. Timing matches the legacy: the world-1 narration starts on the
-  (silent) intro video (`main.ts` `audio.playVo('voCS1')`), continues
-  seamlessly through the walk-across cutscene (same track, not restarted),
-  and is cut the moment gameplay begins (`Level.startAudio` calls
-  `stopVo()` on any non-cutscene level). Added
+  music. Boot-time narration uses TWO tracks: `voIntro` (gameintro.mp3)
+  plays on the intro video (started in `main.ts` when the player clicks
+  Start); the walk-across cutscene then switches to `voCS1` (skyintro.mp3)
+  via its `voKey`. `Audio.playVo()` auto-stops the previous key on key
+  change, so the handoff is clean. d0 stops VO entirely (`Level.startAudio`
+  calls `stopVo()` on any non-cutscene level). Added
   `LevelConfig.lockInputUntilGrounded` (set on d0):
   the avatar drops straight down from spawn (movement input ignored, vx
   pinned 0) until it lands, so an arrow held over from the walk-across
