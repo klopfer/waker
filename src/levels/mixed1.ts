@@ -48,12 +48,19 @@ export const mixed1: LevelBuilder = (difficulty): LevelConfig => {
     ],
 
     // addSwitch(10,410, 64,460,false,false,160,20, 255,460,false,false,160,20).
+    // Tweaked from the legacy 160-wide spec to 140-wide, shifted right
+    // (94 and 244) — opens a 36px escape gap between platform 2's right
+    // edge (x=384) and the vertical cliff at x=420 so the player can
+    // squeeze out when the rightmost platform comes down on top of
+    // them. The gap between the two platforms is now 10px (too narrow
+    // for the avatar's 24-wide body), so the only escape is to the
+    // right; that's intentional — there used to be no escape at all.
     switches: [
       {
         switch: { x: 10, y: 410 },
         platforms: [
-          { x: 64, y: 460, width: 160, height: 20, horizontal: false, upOrLeft: false },
-          { x: 255, y: 460, width: 160, height: 20, horizontal: false, upOrLeft: false },
+          { x: 94, y: 460, width: 140, height: 20, horizontal: false, upOrLeft: false },
+          { x: 244, y: 460, width: 140, height: 20, horizontal: false, upOrLeft: false },
         ],
       },
     ],
